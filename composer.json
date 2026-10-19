@@ -1,6 +1,6 @@
 {
     "name": "dmorenof/sdk-runtime",
-    "description": "Shared PHP SDK runtime library (initial project scaffold).",
+    "description": "Lightweight shared PHP runtime for contract-driven SDKs.",
     "type": "library",
     "license": "MIT",
     "require": {
@@ -21,5 +21,26 @@
     },
     "scripts": {
         "validate": "@composer validate --strict --no-check-lock"
+    },
+    "keywords": [
+        "sdk",
+        "runtime",
+        "php",
+        "typed-dto",
+        "api-client"
+    ],
+    "homepage": "https://github.com/dmorenof/sdk-runtime",
+    "authors": [
+        {
+            "name": "David Moreno Falero",
+            "role": "Developer"
+        }
+    ],
+    "support": {
+        "issues": "https://github.com/dmorenof/sdk-runtime/issues",
+        "source": "https://github.com/dmorenof/sdk-runtime"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^11.5"
     }
 }

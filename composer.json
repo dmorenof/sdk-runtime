@@ -1,0 +1,25 @@
+{
+    "name": "dmorenof/sdk-runtime",
+    "description": "Shared PHP SDK runtime library (initial project scaffold).",
+    "type": "library",
+    "license": "MIT",
+    "require": {
+        "php": "^8.3"
+    },
+    "autoload": {
+        "psr-4": {
+            "Dmorenof\\SdkRuntime\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Dmorenof\\SdkRuntime\\Tests\\": "tests/"
+        }
+    },
+    "config": {
+        "sort-packages": true
+    },
+    "scripts": {
+        "validate": "@composer validate --strict --no-check-lock"
+    }
+}

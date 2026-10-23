@@ -9,11 +9,11 @@ namespace Dmorenof\SdkRuntime;
  */
 class AnyOf implements \JsonSerializable
 {
-    /** @var list<class-string|class-string-enum|'string'|'int'|'float'|'bool'|'null'> */
+    /** @var list<string> Class names, enum names or the scalar kinds 'string', 'int', 'float', 'bool', 'null'. */
     protected const array TYPES = [];
 
     /** @param list<mixed> $matches */
-    protected function __construct(
+    final protected function __construct(
         private readonly mixed $original,
         private readonly array $matches,
     ) {}

@@ -11,7 +11,7 @@ namespace Dmorenof\SdkRuntime;
  */
 class DTO implements \JsonSerializable, \Stringable
 {
-    /** @var array<string,array<string,int|float|string|list<string|int>>> */
+    /** @var array<string, array<string, mixed>> Field => rules (see Constraints). */
     protected const array VALIDATION = [];
     /** @var \WeakMap<self, array<string, mixed>>|null */
     private static ?\WeakMap $additionalPropertyValues = null;
@@ -24,8 +24,9 @@ class DTO implements \JsonSerializable, \Stringable
             return;
         }
 
-        $propertyMap = $this->constant('PROPERTY_MAP', []);
-        foreach (get_object_vars($json) as $name => $value) {
+        $propertyMap = $this->declaredMap('PROPERTY_MAP');
+        foreach (get_object_vars($json) as $key => $value) {
+            $name = (string) $key;
             $propertyName = $propertyMap[$name] ?? $name;
             $where = static::class . "::$name";
             if (property_exists($this, $propertyName)) {
@@ -47,21 +48,48 @@ class DTO implements \JsonSerializable, \Stringable
     }
 
     /**
-     * The value of a generated class constant, or $default when the model does not declare it.
+     * The array a generated class declares in constant $name, or [] when it does not.
      * Looked up once per class: constants cannot change, and models are validated on every use.
+     *
+     * @return array<mixed>
      */
-    private function constant(string $name, mixed $default): mixed
+    private function declared(string $name): array
     {
-        return self::$declared[static::class][$name]
-            ??= defined(static::class . "::$name") ? constant(static::class . "::$name") : $default;
+        $value = self::$declared[static::class][$name]
+            ??= defined(static::class . "::$name") ? constant(static::class . "::$name") : [];
+        return is_array($value) ? $value : [];
+    }
+
+    /** @return list<string> */
+    private function declaredNames(string $name): array
+    {
+        /** @var list<string> $names */
+        $names = $this->declared($name);
+        return $names;
+    }
+
+    /** @return array<string, string> */
+    private function declaredMap(string $name): array
+    {
+        /** @var array<string, string> $map */
+        $map = $this->declared($name);
+        return $map;
+    }
+
+    /** @return array<string, mixed> */
+    private function declaredRules(string $name): array
+    {
+        /** @var array<string, mixed> $rules */
+        $rules = $this->declared($name);
+        return $rules;
     }
 
     /** @return list<string> Fields that do not travel in the given direction (readOnly in requests, writeOnly in responses). */
     private function directionalFields(bool $request, bool $response): array
     {
         return $request
-            ? $this->constant('READ_ONLY_FIELDS', [])
-            : ($response ? $this->constant('WRITE_ONLY_FIELDS', []) : []);
+            ? $this->declaredNames('READ_ONLY_FIELDS')
+            : ($response ? $this->declaredNames('WRITE_ONLY_FIELDS') : []);
     }
 
     private function hydrateAdditional(mixed $value, string $where): mixed
@@ -69,17 +97,17 @@ class DTO implements \JsonSerializable, \Stringable
         if (!defined(static::class . '::ADDITIONAL_PROPERTIES_TYPE')) {
             throw new \InvalidArgumentException("Unknown JSON property $where.");
         }
-        return Hydrator::hydrate(
-            $value,
-            constant(static::class . '::ADDITIONAL_PROPERTIES_TYPE'),
-            constant(static::class . '::ADDITIONAL_PROPERTIES_NULLABLE'),
-            $where,
-        );
+        $type = constant(static::class . '::ADDITIONAL_PROPERTIES_TYPE');
+        $nullable = constant(static::class . '::ADDITIONAL_PROPERTIES_NULLABLE');
+        if (!is_string($type) || !is_bool($nullable)) {
+            throw new \LogicException(static::class . ' declares malformed additional-properties metadata.');
+        }
+        return Hydrator::hydrate($value, $type, $nullable, $where);
     }
 
     public function setAdditionalProperty(string $name, mixed $value): void
     {
-        if (property_exists($this, $name) || array_key_exists($name, $this->constant('PROPERTY_MAP', []))) {
+        if (property_exists($this, $name) || array_key_exists($name, $this->declaredMap('PROPERTY_MAP'))) {
             throw new \InvalidArgumentException("Property " . static::class . "::$name is declared; assign it directly.");
         }
         if (!defined(static::class . '::ADDITIONAL_PROPERTIES_TYPE')) {
@@ -87,7 +115,7 @@ class DTO implements \JsonSerializable, \Stringable
         }
         $where = static::class . "::$name";
         $converted = $this->hydrateAdditional($value, $where);
-        Constraints::validate($converted, $this->constant('ADDITIONAL_PROPERTIES_VALIDATION', []), $where);
+        Constraints::validate($converted, $this->declaredRules('ADDITIONAL_PROPERTIES_VALIDATION'), $where);
         self::storeAdditionalProperty($this, $name, $converted);
     }
 
@@ -119,12 +147,14 @@ class DTO implements \JsonSerializable, \Stringable
     /** @return array<string, mixed> */
     private function fields(): array
     {
-        return array_replace(get_object_vars($this), self::additionalPropertiesFor($this));
+        /** @var array<string, mixed> $declared */
+        $declared = get_object_vars($this);
+        return array_replace($declared, self::additionalPropertiesFor($this));
     }
 
     private function assertRequiredFields(bool $request = false, bool $response = false): void
     {
-        $required = $this->constant('REQUIRED_FIELDS', []);
+        $required = $this->declaredNames('REQUIRED_FIELDS');
         if ($required === []) {
             return;
         }
@@ -161,7 +191,7 @@ class DTO implements \JsonSerializable, \Stringable
     {
         $this->assertRequiredFields($request, $response);
         $fields = $this->fields();
-        $additionalRules = $this->constant('ADDITIONAL_PROPERTIES_VALIDATION', []);
+        $additionalRules = $this->declaredRules('ADDITIONAL_PROPERTIES_VALIDATION');
         if ($additionalRules !== []) {
             foreach (self::additionalPropertiesFor($this) as $name => $value) {
                 Constraints::validate($value, $additionalRules, static::class . "::$name");
@@ -226,11 +256,8 @@ class DTO implements \JsonSerializable, \Stringable
     /** @internal Called by Serializer after the owning model has been validated. */
     public function serializeValidated(string $mode): object
     {
-        $excluded = match ($mode) {
-            'request' => $this->constant('READ_ONLY_FIELDS', []),
-            default => $this->constant('WRITE_ONLY_FIELDS', []),
-        };
-        return Serializer::fields($this->fields(), $excluded, $this->constant('WIRE_PROPERTY_MAP', []), $mode);
+        $excluded = $this->declaredNames($mode === 'request' ? 'READ_ONLY_FIELDS' : 'WRITE_ONLY_FIELDS');
+        return Serializer::fields($this->fields(), $excluded, $this->declaredMap('WIRE_PROPERTY_MAP'), $mode);
     }
 
     public function __toString(): string

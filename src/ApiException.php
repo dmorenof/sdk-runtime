@@ -24,7 +24,7 @@ class ApiException extends \RuntimeException
         );
     }
 
-    /** @param class-string<DTO>|null $errorType */
+    /** @param string|null $errorType Name of the DTO subclass describing the error body. */
     public static function fromResponse(HttpResponse $response, string $operation, ?string $errorType): self
     {
         $error = null;

@@ -75,7 +75,7 @@ final class Hydrator
             return new $kind($value);
         }
 
-        if (enum_exists($kind)) {
+        if (is_subclass_of($kind, \BackedEnum::class)) {
             if ($value instanceof $kind) {
                 return $value;
             }

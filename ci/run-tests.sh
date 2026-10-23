@@ -15,6 +15,9 @@ if ! find tests -type f -name '*Test.php' -print -quit | grep -q .; then
   exit 1
 fi
 
+# Static analysis at the strictest level: the typed API is the point of this package.
+vendor/bin/phpstan analyse --no-progress --memory-limit=1G
+
 if [[ "${1:-}" == "--coverage" ]]; then
   mkdir -p coverage
   vendor/bin/phpunit -c phpunit.xml --coverage-text --coverage-clover coverage/clover.xml

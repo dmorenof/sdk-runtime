@@ -47,7 +47,7 @@ final class Psr18Transport implements TransportInterface
 
         $resultHeaders = [];
         foreach ($response->getHeaders() as $name => $values) {
-            $resultHeaders[$name] = implode(', ', $values);
+            $resultHeaders[(string) $name] = implode(', ', $values);
         }
         return new HttpResponse($response->getStatusCode(), (string)$response->getBody(), $resultHeaders);
     }

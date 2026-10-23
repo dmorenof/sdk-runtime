@@ -6,8 +6,10 @@ namespace Dmorenof\SdkRuntime;
 /** Shared typed-collection behavior without duplicating TypedArray validation. */
 class TypedArray extends \TypedArray\TypedArray implements \Stringable
 {
+    /** @var array<string, mixed> Rules applied to every item (see Constraints). */
     protected const array ITEM_VALIDATION = [];
 
+    /** @param array<mixed> $items */
     public function __construct(array $items = [])
     {
         foreach ($items as $item) {

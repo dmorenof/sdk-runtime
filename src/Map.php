@@ -3,17 +3,23 @@ declare(strict_types=1);
 
 namespace Dmorenof\SdkRuntime;
 
-/** Shared keyed JSON-object collection behavior for generated map wrappers. */
+/**
+ * Shared keyed JSON-object collection behavior for generated map wrappers.
+ *
+ * @implements \ArrayAccess<string|int, mixed>
+ * @implements \IteratorAggregate<string, mixed>
+ */
 class Map implements \ArrayAccess, \Countable, \IteratorAggregate, \JsonSerializable
 {
     protected const string VALUE_TYPE = 'mixed';
     protected const bool VALUE_NULLABLE = false;
+    /** @var array<string, mixed> Rules applied to every value (see Constraints). */
     protected const array VALUE_VALIDATION = [];
 
     /** @var array<string, mixed> */
     private array $values = [];
 
-    /** @param array<string, mixed>|object $values */
+    /** @param array<mixed>|object $values */
     public function __construct(array|object $values = [])
     {
         if (is_array($values) && $values !== [] && array_is_list($values)) {

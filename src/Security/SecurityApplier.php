@@ -65,10 +65,12 @@ final class SecurityApplier
                     if (!is_string($credential) || $credential === '') {
                         throw new \InvalidArgumentException("API key credential $name must be a nonempty string.");
                     }
+                    $parameterName = $scheme['parameterName']
+                        ?? throw new \LogicException("API key scheme $name declares no parameter name.");
                     if ($scheme['location'] === 'header') {
-                        self::addHeader($securityHeaders, $scheme['parameterName'], $credential);
+                        self::addHeader($securityHeaders, $parameterName, $credential);
                     } elseif ($scheme['location'] === 'query') {
-                        self::addQuery($securityQuery, $scheme['parameterName'], $credential);
+                        self::addQuery($securityQuery, $parameterName, $credential);
                     } else {
                         throw new \LogicException("Unsupported generated API key location for $name.");
                     }

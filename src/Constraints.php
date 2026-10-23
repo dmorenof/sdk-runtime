@@ -45,7 +45,7 @@ final class Constraints
             };
         }
         if (!$valid) {
-            $description = $rule === 'enum' ? 'allowed values ' . var_export($limit, true) : "limit $limit";
+            $description = ($rule === 'enum' ? 'allowed values ' : 'limit ') . var_export($limit, true);
             throw new \UnexpectedValueException("Validation $rule failed at $where ($description).");
         }
     }

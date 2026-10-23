@@ -11,32 +11,23 @@ use Dmorenof\SdkRuntime\Security\SecurityCredentials;
 
 /**
  * Shared endpoint-client infrastructure; derived API classes only emit typed operations.
+ *
+ * @phpstan-import-type OperationSpec from Operation
  */
 abstract class ApiClient
 {
-    /** Security scheme definitions, keyed by name; each SDK overrides this. */
-    protected const array SECURITY_SCHEMES = [];
-
     /**
-     * Values an operation inherits when it does not declare them. Only `method`
-     * and `path` are mandatory; `label` defaults to "METHOD path".
+     * Security scheme definitions, keyed by name; each SDK overrides this.
+     * @var array<string, array{type: string, scheme: string|null, location: string|null, parameterName: string|null}>
      */
-    public const array OPERATION_DEFAULTS = [
-        'security' => [],
-        'success' => [200],
-        'errors' => [],
-        'responseType' => null,
-        'schemaNullable' => false,
-        'noContentAllowed' => false,
-        'validation' => [],
-    ];
+    protected const array SECURITY_SCHEMES = [];
 
     protected SecurityCredentials $securityCredentials;
 
     protected TransportInterface $transport;
 
     /** @param array<string, string> $headers */
-    public function __construct(
+    final public function __construct(
         protected string $baseUrl,
         ?\Psr\Http\Client\ClientInterface $httpClient = null,
         array $headers = [],
@@ -74,6 +65,7 @@ abstract class ApiClient
         }
         return new $type($this->baseUrl, securityCredentials: $this->securityCredentials, transport: $this->transport);
     }
+
     /** Attach an SDK-level interceptor when using the default PSR-18 adapter. */
     public function withMiddleware(HttpMiddlewareInterface $middleware): static
     {
@@ -87,10 +79,11 @@ abstract class ApiClient
     /**
      * Execute one generated operation: validate parameters, serialize the request,
      * send it and decode the typed response.
-     * @param array<string, mixed> $operation
-     * @param array<string, mixed> $pathParameters
-     * @param array<string, mixed> $queryParameters
-     * @param array<string, mixed> $headerParameters
+     *
+     * @param OperationSpec $operation
+     * @param array<string, scalar|null> $pathParameters
+     * @param array<string, scalar|null> $queryParameters
+     * @param array<string, scalar|null> $headerParameters
      */
     protected function executeOperation(
         array $operation,
@@ -99,66 +92,59 @@ abstract class ApiClient
         array $headerParameters = [],
         ?DTO $body = null,
     ): mixed {
-        $operation += self::OPERATION_DEFAULTS;
-        $operation['label'] ??= $operation['method'] . ' ' . $operation['path'];
-        $path = $operation['path'];
+        $spec = Operation::fromArray($operation);
         $parameters = $pathParameters + $queryParameters + $headerParameters;
-        foreach ($operation['validation'] as $name => $validation) {
+        foreach ($spec->validation as $name => $rules) {
             $value = $parameters[$name] ?? null;
             if ($value !== null) {
-                Constraints::validate($value, $validation, $operation['label'] . '.' . $name);
+                Constraints::validate($value, $rules, $spec->label . '.' . $name);
             }
         }
 
+        $path = $spec->path;
         foreach ($pathParameters as $name => $value) {
-            $path = str_replace('{' . $name . '}', rawurlencode((string) $value), $path);
+            $path = str_replace('{' . $name . '}', rawurlencode(self::stringify($value)), $path);
         }
-        $query = self::stringify($queryParameters);
-        $headers = ['Accept' => 'application/json'] + self::stringify($headerParameters);
+        $query = self::stringifyAll($queryParameters);
+        $headers = ['Accept' => 'application/json'] + self::stringifyAll($headerParameters);
         $bodyJson = null;
         if ($body !== null) {
             $headers['Content-Type'] = 'application/json';
             $bodyJson = json_encode($body->jsonSerializeForRequest(), JSON_THROW_ON_ERROR);
         }
 
-        SecurityApplier::apply(
-            $this->securityCredentials,
-            $operation['security'],
-            static::SECURITY_SCHEMES,
-            $headers,
-            $query,
-        );
+        SecurityApplier::apply($this->securityCredentials, $spec->security, static::SECURITY_SCHEMES, $headers, $query);
         $url = rtrim($this->baseUrl, '/') . $path;
         if ($query !== []) {
             $url .= '?' . http_build_query($query, '', '&', PHP_QUERY_RFC3986);
         }
-        $response = $this->transport->send($operation['method'], $url, $headers, $bodyJson);
-        if (!in_array($response->status, $operation['success'], true)) {
-            throw ApiException::fromResponse(
-                $response,
-                $operation['label'],
-                $operation['errors'][$response->status] ?? $operation['errors']['default'] ?? null,
-            );
+        $response = $this->transport->send($spec->method, $url, $headers, $bodyJson);
+        if (!$spec->succeeded($response->status)) {
+            throw ApiException::fromResponse($response, $spec->label, $spec->errorTypeFor($response->status));
         }
-        if ($operation['responseType'] === null
-            || ($operation['noContentAllowed'] && $response->body === '')) {
+        if ($spec->responseType === null || ($spec->noContentAllowed && $response->body === '')) {
             return null;
         }
-        return JsonHydrator::decode($response->body, $operation['responseType'], $operation['schemaNullable']);
+        return JsonHydrator::decode($response->body, $spec->responseType, $spec->schemaNullable);
     }
 
     /**
-     * @param array<string, mixed> $values
-     * @return array<string, string>
+     * @param array<string, scalar|null> $values
+     * @return array<string, string> Parameters that carry a value, as they appear on the wire.
      */
-    private static function stringify(array $values): array
+    private static function stringifyAll(array $values): array
     {
         $result = [];
         foreach ($values as $name => $value) {
             if ($value !== null) {
-                $result[$name] = is_bool($value) ? ($value ? 'true' : 'false') : (string) $value;
+                $result[$name] = self::stringify($value);
             }
         }
         return $result;
+    }
+
+    private static function stringify(string|int|float|bool|null $value): string
+    {
+        return is_bool($value) ? ($value ? 'true' : 'false') : (string) $value;
     }
 }

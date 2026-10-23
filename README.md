@@ -3,41 +3,45 @@
 [![PHP package CI](https://github.com/dmorenof/sdk-runtime/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/dmorenof/sdk-runtime/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-Initial scaffold for `dmorenof/sdk-runtime`, a PHP 8.3+ library.
+Shared PHP 8.3+ runtime for SDKs produced by [sdk-generator](https://github.com/dmorenof/sdk-generator). Generated SDKs contain only their API-specific code (DTOs, requests, responses, enums and resources) and depend on this package for everything else, so the infrastructure is written, tested and fixed once.
 
-No runtime API is implemented yet. No release has been published by this setup.
+The runtime holds no global state: each client owns its transport and credentials.
+
+## Contents
+
+| Namespace | Purpose |
+| --- | --- |
+| `Dmorenof\SdkRuntime\ApiClient` | `connect()`, `resource()`, `withMiddleware()` and operation execution. SDKs extend it and declare `SECURITY_SCHEMES`. |
+| `DTO`, `Request`, `Response` | Typed hydration, validation and directional (`readOnly`/`writeOnly`) serialization. |
+| `TypedArray`, `Map`, `AnyOf`, `OneOf` | Typed collections, keyed maps and composition wrappers. |
+| `Security\*` | Bearer, Basic and API-key authentication with AND/OR requirements. Credentials are redacted from debug output. |
+| `Transport\*` | `TransportInterface`, the PSR-18 `Psr18Transport` (Guzzle by default) and `HttpMiddlewareInterface`. |
+| `ApiException` | Unexpected HTTP status with the raw response and, when decodable, the typed error. |
+
+## Use from a generated SDK
+
+~~~php
+$client = Client::connect(
+    'https://api.example.com',
+    securityCredentials: new SecurityCredentials(['HTTPBearer' => $token]),
+);
+~~~
 
 ## Development
 
 Use PHP 8.3+ and Composer 2:
 
-```sh
+~~~sh
 composer install
-composer validate --strict --no-check-lock
-composer dump-autoload --optimize --strict-psr --strict-ambiguous
-```
+bash ci/run-tests.sh
+~~~
 
 Source code belongs in `src/` under `Dmorenof\SdkRuntime\`; tests belong in `tests/`.
-There are no behavior tests yet. PHPUnit and the `test` job are configured, but the job explicitly reports scaffold-only checks until production code is added. The first implementation PR must include real tests, or CI will fail.
 
 ## GitHub Flow
 
-Create short-lived `feature/*`, `fix/*`, or `chore/*` branches from `main`.
-Open a pull request back to `main`, keep it up to date, resolve review conversations,
-and wait for required CI checks. No external approving reviewer is required.
-Merge commits remain allowed. Do not use a permanent `develop` branch.
-
-CI validates Composer metadata, PHP 8.3–8.5, minimum compatible dependencies, security advisories, PSR-4 and PHP syntax. It will execute PHPUnit when there is real code. No functional coverage is claimed for this scaffold.
-
-Future releases are automated: once real code and tests exist, introduce `VERSION` in a reviewed PR. GitHub Actions verifies the package and publishes an immutable tag and release. **No tag or release is created for this scaffolding change.**
+Create short-lived `feature/*`, `fix/*`, or `chore/*` branches from `main`, open a pull request and wait for CI. See [CONTRIBUTING.md](CONTRIBUTING.md) and [RELEASING.md](RELEASING.md).
 
 ## License
 
 MIT; see [LICENSE](LICENSE).
-
-## Quality and releases
-
-Use `bash ci/run-tests.sh` locally. CI reports explicitly when it has no
-behavior tests; once `src/` contains PHP, missing `*Test.php` tests fail CI.
-See [CONTRIBUTING.md](CONTRIBUTING.md) and [RELEASING.md](RELEASING.md)
-for the quality gates and versioning workflow.

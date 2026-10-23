@@ -15,6 +15,8 @@ class DTO implements \JsonSerializable, \Stringable
     protected const array VALIDATION = [];
     /** @var \WeakMap<self, array<string, mixed>>|null */
     private static ?\WeakMap $additionalPropertyValues = null;
+    /** @var array<class-string, array<string, mixed>> */
+    private static array $declared = [];
 
     public function __construct(?object $json = null)
     {
@@ -44,10 +46,22 @@ class DTO implements \JsonSerializable, \Stringable
         }
     }
 
-    /** The value of a generated class constant, or $default when the model does not declare it. */
+    /**
+     * The value of a generated class constant, or $default when the model does not declare it.
+     * Looked up once per class: constants cannot change, and models are validated on every use.
+     */
     private function constant(string $name, mixed $default): mixed
     {
-        return defined(static::class . "::$name") ? constant(static::class . "::$name") : $default;
+        return self::$declared[static::class][$name]
+            ??= defined(static::class . "::$name") ? constant(static::class . "::$name") : $default;
+    }
+
+    /** @return list<string> Fields that do not travel in the given direction (readOnly in requests, writeOnly in responses). */
+    private function directionalFields(bool $request, bool $response): array
+    {
+        return $request
+            ? $this->constant('READ_ONLY_FIELDS', [])
+            : ($response ? $this->constant('WRITE_ONLY_FIELDS', []) : []);
     }
 
     private function hydrateAdditional(mixed $value, string $where): mixed
@@ -115,10 +129,7 @@ class DTO implements \JsonSerializable, \Stringable
             return;
         }
         $defined = $this->fields();
-        $skipped = array_merge(
-            $request ? $this->constant('READ_ONLY_FIELDS', []) : [],
-            $response ? $this->constant('WRITE_ONLY_FIELDS', []) : [],
-        );
+        $skipped = $this->directionalFields($request, $response);
         foreach ($required as $name) {
             if (!in_array($name, $skipped, true) && !array_key_exists($name, $defined)) {
                 throw new \UnexpectedValueException("Required JSON property " . static::class . "::$name is absent.");
@@ -156,10 +167,7 @@ class DTO implements \JsonSerializable, \Stringable
                 Constraints::validate($value, $additionalRules, static::class . "::$name");
             }
         }
-        $skipped = array_merge(
-            $request ? $this->constant('READ_ONLY_FIELDS', []) : [],
-            $response ? $this->constant('WRITE_ONLY_FIELDS', []) : [],
-        );
+        $skipped = $this->directionalFields($request, $response);
         foreach (static::VALIDATION as $field => $rules) {
             if (!property_exists($this, $field)) {
                 throw new \LogicException("Validation refers to an unknown field " . static::class . "::$field.");

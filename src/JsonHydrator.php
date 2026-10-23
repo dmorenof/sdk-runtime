@@ -9,7 +9,7 @@ final class JsonHydrator
 {
     public static function decode(string $body, string $type, bool $nullable = false): mixed
     {
-        return DTO::hydrateValue(
+        return Hydrator::hydrate(
             json_decode($body, false, 512, JSON_THROW_ON_ERROR),
             $type,
             $nullable,

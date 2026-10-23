@@ -11,7 +11,7 @@ class TypedArray extends \TypedArray\TypedArray implements \Stringable
     public function __construct(array $items = [])
     {
         foreach ($items as $item) {
-            DTO::validateConstraints($item, static::ITEM_VALIDATION, static::class . ' item');
+            Constraints::validate($item, static::ITEM_VALIDATION, static::class . ' item');
         }
         parent::__construct($items);
     }
@@ -23,13 +23,13 @@ class TypedArray extends \TypedArray\TypedArray implements \Stringable
 
     public function append(mixed $value): void
     {
-        DTO::validateConstraints($value, static::ITEM_VALIDATION, static::class . ' item');
+        Constraints::validate($value, static::ITEM_VALIDATION, static::class . ' item');
         parent::append($value);
     }
 
     public function offsetSet(mixed $key, mixed $value): void
     {
-        DTO::validateConstraints($value, static::ITEM_VALIDATION, static::class . ' item');
+        Constraints::validate($value, static::ITEM_VALIDATION, static::class . ' item');
         parent::offsetSet($key, $value);
     }
 

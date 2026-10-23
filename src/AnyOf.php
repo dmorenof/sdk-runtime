@@ -25,7 +25,7 @@ class AnyOf implements \JsonSerializable
         $failures = [];
         foreach (static::TYPES as $type) {
             try {
-                $matches[] = DTO::hydrateValue($value, $type, false, static::class);
+                $matches[] = Hydrator::hydrate($value, $type, false, static::class);
             } catch (\UnexpectedValueException|\InvalidArgumentException|\ValueError|\TypeError $exception) {
                 $failures[] = $type . ': ' . $exception->getMessage();
             }

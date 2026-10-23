@@ -38,8 +38,8 @@ class Map implements \ArrayAccess, \Countable, \IteratorAggregate, \JsonSerializ
     {
         $key = $this->normalizeKey($offset);
         $where = static::class . '[' . $key . ']';
-        $converted = DTO::hydrateValue($value, static::VALUE_TYPE, static::VALUE_NULLABLE, $where);
-        DTO::validateConstraints($converted, static::VALUE_VALIDATION, $where);
+        $converted = Hydrator::hydrate($value, static::VALUE_TYPE, static::VALUE_NULLABLE, $where);
+        Constraints::validate($converted, static::VALUE_VALIDATION, $where);
         $this->values[$key] = $converted;
     }
 
@@ -83,7 +83,7 @@ class Map implements \ArrayAccess, \Countable, \IteratorAggregate, \JsonSerializ
     {
         foreach ($this->values as $key => $value) {
             $where = static::class . '[' . $key . ']';
-            DTO::validateConstraints($value, static::VALUE_VALIDATION, $where);
+            Constraints::validate($value, static::VALUE_VALIDATION, $where);
             DTO::validateNestedValue($value, $mode);
         }
     }
@@ -112,7 +112,7 @@ class Map implements \ArrayAccess, \Countable, \IteratorAggregate, \JsonSerializ
     {
         $values = [];
         foreach ($this->values as $key => $value) {
-            $values[$key] = DTO::serializeValueForMode($value, $mode);
+            $values[$key] = Serializer::value($value, $mode);
         }
         return (object) $values;
     }

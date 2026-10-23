@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 namespace Dmorenof\SdkRuntime\Tests;
 
-use Dmorenof\SdkRuntime\DTO;
+use Dmorenof\SdkRuntime\Hydrator;
 use Dmorenof\SdkRuntime\Tests\Fixtures\Role;
 use Dmorenof\SdkRuntime\Tests\Fixtures\Scores;
 use Dmorenof\SdkRuntime\Tests\Fixtures\StringOrAddress;
@@ -65,7 +65,7 @@ final class DtoTest extends TestCase
 
     public function testCollectionsOfModelsHydrate(): void
     {
-        $users = DTO::hydrateValue([(object) ['name' => 'A'], (object) ['name' => 'B']], Users::class, false, 'test');
+        $users = Hydrator::hydrate([(object) ['name' => 'A'], (object) ['name' => 'B']], Users::class, false, 'test');
 
         self::assertCount(2, $users);
         self::assertSame('B', $users[1]->name);

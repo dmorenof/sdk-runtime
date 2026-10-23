@@ -106,7 +106,7 @@ abstract class ApiClient
         foreach ($operation['validation'] as $name => $validation) {
             $value = $parameters[$name] ?? null;
             if ($value !== null) {
-                DTO::validateConstraints($value, $validation, $operation['label'] . '.' . $name);
+                Constraints::validate($value, $validation, $operation['label'] . '.' . $name);
             }
         }
 

@@ -6,6 +6,8 @@ namespace Dmorenof\SdkRuntime;
 /**
  * Shared base for strongly typed model classes.
  * Models declare fields and REQUIRED_FIELDS; behavior is inherited once.
+ * Type conversion, value rules and JSON output are delegated to Hydrator,
+ * Constraints and Serializer.
  */
 class DTO implements \JsonSerializable, \Stringable
 {
@@ -14,44 +16,21 @@ class DTO implements \JsonSerializable, \Stringable
     /** @var \WeakMap<self, array<string, mixed>>|null */
     private static ?\WeakMap $additionalPropertyValues = null;
 
-    /** @var array<class-string, array<string, \ReflectionNamedType>> */
-    private static array $propertyTypes = [];
-
     public function __construct(?object $json = null)
     {
         if ($json === null) {
             return;
         }
 
-        $fields = get_object_vars($json);
-        $propertyMap = defined(static::class . '::PROPERTY_MAP')
-            ? constant(static::class . '::PROPERTY_MAP')
-            : [];
-        foreach ($fields as $name => $value) {
+        $propertyMap = $this->constant('PROPERTY_MAP', []);
+        foreach (get_object_vars($json) as $name => $value) {
             $propertyName = $propertyMap[$name] ?? $name;
-            if (!property_exists($this, $propertyName)) {
-                if (!defined(static::class . '::ADDITIONAL_PROPERTIES_TYPE')) {
-                    throw new \InvalidArgumentException("Unknown JSON property " . static::class . "::$name.");
-                }
-                $type = constant(static::class . '::ADDITIONAL_PROPERTIES_TYPE');
-                $nullable = constant(static::class . '::ADDITIONAL_PROPERTIES_NULLABLE');
-                $converted = self::hydrateValue($value, $type, $nullable, static::class . "::$name");
-                self::storeAdditionalProperty($this, $name, $converted);
-                continue;
+            $where = static::class . "::$name";
+            if (property_exists($this, $propertyName)) {
+                $this->{$propertyName} = Hydrator::hydrateProperty($this, $propertyName, $value, $where);
+            } else {
+                self::storeAdditionalProperty($this, $name, $this->hydrateAdditional($value, $where));
             }
-            $type = self::$propertyTypes[static::class][$propertyName] ?? null;
-            if ($type === null) {
-                $property = new \ReflectionProperty($this, $propertyName);
-                if (!$property->isPublic() || $property->isStatic()) {
-                    throw new \InvalidArgumentException("JSON property " . static::class . "::$propertyName is not writable.");
-                }
-                $type = $property->getType();
-                if (!$type instanceof \ReflectionNamedType) {
-                    throw new \InvalidArgumentException("Unsupported PHP property type at " . static::class . "::$propertyName.");
-                }
-                self::$propertyTypes[static::class][$propertyName] = $type;
-            }
-            $this->{$propertyName} = self::convert($value, $type, static::class . "::$name");
         }
 
         // Schema-required fields are checked both when hydrating incoming JSON
@@ -65,148 +44,36 @@ class DTO implements \JsonSerializable, \Stringable
         }
     }
 
-    private static function convert(mixed $value, \ReflectionNamedType $type, string $where): mixed
+    /** The value of a generated class constant, or $default when the model does not declare it. */
+    private function constant(string $name, mixed $default): mixed
     {
-        return self::convertByType(
+        return defined(static::class . "::$name") ? constant(static::class . "::$name") : $default;
+    }
+
+    private function hydrateAdditional(mixed $value, string $where): mixed
+    {
+        if (!defined(static::class . '::ADDITIONAL_PROPERTIES_TYPE')) {
+            throw new \InvalidArgumentException("Unknown JSON property $where.");
+        }
+        return Hydrator::hydrate(
             $value,
-            $type->getName(),
-            $type->allowsNull(),
-            $type->isBuiltin(),
+            constant(static::class . '::ADDITIONAL_PROPERTIES_TYPE'),
+            constant(static::class . '::ADDITIONAL_PROPERTIES_NULLABLE'),
             $where,
         );
     }
 
-    public static function hydrateValue(mixed $value, string $kind, bool $nullable, string $where): mixed
-    {
-        $kind = match ($kind) {
-            'integer' => 'int', 'double' => 'float', 'boolean' => 'bool',
-            default => ltrim($kind, '\\'),
-        };
-        $builtin = in_array($kind, ['mixed', 'int', 'float', 'string', 'bool', 'null'], true);
-        return self::convertByType($value, $kind, $nullable, $builtin, $where);
-    }
-
-    private static function convertByType(
-        mixed $value,
-        string $kind,
-        bool $nullable,
-        bool $builtin,
-        string $where,
-    ): mixed {
-        if (!$builtin && is_subclass_of($kind, AnyOf::class)) {
-            if ($value instanceof $kind) {
-                return $value;
-            }
-            return $kind::fromValue($value);
-        }
-
-        if ($value === null) {
-            if (!$nullable && $kind !== 'mixed' && $kind !== 'null') {
-                throw new \UnexpectedValueException("Unexpected null at $where.");
-            }
-            return null;
-        }
-
-        if ($builtin) {
-            if ($kind === 'mixed') {
-                return $value;
-            }
-            // JSON integers are valid floating point values when expected.
-            if ($kind === 'float' && is_int($value)) {
-                return (float) $value;
-            }
-            $valid = match ($kind) {
-                'int' => is_int($value),
-                'float' => is_float($value),
-                'string' => is_string($value),
-                'bool' => is_bool($value),
-                default => false,
-            };
-            if (!$valid) {
-                throw new \UnexpectedValueException("Invalid scalar value at $where: expected $kind.");
-            }
-            return $value;
-        }
-
-        if (is_subclass_of($kind, Map::class)) {
-            if ($value instanceof $kind) {
-                return $value;
-            }
-            if (!is_object($value) && !is_array($value)) {
-                throw new \UnexpectedValueException("Expected JSON object at $where.");
-            }
-            return new $kind($value);
-        }
-
-        if (enum_exists($kind)) {
-            if ($value instanceof $kind) {
-                return $value;
-            }
-            if (!is_string($value) && !is_int($value)) {
-                throw new \UnexpectedValueException("Invalid enum value at $where.");
-            }
-            return $kind::from($value);
-        }
-
-        if (is_subclass_of($kind, TypedArray::class)) {
-            if ($value instanceof $kind) {
-                return $value;
-            }
-            // Compatible with Casafari's empty-object-as-empty-list behavior.
-            if (is_object($value) && get_object_vars($value) === []) {
-                $value = [];
-            }
-            if (!is_array($value) || !array_is_list($value)) {
-                throw new \UnexpectedValueException("Expected a JSON array at $where.");
-            }
-            $result = new $kind();
-            $expectedType = $result->getExpectedType();
-            foreach ($value as $index => $item) {
-                $itemWhere = $where . "[$index]";
-                $item = self::hydrateValue($item, $expectedType, false, $itemWhere);
-                $result->append($item);
-            }
-            return $result;
-        }
-
-        if (is_subclass_of($kind, self::class)) {
-            if ($value instanceof $kind) {
-                return $value;
-            }
-            if (!is_object($value)) {
-                throw new \UnexpectedValueException("Expected JSON object at $where.");
-            }
-            return new $kind($value);
-        }
-
-        throw new \UnexpectedValueException("Unsupported nested PHP type $kind at $where.");
-    }
-
-    public static function validateConstraints(mixed $value, array $rules, string $where): void
-    {
-        foreach ($rules as $name => $limit) {
-            self::assertConstraint('$value', $value, $name, $limit, $where);
-        }
-    }
-
     public function setAdditionalProperty(string $name, mixed $value): void
     {
-        $propertyMap = defined(static::class . '::PROPERTY_MAP')
-            ? constant(static::class . '::PROPERTY_MAP')
-            : [];
-        if (property_exists($this, $name) || array_key_exists($name, $propertyMap)) {
+        if (property_exists($this, $name) || array_key_exists($name, $this->constant('PROPERTY_MAP', []))) {
             throw new \InvalidArgumentException("Property " . static::class . "::$name is declared; assign it directly.");
         }
         if (!defined(static::class . '::ADDITIONAL_PROPERTIES_TYPE')) {
             throw new \InvalidArgumentException("Additional properties are not allowed by " . static::class . '.');
         }
-        $type = constant(static::class . '::ADDITIONAL_PROPERTIES_TYPE');
-        $nullable = constant(static::class . '::ADDITIONAL_PROPERTIES_NULLABLE');
-        $converted = self::hydrateValue($value, $type, $nullable, static::class . "::$name");
-        $rules = defined(static::class . '::ADDITIONAL_PROPERTIES_VALIDATION')
-            ? constant(static::class . '::ADDITIONAL_PROPERTIES_VALIDATION')
-            : [];
-        self::validateConstraints($converted, $rules, static::class . "::$name");
+        $where = static::class . "::$name";
+        $converted = $this->hydrateAdditional($value, $where);
+        Constraints::validate($converted, $this->constant('ADDITIONAL_PROPERTIES_VALIDATION', []), $where);
         self::storeAdditionalProperty($this, $name, $converted);
     }
 
@@ -243,21 +110,17 @@ class DTO implements \JsonSerializable, \Stringable
 
     private function assertRequiredFields(bool $request = false, bool $response = false): void
     {
-        if (!defined(static::class . '::REQUIRED_FIELDS')) {
+        $required = $this->constant('REQUIRED_FIELDS', []);
+        if ($required === []) {
             return;
         }
         $defined = $this->fields();
-        $readOnly = $request && defined(static::class . '::READ_ONLY_FIELDS')
-            ? constant(static::class . '::READ_ONLY_FIELDS')
-            : [];
-        $writeOnly = $response && defined(static::class . '::WRITE_ONLY_FIELDS')
-            ? constant(static::class . '::WRITE_ONLY_FIELDS')
-            : [];
-        foreach (constant(static::class . '::REQUIRED_FIELDS') as $name) {
-            if (in_array($name, $readOnly, true) || in_array($name, $writeOnly, true)) {
-                continue;
-            }
-            if (!array_key_exists($name, $defined)) {
+        $skipped = array_merge(
+            $request ? $this->constant('READ_ONLY_FIELDS', []) : [],
+            $response ? $this->constant('WRITE_ONLY_FIELDS', []) : [],
+        );
+        foreach ($required as $name) {
+            if (!in_array($name, $skipped, true) && !array_key_exists($name, $defined)) {
                 throw new \UnexpectedValueException("Required JSON property " . static::class . "::$name is absent.");
             }
         }
@@ -287,32 +150,24 @@ class DTO implements \JsonSerializable, \Stringable
     {
         $this->assertRequiredFields($request, $response);
         $fields = $this->fields();
-        $additionalRules = defined(static::class . '::ADDITIONAL_PROPERTIES_VALIDATION')
-            ? constant(static::class . '::ADDITIONAL_PROPERTIES_VALIDATION')
-            : [];
+        $additionalRules = $this->constant('ADDITIONAL_PROPERTIES_VALIDATION', []);
         if ($additionalRules !== []) {
             foreach (self::additionalPropertiesFor($this) as $name => $value) {
-                self::validateConstraints($value, $additionalRules, static::class . "::$name");
+                Constraints::validate($value, $additionalRules, static::class . "::$name");
             }
         }
+        $skipped = array_merge(
+            $request ? $this->constant('READ_ONLY_FIELDS', []) : [],
+            $response ? $this->constant('WRITE_ONLY_FIELDS', []) : [],
+        );
         foreach (static::VALIDATION as $field => $rules) {
             if (!property_exists($this, $field)) {
                 throw new \LogicException("Validation refers to an unknown field " . static::class . "::$field.");
             }
-            if (!array_key_exists($field, $fields) || $fields[$field] === null) {
+            if (!array_key_exists($field, $fields) || $fields[$field] === null || in_array($field, $skipped, true)) {
                 continue;
             }
-            if ($request && defined(static::class . '::READ_ONLY_FIELDS')
-                && in_array($field, constant(static::class . '::READ_ONLY_FIELDS'), true)) {
-                continue;
-            }
-            if ($response && defined(static::class . '::WRITE_ONLY_FIELDS')
-                && in_array($field, constant(static::class . '::WRITE_ONLY_FIELDS'), true)) {
-                continue;
-            }
-            foreach ($rules as $name => $limit) {
-                self::assertConstraint($field, $fields[$field], $name, $limit);
-            }
+            Constraints::validate($fields[$field], $rules, static::class . "::$field");
         }
         $mode = $request ? 'request' : ($response ? 'response' : 'neutral');
         foreach ($fields as $value) {
@@ -341,76 +196,6 @@ class DTO implements \JsonSerializable, \Stringable
             }
         }
     }
-    private static function assertConstraint(
-        string $field,
-        mixed $value,
-        string $rule,
-        mixed $limit,
-        ?string $location = null,
-    ): void
-    {
-        $where = $location ?? static::class . "::$field";
-        if ($rule === 'pattern') {
-            if (!is_string($limit) || !is_string($value)) {
-                throw new \UnexpectedValueException("Expected string for pattern at $where.");
-            }
-            $regex = '~' . str_replace('~', '\\~', $limit) . '~u';
-            $matched = preg_match($regex, $value);
-            if ($matched === false) {
-                throw new \LogicException("Invalid pattern constraint for $where.");
-            }
-            $valid = $matched === 1;
-        } elseif ($rule === 'enum') {
-            if (!is_array($limit)) {
-                throw new \LogicException("Invalid enum constraint for $where.");
-            }
-            $valid = in_array($value, $limit, true);
-        } else {
-            if (!is_int($limit) && !is_float($limit)) {
-                throw new \LogicException("Invalid $rule constraint for $where.");
-            }
-            $valid = match ($rule) {
-                'minLength', 'maxLength' => self::validateStringLength($value, $rule, $limit, $where),
-                'minimum', 'maximum' => self::validateNumber($value, $rule, $limit, $where),
-                'minItems', 'maxItems' => self::validateItemCount($value, $rule, $limit, $where),
-                default => throw new \LogicException("Unknown validation rule $rule for $where."),
-            };
-        }
-        if (!$valid) {
-            $description = $rule === 'enum' ? 'allowed values ' . var_export($limit, true) : "limit $limit";
-            throw new \UnexpectedValueException("Validation $rule failed at $where ($description).");
-        }
-    }
-
-    private static function validateStringLength(mixed $value, string $rule, int|float $limit, string $where): bool
-    {
-        if (!is_string($value)) {
-            throw new \UnexpectedValueException("Expected string for $rule at $where.");
-        }
-        // OpenAPI length counts Unicode code points, not UTF-8 bytes.
-        $length = preg_match_all('/./us', $value);
-        if ($length === false) {
-            throw new \UnexpectedValueException("Invalid UTF-8 string at $where.");
-        }
-        return $rule === 'minLength' ? $length >= $limit : $length <= $limit;
-    }
-
-    private static function validateNumber(mixed $value, string $rule, int|float $limit, string $where): bool
-    {
-        if (!is_int($value) && !is_float($value)) {
-            throw new \UnexpectedValueException("Expected number for $rule at $where.");
-        }
-        return $rule === 'minimum' ? $value >= $limit : $value <= $limit;
-    }
-
-    private static function validateItemCount(mixed $value, string $rule, int|float $limit, string $where): bool
-    {
-        if (!is_array($value) && !$value instanceof \Countable) {
-            throw new \UnexpectedValueException("Expected array/collection for $rule at $where.");
-        }
-        $count = count($value);
-        return $rule === 'minItems' ? $count >= $limit : $count <= $limit;
-    }
 
     public function jsonSerialize(): object
     {
@@ -430,57 +215,14 @@ class DTO implements \JsonSerializable, \Stringable
         return $this->serializeValidated('response');
     }
 
-    private function serializeValidated(string $mode): object
+    /** @internal Called by Serializer after the owning model has been validated. */
+    public function serializeValidated(string $mode): object
     {
-        $excluded = $mode === 'request'
-            ? (defined(static::class . '::READ_ONLY_FIELDS') ? constant(static::class . '::READ_ONLY_FIELDS') : [])
-            : (defined(static::class . '::WRITE_ONLY_FIELDS') ? constant(static::class . '::WRITE_ONLY_FIELDS') : []);
-        return self::filterFields($this->fields(), $excluded, $mode);
-    }
-    /** @param array<string, mixed> $fields @param list<string> $excluded */
-    private static function filterFields(array $fields, array $excluded, string $mode): object
-    {
-        $serialized = [];
-        $wireNames = defined(static::class . '::WIRE_PROPERTY_MAP')
-            ? constant(static::class . '::WIRE_PROPERTY_MAP')
-            : [];
-        foreach ($fields as $name => $value) {
-            if (!in_array($name, $excluded, true)) {
-                $wireName = $wireNames[$name] ?? $name;
-                $serialized[$wireName] = self::serializeValueForMode($value, $mode);
-            }
-        }
-        return (object) $serialized;
-    }
-
-    public static function serializeValueForMode(mixed $value, string $mode): mixed
-    {
-        if ($value instanceof self) {
-            if ($mode === 'request') {
-                return $value->serializeValidated('request');
-            }
-            if ($mode === 'response') {
-                return $value->serializeValidated('response');
-            }
-            return $value->serializeValidated($value instanceof Request ? 'request' : ($value instanceof Response ? 'response' : 'neutral'));
-        }
-        if ($value instanceof TypedArray) {
-            $items = [];
-            foreach ($value as $key => $item) {
-                $items[$key] = self::serializeValueForMode($item, $mode);
-            }
-            return $items;
-        }
-        if ($value instanceof Map || $value instanceof AnyOf) {
-            return $value->serializeValidatedForMode($mode);
-        }
-        if (is_array($value)) {
-            return array_map(
-                static fn (mixed $item): mixed => self::serializeValueForMode($item, $mode),
-                $value,
-            );
-        }
-        return $value;
+        $excluded = match ($mode) {
+            'request' => $this->constant('READ_ONLY_FIELDS', []),
+            default => $this->constant('WRITE_ONLY_FIELDS', []),
+        };
+        return Serializer::fields($this->fields(), $excluded, $this->constant('WIRE_PROPERTY_MAP', []), $mode);
     }
 
     public function __toString(): string

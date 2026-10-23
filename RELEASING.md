@@ -1,30 +1,26 @@
 # Releases
 
-This repository currently contains only project scaffolding. **No package
-version is published and no Git tag should be created until real, tested PHP
-code exists.**
+Versions follow semantic versioning. Generated SDKs constrain this package
+(for example `^0.1`), so a breaking change to the public runtime classes
+requires a new minor version while the package is 0.x.
 
-## First release (when implementation is ready)
+## Publishing a version
 
-1. Implement the first meaningful feature under `src/` with PHPUnit
-   `*Test.php` tests in `tests/`.
-2. Ensure all GitHub Actions checks pass on a PR to the protected `main`
-   branch. In particular, the `test` job must execute genuine behavioral
-   tests rather than the scaffold-only validation path.
-3. Include a new root `VERSION` file containing `0.1.0` (without leading
-   `v`) in the approved release PR. There is **no VERSION file now**.
-4. Merge the PR. `.github/workflows/release.yml` runs Composer validation,
-   dependency installation, syntax checks, PHPUnit and security audit.
-5. If those checks pass, the workflow creates immutable tag `v0.1.0` at
-   the merge commit and publishes a GitHub Release.
-6. Register the package in Packagist (once) and configure repository
-   synchronization. Packagist gets its version from the Git tag; never
-   write a `version` field in `composer.json`.
-7. Confirm clean installation with Composer and publish only verified claims
-   about supported features.
+1. Open a PR to the protected `main` branch. All GitHub Actions checks must
+   pass, including the `test` job, which runs the PHPUnit suite.
+2. Change the root `VERSION` file in that PR to the new `X.Y.Z` (no leading
+   `v`) and describe the change in the PR.
+3. Merge the PR. `.github/workflows/release.yml` runs Composer validation,
+   dependency installation, syntax checks, PHPUnit and a security audit.
+4. If those checks pass, the workflow creates immutable tag `vX.Y.Z` at the
+   merge commit and publishes a GitHub Release.
+5. Register the package in Packagist once and enable repository
+   synchronization. Packagist reads versions from Git tags; never write a
+   `version` field in `composer.json`.
+6. Confirm a clean `composer require dmorenof/sdk-runtime` before updating the
+   generator's `RUNTIME_CONSTRAINT`.
 
-For future versions, change `VERSION` in a PR and repeat. Existing tags
-are never force-moved. A duplicate version pointing to a different commit
-causes the release workflow to fail safely.
+Existing tags are never force-moved. A duplicate version pointing to a
+different commit makes the release workflow fail safely.
 
 This is package release automation, not the SDK code generation engine.

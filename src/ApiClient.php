@@ -17,6 +17,20 @@ abstract class ApiClient
     /** Security scheme definitions, keyed by name; each SDK overrides this. */
     protected const array SECURITY_SCHEMES = [];
 
+    /**
+     * Values an operation inherits when it does not declare them. Only `method`
+     * and `path` are mandatory; `label` defaults to "METHOD path".
+     */
+    public const array OPERATION_DEFAULTS = [
+        'security' => [],
+        'success' => [200],
+        'errors' => [],
+        'responseType' => null,
+        'schemaNullable' => false,
+        'noContentAllowed' => false,
+        'validation' => [],
+    ];
+
     protected SecurityCredentials $securityCredentials;
 
     protected TransportInterface $transport;
@@ -85,6 +99,8 @@ abstract class ApiClient
         array $headerParameters = [],
         ?DTO $body = null,
     ): mixed {
+        $operation += self::OPERATION_DEFAULTS;
+        $operation['label'] ??= $operation['method'] . ' ' . $operation['path'];
         $path = $operation['path'];
         $parameters = $pathParameters + $queryParameters + $headerParameters;
         foreach ($operation['validation'] as $name => $validation) {

@@ -100,6 +100,35 @@ final class ApiClientTest extends TestCase
         self::assertSame('application/json', $transport->sent[0]['headers']['Content-Type']);
     }
 
+    public function testOperationDeclaringOnlyMethodAndPathInheritsDefaults(): void
+    {
+        [$client, $transport] = $this->client(200, '');
+
+        $client->ping();
+
+        self::assertSame('https://api.example.com/ping', $transport->sent[0]['url']);
+        self::assertArrayNotHasKey('Authorization', $transport->sent[0]['headers']);
+    }
+
+    public function testNoContentSuccessReturnsNull(): void
+    {
+        [$client] = $this->client(204, '');
+
+        self::assertNull($client->deleteUser(1));
+    }
+
+    public function testDefaultLabelNamesMethodAndRouteInErrors(): void
+    {
+        [$client] = $this->client(500, '');
+
+        try {
+            $client->ping();
+            self::fail('Expected ApiException.');
+        } catch (ApiException $exception) {
+            self::assertStringContainsString('GET /ping', $exception->getMessage());
+        }
+    }
+
     public function testResourceSharesTransportAndCredentials(): void
     {
         [$client, $transport] = $this->client(200, '{"name":"Grace"}');

@@ -11,39 +11,50 @@ final class TestClient extends ApiClient
         'Bearer' => ['type' => 'http', 'scheme' => 'bearer', 'location' => null, 'parameterName' => null],
     ];
 
-    private const array OPERATION = [
-        'label' => 'GET /users/{id}',
+    private const array GET_USER = [
         'method' => 'GET',
         'path' => '/users/{id}',
         'security' => [['Bearer' => []]],
-        'success' => [200],
         'errors' => [404 => Address::class],
         'responseType' => User::class,
-        'schemaNullable' => false,
-        'noContentAllowed' => false,
         'validation' => ['id' => ['minimum' => 1]],
     ];
 
-    private const array CREATE = [
-        'label' => 'POST /users',
+    private const array CREATE_USER = [
         'method' => 'POST',
         'path' => '/users',
         'security' => [['Bearer' => []]],
-        'success' => [200],
-        'errors' => [],
         'responseType' => User::class,
-        'schemaNullable' => false,
-        'noContentAllowed' => false,
-        'validation' => [],
+    ];
+
+    // Declares nothing but method and path: everything else is inherited.
+    private const array PING = ['method' => 'GET', 'path' => '/ping'];
+
+    private const array DELETE_USER = [
+        'method' => 'DELETE',
+        'path' => '/users/{id}',
+        'success' => [204],
+        'noContentAllowed' => true,
+        'responseType' => User::class,
     ];
 
     public function getUser(int $id, ?bool $verbose = null): User
     {
-        return $this->executeOperation(self::OPERATION, ['id' => $id], ['verbose' => $verbose]);
+        return $this->executeOperation(self::GET_USER, ['id' => $id], ['verbose' => $verbose]);
     }
 
     public function createUser(User $user): User
     {
-        return $this->executeOperation(self::CREATE, body: $user);
+        return $this->executeOperation(self::CREATE_USER, body: $user);
+    }
+
+    public function ping(): void
+    {
+        $this->executeOperation(self::PING);
+    }
+
+    public function deleteUser(int $id): ?User
+    {
+        return $this->executeOperation(self::DELETE_USER, ['id' => $id]);
     }
 }

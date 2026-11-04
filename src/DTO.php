@@ -126,17 +126,30 @@ class DTO implements \JsonSerializable, \Stringable
         return self::additionalPropertiesFor($this);
     }
 
+    /** @return \WeakMap<self,array<string,mixed>> */
+    private static function additionalPropertyMap(): \WeakMap
+    {
+        if (self::$additionalPropertyValues === null) {
+            /** @var \WeakMap<self,array<string,mixed>> $newMap */
+            $newMap = new \WeakMap();
+            self::$additionalPropertyValues = $newMap;
+        }
+        return self::$additionalPropertyValues;
+    }
+
     private static function storeAdditionalProperty(self $dto, string $name, mixed $value): void
     {
-        self::$additionalPropertyValues ??= new \WeakMap();
-        $values = self::$additionalPropertyValues[$dto] ?? [];
+        $values = self::additionalPropertiesFor($dto);
         $values[$name] = $value;
-        self::$additionalPropertyValues[$dto] = $values;
+        self::additionalPropertyMap()[$dto] = $values;
     }
 
     /** @return array<string, mixed> */
     private static function additionalPropertiesFor(self $dto): array
     {
+        if (self::$additionalPropertyValues === null) {
+            return [];
+        }
         return self::$additionalPropertyValues[$dto] ?? [];
     }
 

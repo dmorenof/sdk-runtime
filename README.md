@@ -67,3 +67,19 @@ discriminator checked again before serialization. Multiple `anyOf` variants rema
 alternative views of the original snapshot; editing several views is not a payload
 merge API. Legacy wrappers without descriptors retain their hydration-based matching.
 This is a bounded evaluator for generated descriptors, not full JSON Schema support.
+
+## Operation servers (P0 development)
+
+The `feature/p0-contract-fidelity` branch is coordinated with
+[Generator PR #20](https://github.com/dmorenof/sdk-generator/pull/20), without a
+separate release. Operations may declare a literal absolute HTTP(S) `serverUrl`;
+root operations continue to use the configured client `baseUrl`. A declared
+server path prefix is preserved when adding the operation path.
+
+For other environments, pass `serverOverrides` to `Client::connect()` or the
+constructor, mapping a declared server URL to a replacement base URL. The map is
+copied to resources together with the transport and credentials; separate clients
+keep separate maps. Keys ignore trailing slashes. Relative/template server URLs,
+credentials, queries and fragments in operation server URLs remain unsupported
+and fail before transport. Existing operations without `serverUrl` keep their
+current routing.

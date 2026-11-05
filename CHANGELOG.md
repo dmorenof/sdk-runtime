@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Execute literal absolute HTTP(S) operation servers in the shared client, preserving path prefixes and existing root-base routing.
+- Add per-connection `serverOverrides` for environment substitutions, preserved across shared resources. Reject unsupported operation server URLs before transport.
+- Coordinated with generator PR #20 on `feature/p0-contract-fidelity`; no standalone release.
+
 ## [0.4.0] — 2026-11-05
 
 Coordinated with SDK Generator 0.3.0 ([generator PR #19](https://github.com/dmorenof/sdk-generator/pull/19), [runtime PR #6](https://github.com/dmorenof/sdk-runtime/pull/6)).

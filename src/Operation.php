@@ -21,6 +21,7 @@ namespace Dmorenof\SdkRuntime;
  *     schemaNullable?: bool,
  *     noContentAllowed?: bool,
  *     validation?: array<string, array<string, mixed>>,
+ *     serverUrl?: string|null,
  * }
  */
 final readonly class Operation
@@ -34,6 +35,7 @@ final readonly class Operation
         'schemaNullable' => false,
         'noContentAllowed' => false,
         'validation' => [],
+        'serverUrl' => null,
     ];
 
     /** "METHOD path", unless the operation names itself. */
@@ -56,6 +58,7 @@ final readonly class Operation
         public bool $schemaNullable = self::DEFAULTS['schemaNullable'],
         public bool $noContentAllowed = self::DEFAULTS['noContentAllowed'],
         public array $validation = self::DEFAULTS['validation'],
+        public ?string $serverUrl = self::DEFAULTS['serverUrl'],
     ) {
         $this->label = $label ?? $method . ' ' . $path;
     }

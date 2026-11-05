@@ -26,14 +26,23 @@ abstract class ApiClient
 
     protected TransportInterface $transport;
 
-    /** @param array<string, string> $headers */
+    /**
+     * @param array<string, string> $headers
+     * @param array<string, string> $serverOverrides Declared server URL => environment URL.
+     */
     final public function __construct(
         protected string $baseUrl,
         ?\Psr\Http\Client\ClientInterface $httpClient = null,
         array $headers = [],
         ?SecurityCredentials $securityCredentials = null,
         ?TransportInterface $transport = null,
+        protected array $serverOverrides = [],
     ) {
+        $normalized = [];
+        foreach ($serverOverrides as $declared => $replacement) {
+            $normalized[ServerUrl::normalize($declared)] = ServerUrl::normalize($replacement);
+        }
+        $this->serverOverrides = $normalized;
         $this->securityCredentials = $securityCredentials ?? new SecurityCredentials();
         $this->transport = $transport ?? new Psr18Transport(
             $httpClient ?? new \GuzzleHttp\Client(['http_errors' => false]),
@@ -41,15 +50,19 @@ abstract class ApiClient
         );
     }
 
-    /** @param array<string, string> $headers */
+    /**
+     * @param array<string, string> $headers
+     * @param array<string, string> $serverOverrides Declared server URL => environment URL.
+     */
     public static function connect(
         string $baseUrl,
         ?\Psr\Http\Client\ClientInterface $httpClient = null,
         array $headers = [],
         ?SecurityCredentials $securityCredentials = null,
         ?TransportInterface $transport = null,
+        array $serverOverrides = [],
     ): static {
-        return new static($baseUrl, $httpClient, $headers, $securityCredentials, $transport);
+        return new static($baseUrl, $httpClient, $headers, $securityCredentials, $transport, $serverOverrides);
     }
 
     /**
@@ -63,7 +76,8 @@ abstract class ApiClient
         if (!is_a($type, static::class, true)) {
             throw new \InvalidArgumentException('Resource must belong to this SDK: ' . $type);
         }
-        return new $type($this->baseUrl, securityCredentials: $this->securityCredentials, transport: $this->transport);
+        return new $type($this->baseUrl, securityCredentials: $this->securityCredentials,
+            transport: $this->transport, serverOverrides: $this->serverOverrides);
     }
 
     /** Attach an SDK-level interceptor when using the default PSR-18 adapter. */
@@ -114,7 +128,12 @@ abstract class ApiClient
         }
 
         SecurityApplier::apply($this->securityCredentials, $spec->security, static::SECURITY_SCHEMES, $headers, $query);
-        $url = rtrim($this->baseUrl, '/') . $path;
+        $baseUrl = $this->baseUrl;
+        if ($spec->serverUrl !== null) {
+            $declared = ServerUrl::normalize($spec->serverUrl);
+            $baseUrl = $this->serverOverrides[$declared] ?? $declared;
+        }
+        $url = rtrim($baseUrl, '/') . $path;
         if ($query !== []) {
             $url .= '?' . http_build_query($query, '', '&', PHP_QUERY_RFC3986);
         }

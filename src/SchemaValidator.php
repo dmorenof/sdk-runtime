@@ -79,9 +79,10 @@ final class SchemaValidator
         if ($kind === 'object' && $value instanceof \stdClass) {
             $properties = $schema['properties'] ?? [];
             $skipped = $mode === 'request' ? ($schema['readOnly'] ?? [])
-                : ($mode === 'response' ? ($schema['writeOnly'] ?? []) : array_merge($schema['readOnly'] ?? [], $schema['writeOnly'] ?? []));
+                : ($mode === 'response' ? ($schema['writeOnly'] ?? []) : []);
+            $requiredSkipped = $mode === 'neutral' ? array_merge($schema['readOnly'] ?? [], $schema['writeOnly'] ?? []) : $skipped;
             foreach ($schema['required'] ?? [] as $name) {
-                if (!in_array($name, $skipped, true) && !property_exists($value, $name)) {
+                if (!in_array($name, $requiredSkipped, true) && !property_exists($value, $name)) {
                     return false;
                 }
             }

@@ -13,6 +13,9 @@ final class Discriminator
             throw new \UnexpectedValueException("Missing discriminator property '$property' at $where.");
         }
         $tag = $value->{$property};
+        if ($tag instanceof \BackedEnum) {
+            $tag = $tag->value;
+        }
         if (!is_string($tag) || !isset($mapping[$tag])) {
             throw new \UnexpectedValueException("Unknown discriminator value for '$property' at $where.");
         }

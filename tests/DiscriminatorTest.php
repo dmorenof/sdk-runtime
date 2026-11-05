@@ -9,6 +9,11 @@ use Dmorenof\SdkRuntime\OneOf;
 use Dmorenof\SdkRuntime\SchemaValidator;
 use PHPUnit\Framework\TestCase;
 
+enum DiscriminatorTag: string
+{
+    case Dog = 'canine';
+}
+
 class DiscriminatorPet extends DTO
 {
     public const string DISCRIMINATOR_BASE = self::class;
@@ -92,6 +97,23 @@ final class DiscriminatorTest extends TestCase
         $dog->pet_type = 'feline';
         $this->expectException(\UnexpectedValueException::class);
         $choice->jsonSerialize();
+    }
+
+    public function testBackedDiscriminatorUsesItsScalarValue(): void
+    {
+        self::assertSame(DiscriminatorDog::class, \Dmorenof\SdkRuntime\Discriminator::select(
+            (object) ['pet_type' => DiscriminatorTag::Dog], 'pet_type', DiscriminatorPet::DISCRIMINATOR_MAPPING, 'pet',
+        ));
+    }
+
+    public function testDirectionalRequirementsDoNotSuppressNeutralValueValidation(): void
+    {
+        $schema = ['kind' => 'object', 'required' => ['id'], 'readOnly' => ['id'],
+            'properties' => ['id' => ['kind' => 'string', 'rules' => ['minLength' => 2]]]];
+        self::assertTrue(SchemaValidator::matches((object) [], $schema));
+        self::assertFalse(SchemaValidator::matches((object) ['id' => 'x'], $schema));
+        self::assertFalse(SchemaValidator::matches((object) [], $schema, mode: 'response'));
+        self::assertTrue(SchemaValidator::matches((object) [], $schema, mode: 'request'));
     }
 
     public function testSchemaMatchingDoesNotDispatchAndPreservesAdditionalProperties(): void

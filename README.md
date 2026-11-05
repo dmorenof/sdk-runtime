@@ -45,3 +45,25 @@ Create short-lived `feature/*`, `fix/*`, or `chore/*` branches from `main`, open
 ## License
 
 MIT; see [LICENSE](LICENSE).
+
+### Coordinated polymorphism development (unreleased)
+
+Branch `feature/native-model-inheritance` is coordinated with
+[SDK Generator PR #19](https://github.com/dmorenof/sdk-generator/pull/19).
+Do not release or merge this dependency independently of the generator work.
+
+Generated discriminator metadata is consumed by the shared `Hydrator` for nested
+properties, collection items, maps and operation responses. `Pet::fromValue()`
+also dispatches; PHP constructors cannot replace `new Pet(...)` with a subclass.
+Inherited discriminator metadata does not redirect construction of a concrete
+subtype. Unknown/missing tags fail explicitly, and subtype validation rejects a
+tag that disagrees with its PHP class, including after mutation.
+
+Composition wrappers may declare original branch descriptors and local schema
+definitions. These are evaluated against an independent JSON snapshot before
+hydration: the discriminator never reduces the number of valid `oneOf` branches.
+A single selected mutable variant supplies outbound JSON, with cardinality and
+discriminator checked again before serialization. Multiple `anyOf` variants remain
+alternative views of the original snapshot; editing several views is not a payload
+merge API. Legacy wrappers without descriptors retain their hydration-based matching.
+This is a bounded evaluator for generated descriptors, not full JSON Schema support.

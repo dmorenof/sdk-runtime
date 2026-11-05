@@ -96,6 +96,17 @@ final class Hydrator
             if (!is_object($value)) {
                 throw new \UnexpectedValueException("Expected JSON object at $where.");
             }
+            if (defined($kind . '::DISCRIMINATOR_BASE') && $kind::DISCRIMINATOR_BASE === $kind) {
+                /** @var string $property */
+                $property = $kind::DISCRIMINATOR_PROPERTY;
+                /** @var array<string, class-string> $mapping */
+                $mapping = $kind::DISCRIMINATOR_MAPPING;
+                $selected = Discriminator::select($value, $property, $mapping, $where);
+                if (!is_a($selected, $kind, true)) {
+                    throw new \LogicException("Discriminator target $selected must extend $kind.");
+                }
+                return new $selected($value);
+            }
             return new $kind($value);
         }
 

@@ -43,6 +43,16 @@ class DTO implements \JsonSerializable, \Stringable
         $this->validate();
     }
 
+    /** Construct through the shared hydrator so a base model can dispatch to a subtype. */
+    public static function fromValue(object $json): static
+    {
+        $result = Hydrator::hydrate($json, static::class, false, static::class);
+        if (!$result instanceof static) {
+            throw new \LogicException('Hydrator returned an incompatible DTO.');
+        }
+        return $result;
+    }
+
     /**
      * The array a generated class declares in constant $name, or [] when it does not.
      * Looked up once per class: constants cannot change, and models are validated on every use.
@@ -205,6 +215,17 @@ class DTO implements \JsonSerializable, \Stringable
     {
         $this->assertRequiredFields($request, $response);
         $fields = $this->fields();
+        if (defined(static::class . '::DISCRIMINATOR_BASE') && constant(static::class . '::DISCRIMINATOR_BASE') !== static::class) {
+            /** @var string $property */
+            $property = constant(static::class . '::DISCRIMINATOR_PROPERTY');
+            /** @var array<string, class-string> $mapping */
+            $mapping = constant(static::class . '::DISCRIMINATOR_MAPPING');
+            $json = Serializer::fields($fields, [], $this->declaredMap('WIRE_PROPERTY_MAP'), 'neutral');
+            $selected = Discriminator::select($json, $property, $mapping, static::class);
+            if (!$this instanceof $selected) {
+                throw new \UnexpectedValueException('Discriminator disagrees with the hydrated class at ' . static::class . '.');
+            }
+        }
         $additionalRules = $this->declaredRules('ADDITIONAL_PROPERTIES_VALIDATION');
         if ($additionalRules !== []) {
             foreach (self::additionalPropertiesFor($this) as $name => $value) {

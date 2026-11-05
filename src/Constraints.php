@@ -11,6 +11,9 @@ final class Constraints
     /** @param array<string, mixed> $rules */
     public static function validate(mixed $value, array $rules, string $where): void
     {
+        if ($value instanceof \BackedEnum) {
+            $value = $value->value;
+        }
         foreach ($rules as $rule => $limit) {
             self::assert($value, $rule, $limit, $where);
         }

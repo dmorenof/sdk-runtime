@@ -2,9 +2,14 @@
 
 ## Unreleased
 
+No changes yet.
+
+## [0.5.0] — 2026-11-05
+
 - Execute literal absolute HTTP(S) operation servers in the shared client, preserving path prefixes and existing root-base routing.
 - Add per-connection `serverOverrides` for environment substitutions, preserved across shared resources. Reject unsupported operation server URLs before transport.
-- Coordinated with generator PR #20 on `feature/p0-contract-fidelity`; no standalone release.
+- Provide the operation-server runtime used by SDK Generator v0.4.0 and its stable `^0.5.0` dependency.
+- Verified with 54 runtime tests / 108 assertions, PHPStan max, 216 generator tests / 2,061 assertions and seven exact-URL HTTP mock regressions for Casafari.
 
 ## [0.4.0] — 2026-11-05
 

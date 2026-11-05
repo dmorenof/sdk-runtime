@@ -1,26 +1,15 @@
-# Releases
+# Release process
 
-Versions follow semantic versioning. Generated SDKs constrain this package
-(for example `^0.1`), so a breaking change to the public runtime classes
-requires a new minor version while the package is 0.x.
+`VERSION` is the authoritative release request (`X.Y.Z`, without `v`). Composer versions come from immutable Git tags; do not add a version field to composer.json.
 
-## Publishing a version
+The agreed workflow is to publish each completed, validated increment. Do not stop at a draft PR or wait for the entire roadmap. See [AGENTS.md](AGENTS.md).
 
-1. Open a PR to the protected `main` branch. All GitHub Actions checks must
-   pass, including the `test` job, which runs the PHPUnit suite.
-2. Change the root `VERSION` file in that PR to the new `X.Y.Z` (no leading
-   `v`) and describe the change in the PR.
-3. Merge the PR. `.github/workflows/release.yml` runs Composer validation,
-   dependency installation, syntax checks, PHPUnit and a security audit.
-4. If those checks pass, the workflow creates immutable tag `vX.Y.Z` at the
-   merge commit and publishes a GitHub Release.
-5. Register the package in Packagist once and enable repository
-   synchronization. Packagist reads versions from Git tags; never write a
-   `version` field in `composer.json`.
-6. Confirm a clean `composer require dmorenof/sdk-runtime` before updating the
-   generator's `RUNTIME_CONSTRAINT`.
+1. Run Composer validation, appropriate tests/static analysis and advisory checks. Use cloud execution and remote GitHub state.
+2. Update `VERSION`, versioned release notes and the actual supported scope. Integrate into `main` directly when protections permit it. If GitHub requires a PR, complete that technical step and continue through publication in the same task.
+3. The existing `.github/workflows/release.yml` runs on a `VERSION` change on `main`. It checks dependencies, PHP/tests and advisories, then creates the immutable tag and GitHub Release. Never bypass protections or force-update a tag.
+4. Wait for the publish workflow and main CI; verify that the tag points to the integrated commit and the stable Release exists.
+5. Verify a clean Composer installation and the appropriate consumer smoke. Update progress/release evidence; do not claim publication from green source checks alone.
 
-Existing tags are never force-moved. A duplicate version pointing to a
-different commit makes the release workflow fail safely.
+For coordinated changes, publish and clean-install the runtime first, then replace temporary runtime branch dependencies with its stable version in the generator and generated packages before publishing the generator. The two repositories have separate versions and releases.
 
-This is package release automation, not the SDK code generation engine.
+A GitHub release does not establish Packagist registration or availability. Keep VCS repository entries where needed. Do not commit secrets or use production credentials for synthetic regression fixtures.

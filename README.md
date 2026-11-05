@@ -40,7 +40,7 @@ Source code belongs in `src/` under `Dmorenof\SdkRuntime\`; tests belong in `tes
 
 ## GitHub Flow
 
-Create short-lived `feature/*`, `fix/*`, or `chore/*` branches from `main`, open a pull request and wait for CI. See [CONTRIBUTING.md](CONTRIBUTING.md) and [RELEASING.md](RELEASING.md).
+Publish each completed, validated increment through `main`. Use a PR only when required by repository protections and complete publication in the same task. See [AGENTS.md](AGENTS.md), [CONTRIBUTING.md](CONTRIBUTING.md) and [RELEASING.md](RELEASING.md).
 
 ## License
 
@@ -68,11 +68,10 @@ alternative views of the original snapshot; editing several views is not a paylo
 merge API. Legacy wrappers without descriptors retain their hydration-based matching.
 This is a bounded evaluator for generated descriptors, not full JSON Schema support.
 
-## Operation servers (P0 development)
+## Operation servers (v0.5.0)
 
-The `feature/p0-contract-fidelity` branch is coordinated with
-[Generator PR #20](https://github.com/dmorenof/sdk-generator/pull/20), without a
-separate release. Operations may declare a literal absolute HTTP(S) `serverUrl`;
+Runtime v0.5.0 supplies the operation-server support used by SDK Generator
+v0.4.0. Generated packages depend on stable runtime `^0.5.0`. Operations may declare a literal absolute HTTP(S) `serverUrl`;
 root operations continue to use the configured client `baseUrl`. A declared
 server path prefix is preserved when adding the operation path.
 

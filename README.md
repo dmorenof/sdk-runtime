@@ -46,11 +46,11 @@ Create short-lived `feature/*`, `fix/*`, or `chore/*` branches from `main`, open
 
 MIT; see [LICENSE](LICENSE).
 
-### Coordinated polymorphism development (unreleased)
+## Polymorphic models (v0.4.0)
 
-Branch `feature/native-model-inheritance` is coordinated with
-[SDK Generator PR #19](https://github.com/dmorenof/sdk-generator/pull/19).
-Do not release or merge this dependency independently of the generator work.
+Version 0.4.0 supplies the discriminator and original-schema evaluation support
+used by SDK Generator 0.3.0. Generated packages require `dmorenof/sdk-runtime: ^0.4.0`.
+See [CHANGELOG.md](CHANGELOG.md) for the coordinated release and compatibility notes.
 
 Generated discriminator metadata is consumed by the shared `Hydrator` for nested
 properties, collection items, maps and operation responses. `Pet::fromValue()`

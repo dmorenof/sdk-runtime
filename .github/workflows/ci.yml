@@ -2,7 +2,7 @@ name: PHP package CI
 
 on:
   pull_request:
-    branches: [main]
+    branches: [main, 'feature/dto-directional-context']
   push:
     branches: [main]
     tags: ['v*']

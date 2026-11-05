@@ -38,13 +38,9 @@ class DTO implements \JsonSerializable, \Stringable
 
         // Schema-required fields are checked both when hydrating incoming JSON
         // and again before encoding a manually created outbound DTO.
-        if ($this instanceof Request) {
-            $this->validateForRequest();
-        } elseif ($this instanceof Response) {
-            $this->validateForResponse();
-        } else {
-            $this->validate();
-        }
+        // Legacy Request/Response subclasses can still override validate().
+        // A neutral DTO does not infer direction from the PHP class name.
+        $this->validate();
     }
 
     /**
@@ -130,17 +126,30 @@ class DTO implements \JsonSerializable, \Stringable
         return self::additionalPropertiesFor($this);
     }
 
+    /** @return \WeakMap<self,array<string,mixed>> */
+    private static function additionalPropertyMap(): \WeakMap
+    {
+        if (self::$additionalPropertyValues === null) {
+            /** @var \WeakMap<self,array<string,mixed>> $newMap */
+            $newMap = new \WeakMap();
+            self::$additionalPropertyValues = $newMap;
+        }
+        return self::$additionalPropertyValues;
+    }
+
     private static function storeAdditionalProperty(self $dto, string $name, mixed $value): void
     {
-        self::$additionalPropertyValues ??= new \WeakMap();
-        $values = self::$additionalPropertyValues[$dto] ?? [];
+        $values = self::additionalPropertiesFor($dto);
         $values[$name] = $value;
-        self::$additionalPropertyValues[$dto] = $values;
+        self::additionalPropertyMap()[$dto] = $values;
     }
 
     /** @return array<string, mixed> */
     private static function additionalPropertiesFor(self $dto): array
     {
+        if (self::$additionalPropertyValues === null) {
+            return [];
+        }
         return self::$additionalPropertyValues[$dto] ?? [];
     }
 
@@ -159,7 +168,12 @@ class DTO implements \JsonSerializable, \Stringable
             return;
         }
         $defined = $this->fields();
-        $skipped = $this->directionalFields($request, $response);
+        // Neutral construction verifies common requirements immediately.
+        // A field marked readOnly or writeOnly is required only when the
+        // surrounding operation supplies its direction (response or request).
+        $skipped = !$request && !$response
+            ? array_merge($this->declaredNames('READ_ONLY_FIELDS'), $this->declaredNames('WRITE_ONLY_FIELDS'))
+            : $this->directionalFields($request, $response);
         foreach ($required as $name) {
             if (!in_array($name, $skipped, true) && !array_key_exists($name, $defined)) {
                 throw new \UnexpectedValueException("Required JSON property " . static::class . "::$name is absent.");

@@ -39,6 +39,7 @@ class ApiException extends \RuntimeException
                     throw new \UnexpectedValueException("Expected JSON object for error type $errorType.");
                 }
                 $error = new $errorType($json);
+                $error->validateForResponse();
             } catch (\Throwable $exception) {
                 // Always expose HTTP response information to the caller.
                 $previous = $exception;

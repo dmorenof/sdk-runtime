@@ -89,4 +89,44 @@ final class DtoTest extends TestCase
         $this->expectException(\UnexpectedValueException::class);
         StringOrAddress::fromValue(12);
     }
+    public function testOneDtoClassWorksInRequestsAndResponsesWithDirectionalRequirements(): void
+    {
+        $body = new \Dmorenof\SdkRuntime\Tests\Fixtures\DirectionalUser((object) [
+            'name' => 'Ada',
+            'password' => 'secret',
+        ]);
+        self::assertSame(
+            '{"name":"Ada","password":"secret"}',
+            json_encode($body->jsonSerializeForRequest(), JSON_THROW_ON_ERROR),
+        );
+
+        $response = \Dmorenof\SdkRuntime\JsonHydrator::decode(
+            '{"id":7,"name":"Ada"}',
+            \Dmorenof\SdkRuntime\Tests\Fixtures\DirectionalUser::class,
+        );
+        self::assertSame(7, $response->id);
+        self::assertSame('{"id":7,"name":"Ada"}',
+            json_encode($response->jsonSerializeForResponse(), JSON_THROW_ON_ERROR));
+
+        $nested = \Dmorenof\SdkRuntime\JsonHydrator::decode(
+            '{"result":true,"user":{"id":7,"name":"Ada"}}',
+            \Dmorenof\SdkRuntime\Tests\Fixtures\DirectionalEnvelope::class,
+        );
+        self::assertSame(7, $nested->user->id);
+        self::assertTrue($nested->result);
+
+        $this->expectException(\UnexpectedValueException::class);
+        \Dmorenof\SdkRuntime\JsonHydrator::decode(
+            '{"result":true,"user":{"name":"Ada"}}',
+            \Dmorenof\SdkRuntime\Tests\Fixtures\DirectionalEnvelope::class,
+        );
+    }
+
+    public function testRequestDirectionRequiresWriteOnlyFieldEvenOnNeutralDto(): void
+    {
+        $body = new \Dmorenof\SdkRuntime\Tests\Fixtures\DirectionalUser((object) ['name' => 'Ada']);
+        $this->expectException(\UnexpectedValueException::class);
+        $body->jsonSerializeForRequest();
+    }
+
 }

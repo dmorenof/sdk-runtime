@@ -20,3 +20,22 @@ if (\Composer\InstalledVersions::getReference('dmorenof/sdk-runtime') !== $expec
     throw new RuntimeException('Installed runtime does not match the immutable release commit.');
 }
 echo "PUBLISHED_RUNTIME_INSTALL_OK ", $tag, " ", $expected, PHP_EOL;
+$transport = new class implements \Dmorenof\SdkRuntime\Transport\TransportInterface {
+    public function send(string $method, string $url, array $headers, ?string $body): \Dmorenof\SdkRuntime\Transport\HttpResponse
+    {
+        if ($url !== 'https://example.test/search?ids=1&ids=2&codes=a%2Cb,x%20y') {
+            throw new RuntimeException('Installed runtime query serialization failed.');
+        }
+        return new \Dmorenof\SdkRuntime\Transport\HttpResponse(204, '');
+    }
+};
+$client = new class('https://example.test', transport: $transport) extends \Dmorenof\SdkRuntime\ApiClient {
+    public function probe(): void
+    {
+        $this->executeOperation(['method' => 'GET', 'path' => '/search', 'success' => [204],
+            'querySerialization' => ['ids' => 'multi', 'codes' => 'csv']],
+            queryParameters: ['ids' => [1, 2], 'codes' => ['a,b', 'x y']]);
+    }
+};
+$client->probe();
+echo "PUBLISHED_QUERY_SERIALIZATION_OK", PHP_EOL;

@@ -96,7 +96,7 @@ abstract class ApiClient
      *
      * @param OperationSpec $operation
      * @param array<string, scalar|null> $pathParameters
-     * @param array<string, scalar|null> $queryParameters
+     * @param array<string, scalar|list<scalar>|null> $queryParameters
      * @param array<string, scalar|null> $headerParameters
      */
     protected function executeOperation(
@@ -119,7 +119,7 @@ abstract class ApiClient
         foreach ($pathParameters as $name => $value) {
             $path = str_replace('{' . $name . '}', rawurlencode(self::stringify($value)), $path);
         }
-        $query = self::stringifyAll($queryParameters);
+        $query = array_filter($queryParameters, static fn ($value): bool => $value !== null);
         $headers = ['Accept' => 'application/json'] + self::stringifyAll($headerParameters);
         $bodyJson = null;
         if ($body !== null) {
@@ -127,15 +127,22 @@ abstract class ApiClient
             $bodyJson = json_encode($body->jsonSerializeForRequest(), JSON_THROW_ON_ERROR);
         }
 
-        SecurityApplier::apply($this->securityCredentials, $spec->security, static::SECURITY_SCHEMES, $headers, $query);
+        $securityQuery = [];
+        SecurityApplier::apply($this->securityCredentials, $spec->security, static::SECURITY_SCHEMES, $headers, $securityQuery);
+        $formats = $spec->querySerialization;
+        foreach ($securityQuery as $name => $credential) {
+            $query[$name] = $credential;
+            unset($formats[$name]); // Security query keys keep their existing scalar precedence.
+        }
+        $encodedQuery = QuerySerializer::encode($query, $formats);
         $baseUrl = $this->baseUrl;
         if ($spec->serverUrl !== null) {
             $declared = ServerUrl::normalize($spec->serverUrl);
             $baseUrl = $this->serverOverrides[$declared] ?? $declared;
         }
         $url = rtrim($baseUrl, '/') . $path;
-        if ($query !== []) {
-            $url .= '?' . http_build_query($query, '', '&', PHP_QUERY_RFC3986);
+        if ($encodedQuery !== '') {
+            $url .= '?' . $encodedQuery;
         }
         $response = $this->transport->send($spec->method, $url, $headers, $bodyJson);
         if (!$spec->succeeded($response->status)) {

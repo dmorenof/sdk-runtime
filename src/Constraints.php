@@ -21,7 +21,28 @@ final class Constraints
 
     private static function assert(mixed $value, string $rule, mixed $limit, string $where): void
     {
-        if ($rule === 'pattern') {
+        if ($rule === 'items') {
+            if (!is_array($value) || !array_is_list($value)) {
+                throw new \UnexpectedValueException("Expected a list for items at $where.");
+            }
+            if (!is_array($limit) || !in_array($limit['type'] ?? null, ['string', 'int', 'float', 'bool'], true)
+                || !is_array($limit['rules'] ?? [])) {
+                throw new \LogicException("Invalid items constraint for $where.");
+            }
+            $itemRules = [];
+            foreach ($limit['rules'] ?? [] as $ruleName => $ruleValue) {
+                if (!is_string($ruleName)) {
+                    throw new \LogicException("Item rule names must be strings at $where.");
+                }
+                $itemRules[$ruleName] = $ruleValue;
+            }
+            foreach ($value as $index => $item) {
+                $at = $where . '[' . $index . ']';
+                Hydrator::hydrate($item, $limit['type'], false, $at);
+                self::validate($item, $itemRules, $at);
+            }
+            return;
+        } elseif ($rule === 'pattern') {
             if (!is_string($limit) || !is_string($value)) {
                 throw new \UnexpectedValueException("Expected string for pattern at $where.");
             }

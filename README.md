@@ -82,3 +82,23 @@ keep separate maps. Keys ignore trailing slashes. Relative/template server URLs,
 credentials, queries and fragments in operation server URLs remain unsupported
 and fail before transport. Existing operations without `serverUrl` keep their
 current routing.
+
+
+## Query lists (v0.6.0)
+
+An operation declares normalized list formats using
+`querySerialization: ['ids' => 'multi', 'codes' => 'csv']`. Values `[1, 2]`
+produce `ids=1&ids=2` or `ids=1,2`. Each name/value is RFC 3986 encoded before
+joining; a comma inside an item is `%2C` while the CSV separator remains literal.
+Scalars keep their existing serialization. Empty lists, absent parameters and
+null values expand to no query members; empty string list members expand to
+explicit empty values. Query API-key credentials retain scalar precedence.
+
+Native `array` DTO fields hydrate JSON lists. Declare item rules such as
+`VALIDATION = ['ids' => ['minItems' => 1, 'items' => ['type' => 'int',
+'rules' => ['minimum' => 1]]]]`; type/item rules are checked on hydration and
+again before sending, including after mutation. This is bounded list validation,
+not general JSON Schema support. Nested/object/null items, undeclared query
+arrays, other styles/locations and `allowReserved`/`allowEmptyValue` remain outside
+this query-list slice. Generated SDKs declare metadata and use this common
+executor rather than implementing serialization themselves.

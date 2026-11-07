@@ -4,6 +4,14 @@
 
 No changes yet.
 
+## [0.6.0] — 2026-11-07
+
+- Add declarative query-list serialization to Operation: `querySerialization` maps wire names to `multi` (repeated keys) or `csv`. Encode items individually before joining; preserve legacy scalar order and encoding.
+- Allow native JSON-list DTO properties through the shared hydrator and declarative `items` validation for primitive types and existing value rules. Revalidate list mutations before request transmission.
+- Keep query API-key credentials scalar and preserve their existing precedence. Reject undeclared arrays, associative/nested/null-item lists, non-finite numbers and unsupported formats before transport.
+- Empty lists expand to no URI members; null/absent parameters are omitted, while empty string members remain explicit values. General empty/null policies, objects, other locations and additional styles remain pending.
+- Verify clean installation and exact query URLs from the immutable published runtime. Existing operation metadata defaults remain backward compatible through the new optional field.
+
 ## [0.5.0] — 2026-11-05
 
 - Execute literal absolute HTTP(S) operation servers in the shared client, preserving path prefixes and existing root-base routing.

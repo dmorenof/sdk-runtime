@@ -22,6 +22,7 @@ namespace Dmorenof\SdkRuntime;
  *     noContentAllowed?: bool,
  *     validation?: array<string, array<string, mixed>>,
  *     serverUrl?: string|null,
+ *     querySerialization?: array<string, 'multi'|'csv'>,
  * }
  */
 final readonly class Operation
@@ -36,6 +37,7 @@ final readonly class Operation
         'noContentAllowed' => false,
         'validation' => [],
         'serverUrl' => null,
+        'querySerialization' => [],
     ];
 
     /** "METHOD path", unless the operation names itself. */
@@ -46,6 +48,7 @@ final readonly class Operation
      * @param list<int> $success Statuses that are not errors.
      * @param array<int|string, string> $errors Status (or 'default') => error model class.
      * @param array<string, array<string, mixed>> $validation Parameter name => rules.
+     * @param array<string, 'multi'|'csv'> $querySerialization Query list name => normalized wire format.
      */
     public function __construct(
         public string $method,
@@ -59,6 +62,7 @@ final readonly class Operation
         public bool $noContentAllowed = self::DEFAULTS['noContentAllowed'],
         public array $validation = self::DEFAULTS['validation'],
         public ?string $serverUrl = self::DEFAULTS['serverUrl'],
+        public array $querySerialization = self::DEFAULTS['querySerialization'],
     ) {
         $this->label = $label ?? $method . ' ' . $path;
     }

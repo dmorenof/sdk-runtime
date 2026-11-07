@@ -18,7 +18,7 @@ final class Hydrator
             'integer' => 'int', 'double' => 'float', 'boolean' => 'bool',
             default => ltrim($kind, '\\'),
         };
-        $builtin = in_array($kind, ['mixed', 'int', 'float', 'string', 'bool', 'null'], true);
+        $builtin = in_array($kind, ['mixed', 'int', 'float', 'string', 'bool', 'null', 'array'], true);
         return self::convert($value, $kind, $nullable, $builtin, $where);
     }
 
@@ -127,6 +127,7 @@ final class Hydrator
             'float' => is_float($value),
             'string' => is_string($value),
             'bool' => is_bool($value),
+            'array' => is_array($value) && array_is_list($value),
             default => false,
         };
         if (!$valid) {

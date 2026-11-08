@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+No changes yet.
+
+## [0.15.0] — 2026-11-08
+
 - Preserve successful binary response streams through the existing PSR-18 adapter using native ResponseInterface responseType, without a custom download wrapper. Retain status, multi-value headers, empty responses and middleware replacement/rewind behavior.
 - Keep JSON hydration, typed/raw ApiException errors, TransportInterface and buffered send() callers compatible. Legacy custom transports adapt via the existing Guzzle Response.
 - Add behavior tests plus CI/installed-package 32 MiB download copy/hash smoke under PHP memory_limit=16M. Document client/middleware buffering, temporary disk storage and error-response limits.

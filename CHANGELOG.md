@@ -4,6 +4,11 @@
 
 No changes yet.
 
+## [0.10.1] — 2026-11-08
+
+- Keep path, query and header buckets separate in the inherited executor so the minimum supported PHPStan version retains each array's exact value types. Remove the result-shape override; wire behavior and public signatures are unchanged.
+- Validate both the latest and minimum analysis dependency sets before the generator adopts the shared executor release. The v0.10.0 tag remains immutable.
+
 ## [0.10.0] — 2026-11-08
 
 - Move the common generated argument executor and DTO operation-field mapping into ApiClient so new SDKs inherit them once. Add shared Configuration fields for generated configurations to extend while preserving per-SDK defaults/state and public types.

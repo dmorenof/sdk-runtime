@@ -18,6 +18,9 @@ final class Hydrator
             'integer' => 'int', 'double' => 'float', 'boolean' => 'bool',
             default => ltrim($kind, '\\'),
         };
+        if ($kind === 'binary') {
+            return self::hydrate($value, is_string($value) ? 'string' : \Psr\Http\Message\UploadedFileInterface::class, $nullable, $where);
+        }
         $builtin = in_array($kind, ['mixed', 'int', 'float', 'string', 'bool', 'null', 'array'], true);
         return self::convert($value, $kind, $nullable, $builtin, $where);
     }

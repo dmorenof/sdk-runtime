@@ -115,3 +115,9 @@ if ($streamStatus !== 0) {
     throw new RuntimeException('Installed runtime multipart streaming smoke failed.');
 }
 echo "PUBLISHED_STREAMING_RUNTIME_OK", PHP_EOL;
+$listCommand = $streamCommand . " '' 'list'";
+passthru($listCommand, $listStatus);
+if ($listStatus !== 0) {
+    throw new RuntimeException('Installed runtime file list streaming smoke failed.');
+}
+echo "PUBLISHED_FILE_LIST_RUNTIME_OK", PHP_EOL;

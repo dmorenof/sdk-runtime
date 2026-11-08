@@ -27,8 +27,8 @@ final class MultipartSerializer
                 continue;
             }
             $values = is_array($value) ? $value : [$value];
-            if (!array_is_list($values) || (isset($parts[$name]['filename']) && is_array($value))) {
-                throw new \UnexpectedValueException('Multipart fields must be scalars or primitive lists; files must be byte strings.');
+            if (!array_is_list($values)) {
+                throw new \UnexpectedValueException('Multipart array fields must be lists.');
             }
             foreach ($values as $item) {
                 $part = $parts[$name];

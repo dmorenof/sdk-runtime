@@ -25,7 +25,7 @@ final class Constraints
             if (!is_array($value) || !array_is_list($value)) {
                 throw new \UnexpectedValueException("Expected a list for items at $where.");
             }
-            if (!is_array($limit) || !in_array($limit['type'] ?? null, ['string', 'int', 'float', 'bool'], true)
+            if (!is_array($limit) || !in_array($limit['type'] ?? null, ['string', 'int', 'float', 'bool', 'binary'], true)
                 || !is_array($limit['rules'] ?? [])) {
                 throw new \LogicException("Invalid items constraint for $where.");
             }

@@ -9,9 +9,12 @@ namespace Dmorenof\SdkRuntime;
  */
 final class Serializer
 {
-    public static function value(mixed $value, string $mode): mixed
+    public static function value(mixed $value, string $mode, bool $multipart = false): mixed
     {
         if ($value instanceof \Psr\Http\Message\UploadedFileInterface) {
+            if ($multipart) {
+                return $value;
+            }
             throw new \UnexpectedValueException('Uploaded files require multipart serialization.');
         }
         if ($value instanceof DTO) {
@@ -23,7 +26,7 @@ final class Serializer
         if ($value instanceof TypedArray) {
             $items = [];
             foreach ($value as $key => $item) {
-                $items[$key] = self::value($item, $mode);
+                $items[$key] = self::value($item, $mode, $multipart);
             }
             return $items;
         }
@@ -31,7 +34,7 @@ final class Serializer
             return $value->serializeValidatedForMode($mode);
         }
         if (is_array($value)) {
-            return array_map(static fn (mixed $item): mixed => self::value($item, $mode), $value);
+            return array_map(static fn (mixed $item): mixed => self::value($item, $mode, $multipart), $value);
         }
         return $value;
     }
@@ -46,8 +49,7 @@ final class Serializer
         $serialized = [];
         foreach ($fields as $name => $value) {
             if (!in_array($name, $excluded, true)) {
-                $serialized[$wireNames[$name] ?? $name] = $multipart && $value instanceof \Psr\Http\Message\UploadedFileInterface
-                    ? $value : self::value($value, $mode);
+                $serialized[$wireNames[$name] ?? $name] = self::value($value, $mode, $multipart);
             }
         }
         return (object) $serialized;

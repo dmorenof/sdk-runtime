@@ -175,8 +175,8 @@ and empty files produce parts. DTO validation and direction rules still apply.
 
 The standard PSR-18 adapter preserves the MultipartStream since v0.13.0; legacy
 custom TransportInterface implementations still receive complete strings. Use
-file-backed PSR uploads for large files. Nested fields, binary lists and arbitrary
-part headers are not supported. JSON operations continue to use JSON serialization.
+file-backed PSR uploads for large files. Nested fields and arbitrary part headers are not supported; binary lists are
+supported as described below. JSON operations continue to use JSON serialization.
 
 ### PSR uploaded files (v0.12.0)
 
@@ -221,5 +221,29 @@ published installation smoke also read two 32 MiB multipart requests in chunks
 under that limit. These measurements describe the tested upload path. String
 inputs are already in memory, legacy custom transports buffer, middleware or an
 injected HTTP client can buffer, and response bodies are still collected as
-strings. Non-seekable inputs, file lists and general streaming responses remain
-outside this feature.
+strings. Non-seekable inputs and general streaming responses remain outside this feature;
+binary lists are added in v0.14.0.
+
+
+### Binary multipart lists (v0.14.0)
+
+A binary field can contain a native `list<string|UploadedFileInterface>`. Declare
+an array DTO property and `VALIDATION` items as `['type' => 'binary', 'rules' => []]`,
+with minItems/maxItems as needed. Its existing bodyParts filename/contentType
+metadata applies to each item; no extra list metadata or file wrapper is needed.
+Lists become repeated parts with exactly the same field name, preserving order.
+PSR items supply their own filename/MIME; string items keep the static fallback.
+An explicit contract MIME is enforced independently for every item.
+
+Null fields and empty lists produce no parts; empty strings produce empty file
+parts. Nullable list items, non-list arrays, wrong item types, failed uploads and
+shared PSR stream cursors fail before transport. Revalidate mutations before each
+send. JSON/urlencoded traversal still rejects PSR uploads, including inside lists.
+Text lists and singular files retain their encoding. Native binary-list metadata
+is an input adaptation, not general native schema-union support.
+
+Two independent 16 MiB files (32 MiB aggregate) were sent twice using default
+Guzzle/cURL under a 16 MiB PHP limit, with a measured 4 MiB PHP peak and full bytes
+verified by an independent MIME parser. CI and installed-package verification
+repeat the bounded-memory case. Existing transport/client/middleware/response
+memory limits remain as described above.

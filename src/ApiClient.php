@@ -220,7 +220,8 @@ abstract class ApiClient
             $path = str_replace('{' . $name . '}', rawurlencode(self::stringify($value)), $path);
         }
         $query = array_filter($queryParameters, static fn ($value): bool => $value !== null);
-        $headers = ['Accept' => 'application/json'] + self::stringifyAll($headerParameters);
+        $binary = ltrim($spec->responseType ?? '', '\\') === \Psr\Http\Message\ResponseInterface::class;
+        $headers = ['Accept' => $binary ? 'application/octet-stream' : 'application/json'] + self::stringifyAll($headerParameters);
         if (!in_array($spec->requestMediaType, ['application/json', 'application/x-www-form-urlencoded', 'multipart/form-data'], true)
             || ($spec->requestMediaType !== 'application/x-www-form-urlencoded' && $spec->bodySerialization !== [])
             || ($spec->requestMediaType !== 'multipart/form-data' && $spec->bodyParts !== [])) {
@@ -257,10 +258,19 @@ abstract class ApiClient
         if ($encodedQuery !== '') {
             $url .= '?' . $encodedQuery;
         }
-        $response = $this->transport instanceof Psr18Transport
-            ? $this->transport->send($spec->method, $url, $headers, $bodyBytes)
-            : $this->transport->send($spec->method, $url, $headers,
+        if ($this->transport instanceof Psr18Transport) {
+            $psrResponse = $this->transport->sendResponse($spec->method, $url, $headers, $bodyBytes);
+            if ($binary && $spec->succeeded($psrResponse->getStatusCode())) {
+                return $psrResponse;
+            }
+            $response = \Dmorenof\SdkRuntime\Transport\HttpResponse::fromPsr($psrResponse);
+        } else {
+            $response = $this->transport->send($spec->method, $url, $headers,
                 $bodyBytes instanceof \Psr\Http\Message\StreamInterface ? (string) $bodyBytes : $bodyBytes);
+            if ($binary && $spec->succeeded($response->status)) {
+                return new \GuzzleHttp\Psr7\Response($response->status, $response->headers, $response->body);
+            }
+        }
         if (!$spec->succeeded($response->status)) {
             throw ApiException::fromResponse($response, $spec->label, $spec->errorTypeFor($response->status));
         }

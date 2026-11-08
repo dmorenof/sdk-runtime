@@ -121,3 +121,11 @@ if ($listStatus !== 0) {
     throw new RuntimeException('Installed runtime file list streaming smoke failed.');
 }
 echo "PUBLISHED_FILE_LIST_RUNTIME_OK", PHP_EOL;
+
+$downloadCommand = implode(' ', array_map('escapeshellarg', [PHP_BINARY, '-d', 'memory_limit=16M',
+    $directory . '/vendor/dmorenof/sdk-runtime/tests/download-smoke.php', $directory . '/vendor/autoload.php']));
+passthru($downloadCommand, $downloadStatus);
+if ($downloadStatus !== 0) {
+    throw new RuntimeException('Installed runtime binary download smoke failed.');
+}
+echo "PUBLISHED_DOWNLOAD_RUNTIME_OK", PHP_EOL;

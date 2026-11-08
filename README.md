@@ -247,3 +247,25 @@ Guzzle/cURL under a 16 MiB PHP limit, with a measured 4 MiB PHP peak and full by
 verified by an independent MIME parser. CI and installed-package verification
 repeat the bounded-memory case. Existing transport/client/middleware/response
 memory limits remain as described above.
+
+
+### Binary response streams (v0.15.0)
+
+An operation whose responseType is `\Psr\Http\Message\ResponseInterface::class`
+requests application/octet-stream and returns the original successful PSR-7
+response through the common PSR-18 adapter. Status, multi-value headers and body
+remain available; empty successful responses also return the response. Use
+`GuzzleHttp\Psr7\Utils::copyToStream($response->getBody(), $destination)` to save
+bytes without building a complete PHP string. Seekable responses rewind after
+middleware inspection. Middleware must preserve non-seekable response cursors.
+
+JSON hydration and ApiException/typed JSON errors retain their buffered behavior.
+Legacy custom TransportInterface implementations adapt their already-buffered
+HttpResponse into a standard Guzzle PSR response. Existing send() callers keep
+their HttpResponse contract; sendResponse() exposes the native PSR response.
+
+The download smoke copies and hashes two 32 MiB responses under PHP
+memory_limit=16M, including default Guzzle/cURL against cloud-local HTTP. This
+bounds the tested PHP heap, not RSS or network latency. Guzzle may use a temporary
+disk-backed stream and injected clients/middleware can buffer. This feature does
+not promise progressive network consumption or unbuffered error responses.

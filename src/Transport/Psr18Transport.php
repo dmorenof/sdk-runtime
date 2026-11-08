@@ -5,7 +5,6 @@ namespace Dmorenof\SdkRuntime\Transport;
 
 use GuzzleHttp\Psr7\Request;
 use Psr\Http\Client\ClientInterface;
-use Psr\Http\Message\RequestInterface;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\StreamInterface;
 
@@ -32,6 +31,12 @@ final class Psr18Transport implements TransportInterface
     /** @param array<string, string> $headers */
     public function send(string $method, string $url, array $headers, string|StreamInterface|null $body): HttpResponse
     {
+        return HttpResponse::fromPsr($this->sendResponse($method, $url, $headers, $body));
+    }
+
+    /** @param array<string, string> $headers */
+    public function sendResponse(string $method, string $url, array $headers, string|StreamInterface|null $body): ResponseInterface
+    {
         $request = new Request($method, $url, array_replace($this->defaultHeaders, $headers), $body ?? '');
 
         foreach ($this->middlewares as $middleware) {
@@ -52,10 +57,9 @@ final class Psr18Transport implements TransportInterface
             $response = $middleware->afterResponse($request, $response);
         }
 
-        $resultHeaders = [];
-        foreach ($response->getHeaders() as $name => $values) {
-            $resultHeaders[(string) $name] = implode(', ', $values);
+        if ($response->getBody()->isSeekable()) {
+            $response->getBody()->rewind();
         }
-        return new HttpResponse($response->getStatusCode(), (string)$response->getBody(), $resultHeaders);
+        return $response;
     }
 }

@@ -109,8 +109,9 @@ abstract class ApiClient
         // A query or path parameter may also be named "body"; only an explicit operation body is a payload.
         $hasBody = defined($dto::class . '::OPERATION_BODY') && constant($dto::class . '::OPERATION_BODY') === true;
         $body = $hasBody && $bodyValue instanceof DTO ? $bodyValue : null;
-        /** @var array{path:array<string,bool|float|int|string|null>,query:array<string,bool|float|int|string|list<bool|float|int|string>|DTO|Map|null>,header:array<string,bool|float|int|string|null>,body:?DTO} $result */
-        $result = ['path' => [], 'query' => [], 'header' => [], 'body' => $body];
+        $path = [];
+        $query = [];
+        $headers = [];
         /** @var array{path:array<string,string>,query:array<string,string>,header:array<string,string>} $locations */
         $locations = constant($dto::class . '::OPERATION_FIELDS');
         foreach ($locations as $location => $fields) {
@@ -120,7 +121,7 @@ abstract class ApiClient
                 }
                 $value = $values[$property];
                 if ($location === 'query' && ($value instanceof DTO || $value instanceof Map)) {
-                    $result['query'][$wireName] = $value;
+                    $query[$wireName] = $value;
                     continue;
                 }
                 if (is_array($value)) {
@@ -134,16 +135,22 @@ abstract class ApiClient
                         }
                         $items[] = $item;
                     }
-                    $result['query'][$wireName] = $items;
+                    $query[$wireName] = $items;
                     continue;
                 }
                 if ($value !== null && !is_scalar($value)) {
                     throw new \UnexpectedValueException("Non-scalar operation parameter: $wireName");
                 }
-                $result[$location][$wireName] = $value;
+                if ($location === 'path') {
+                    $path[$wireName] = $value;
+                } elseif ($location === 'header') {
+                    $headers[$wireName] = $value;
+                } else {
+                    $query[$wireName] = $value;
+                }
             }
         }
-        return $result;
+        return ['path' => $path, 'query' => $query, 'header' => $headers, 'body' => $body];
     }
 
     /**

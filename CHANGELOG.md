@@ -4,6 +4,10 @@
 
 No changes yet.
 
+## [0.11.1] — 2026-11-08
+
+- Preserve numeric multipart wire names when PHP coerces metadata keys to integers. Reject filename `0`, which older supported Guzzle PSR-7 releases interpret as absent, rather than silently changing file semantics. Add regression coverage before generator adoption.
+
 ## [0.11.0] — 2026-11-08
 
 - Add buffered multipart DTO requests using the existing Guzzle PSR-7 MultipartStream, with primitive text fields, repeated primitive lists and binary string file parts. Optional Operation::bodyParts declares static content types and filenames; JSON/form defaults and public transport interfaces remain compatible.

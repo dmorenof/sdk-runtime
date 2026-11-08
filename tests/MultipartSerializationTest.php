@@ -107,7 +107,8 @@ final class MultipartSerializationTest extends TestCase
     {
         foreach ([['x' => ['contentType' => "text/plain\r\nX: y"]],
             ["x\"\r\n" => ['contentType' => 'text/plain']],
-            ['x' => ['contentType' => 'text/plain', 'filename' => 'a"b']]] as $parts) {
+            ['x' => ['contentType' => 'text/plain', 'filename' => 'a"b']],
+            ['x' => ['contentType' => 'application/octet-stream', 'filename' => '0']]] as $parts) {
             try {
                 MultipartSerializer::encode(new DTO(), $parts);
                 self::fail('Unsafe metadata accepted.');
@@ -117,5 +118,16 @@ final class MultipartSerializationTest extends TestCase
         }
         $this->expectException(\InvalidArgumentException::class);
         MultipartSerializer::encode(new MultipartPayload((object) ['display-name' => 'Ada']), []);
+    }
+
+    public function testNumericWireNamesRemainStringsWhenPhpCastsArrayKeys(): void
+    {
+        $body = new class extends DTO {
+            protected const array WIRE_PROPERTY_MAP = ['value' => '0'];
+            public string $value = 'zero';
+        };
+        $stream = MultipartSerializer::encode($body, ['0' => ['contentType' => 'text/plain']]);
+        self::assertStringContainsString('name="0"', (string) $stream);
+        self::assertStringContainsString("\r\n\r\nzero\r\n", (string) $stream);
     }
 }

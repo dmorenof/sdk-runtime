@@ -14,8 +14,8 @@ final class MultipartSerializer
     public static function encode(DTO $body, array $parts): MultipartStream
     {
         foreach ($parts as $name => $part) {
-            if (!self::quotedName($name) || !preg_match('~^[a-zA-Z0-9!#$&^_.+\-]+/[a-zA-Z0-9!#$&^_.+\-]+$~D', $part['contentType'])
-                || (isset($part['filename']) && !self::quotedName($part['filename']))) {
+            if (!self::quotedName((string) $name) || !preg_match('~^[a-zA-Z0-9!#$&^_.+\-]+/[a-zA-Z0-9!#$&^_.+\-]+$~D', $part['contentType'])
+                || (isset($part['filename']) && (!self::quotedName($part['filename']) || $part['filename'] === '0'))) {
                 throw new \InvalidArgumentException('Unsupported multipart name or content type.');
             }
         }
@@ -39,7 +39,7 @@ final class MultipartSerializer
                     || (isset($parts[$name]['filename']) && !is_string($item))) {
                     throw new \UnexpectedValueException('Unsupported multipart field value.');
                 }
-                $element = ['name' => $name, 'contents' => is_bool($item) ? ($item ? 'true' : 'false') : (string) $item,
+                $element = ['name' => (string) $name, 'contents' => is_bool($item) ? ($item ? 'true' : 'false') : (string) $item,
                     'headers' => ['Content-Type' => $parts[$name]['contentType']]];
                 if (isset($parts[$name]['filename'])) {
                     $element['filename'] = $parts[$name]['filename'];

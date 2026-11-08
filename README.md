@@ -167,7 +167,9 @@ DTO properties contain scalar values, primitive lists or raw binary strings.
 Lists become repeated parts. Guzzle's PSR-7 `MultipartStream` builds MIME and
 boundaries; no MIME encoder is maintained here. Filenames and field names must
 be printable ASCII without quotes/backslashes; content types are single MIME
-types without parameters. Nulls and empty lists are omitted; empty strings
+types without parameters. Filename `0` is rejected because older supported PSR-7
+versions treat it as absent; use e.g. `0.bin`. Numeric field names are supported.
+Nulls and empty lists are omitted; empty strings
 and empty files produce parts. DTO validation and direction rules still apply.
 
 The existing transport contract receives a complete string, so multipart bodies

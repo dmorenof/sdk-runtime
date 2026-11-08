@@ -17,6 +17,20 @@ class QueryListDto extends DTO
     public array $ids;
 }
 
+enum DeepState: string { case Active = 'active'; }
+
+class DeepFilterDto extends DTO
+{
+    protected const array PROPERTY_MAP = ['city-name' => 'city'];
+    protected const array WIRE_PROPERTY_MAP = ['city' => 'city-name'];
+    protected const array READ_ONLY_FIELDS = ['readonlyValue'];
+    protected const array WRITE_ONLY_FIELDS = ['secret'];
+    protected const array VALIDATION = ['city' => ['minLength' => 1]];
+    public string $city;
+    public string $readonlyValue;
+    public string $secret;
+}
+
 class QueryListClient extends ApiClient
 {
     protected const array SECURITY_SCHEMES = ['Key' => ['type' => 'apiKey', 'scheme' => null, 'location' => 'query', 'parameterName' => 'key']];
@@ -79,6 +93,68 @@ final class QuerySerializationTest extends TestCase
                 self::assertSame([], $transport->sent);
             }
         }
+    }
+
+    public function testDeepObjectsEncodeWireNamesAndScalarValues(): void
+    {
+        self::assertSame('filter%5Bcity%5D=Madrid&filter%5Bactive%5D=false&filter%5B0%5D=0&filter%5Bname%20x%5D=%C3%B1%2B%26',
+            QuerySerializer::encode(['filter' => (object) ['city' => 'Madrid', 'active' => false, '0' => 0, 'name x' => 'ñ+&']], ['filter' => 'deepObject']));
+        self::assertSame('', QuerySerializer::encode(['filter' => (object) []], ['filter' => 'deepObject']));
+        self::assertSame('', QuerySerializer::encode(['filter' => null], ['filter' => 'deepObject']));
+        self::assertSame('filter%5Bname%5D=', QuerySerializer::encode(['filter' => (object) ['name' => '']], ['filter' => 'deepObject']));
+    }
+
+    public function testDeepDtoSerializationValidatesMutationsAndDirectionalFields(): void
+    {
+        $dto = new DeepFilterDto((object) ['city-name' => 'Madrid', 'readonlyValue' => 'hidden', 'secret' => 'sent']);
+        self::assertSame('filter%5Bcity-name%5D=Madrid&filter%5Bsecret%5D=sent', QuerySerializer::encode(['filter' => $dto], ['filter' => 'deepObject']));
+        $dto->city = '';
+        $this->expectException(\UnexpectedValueException::class);
+        QuerySerializer::encode(['filter' => $dto], ['filter' => 'deepObject']);
+    }
+
+    public function testDeepMapsAndBackedEnumsUseTheirValidatedScalarValues(): void
+    {
+        $map = new class((object) ['city' => 'Madrid']) extends \Dmorenof\SdkRuntime\Map {
+            protected const string VALUE_TYPE = 'string';
+            protected const array VALUE_VALIDATION = ['minLength' => 1];
+        };
+        self::assertSame('filter%5Bcity%5D=Madrid', QuerySerializer::encode(['filter' => $map], ['filter' => 'deepObject']));
+        self::assertSame('filter%5Bstate%5D=active', QuerySerializer::encode(['filter' => (object) ['state' => DeepState::Active]], ['filter' => 'deepObject']));
+        $this->expectException(\UnexpectedValueException::class);
+        $map['city'] = '';
+        QuerySerializer::encode(['filter' => $map], ['filter' => 'deepObject']);
+    }
+
+    public function testDeepObjectsRejectUndefinedShapesAndAmbiguousKeysBeforeTransport(): void
+    {
+        foreach ([(object) ['a' => null], (object) ['a' => [1]], (object) ['a' => (object) ['b' => 1]],
+            (object) ['a' => INF], (object) ['a[b]' => 1], (object) ['' => 1], [], ['a' => 1], 'a'] as $value) {
+            $transport = new FakeTransport(new HttpResponse(204, ''));
+            try {
+                QueryListClient::connect('https://api.example.test', transport: $transport)->search(['filter' => $value], ['filter' => 'deepObject']);
+                self::fail('Undefined deep value accepted.');
+            } catch (\UnexpectedValueException) {
+                self::assertSame([], $transport->sent);
+            }
+        }
+    }
+
+    public function testDeepObjectsRejectCollisionsWithExplicitAndSecurityQueryNames(): void
+    {
+        foreach ([['filter' => (object) ['name' => 'x'], 'filter[name]' => 'y'], ['filter[x]' => (object) ['name' => 'x']]] as $query) {
+            try {
+                QuerySerializer::encode($query, [array_key_first($query) => 'deepObject']);
+                self::fail('Ambiguous query name accepted.');
+            } catch (\UnexpectedValueException) {
+                self::assertTrue(true);
+            }
+        }
+        $transport = new FakeTransport(new HttpResponse(204, ''));
+        $client = QueryListClient::connect('https://api.example.test', transport: $transport,
+            securityCredentials: new SecurityCredentials(['Key' => 'secret']));
+        $client->search(['key' => (object) ['name' => 'ignored'], 'filter' => (object) ['city' => 'Madrid']], ['key' => 'deepObject', 'filter' => 'deepObject'], true);
+        self::assertSame('https://api.example.test/search?key=secret&filter%5Bcity%5D=Madrid', $transport->sent[0]['url']);
     }
 
     public function testAbsentNullEmptyListsAndEmptyStringMembersAreDistinctExpansions(): void

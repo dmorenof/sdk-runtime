@@ -113,3 +113,18 @@ introduced by mutations, because decoding would make them ambiguous. Literal
 percent sequences are encoded as data (`%7C` becomes `%257C`). Repeated-key and
 CSV formats keep their existing behavior. The generator must reject undefined
 style/explode combinations rather than guessing how they should expand.
+
+### Flat deepObject query parameters (v0.8.0)
+
+`querySerialization: ['filter' => 'deepObject']` expands an object such as
+`(object) ['city' => 'Madrid', 'active' => false]` to
+`filter%5Bcity%5D=Madrid&filter%5Bactive%5D=false` for GET, POST or any other method.
+Validated DTOs and typed Maps are accepted; DTO JSON names, backed enum values
+and request-direction fields apply. Empty objects and absent/null outer values
+are omitted; empty strings produce explicit empty property values.
+
+Only scalar properties are defined by this slice. Nested objects/arrays, null
+properties, non-finite numbers, names containing brackets or empty names, and
+collisions with explicit query keys are rejected before sending. DTO/Map
+mutations are revalidated. Query objects coexist with the operation's JSON body;
+form and multipart request bodies remain pending in the generator.

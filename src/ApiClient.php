@@ -96,7 +96,7 @@ abstract class ApiClient
      *
      * @param OperationSpec $operation
      * @param array<string, scalar|null> $pathParameters
-     * @param array<string, scalar|list<scalar>|null> $queryParameters
+     * @param array<string, scalar|list<scalar>|DTO|Map|\stdClass|null> $queryParameters
      * @param array<string, scalar|null> $headerParameters
      */
     protected function executeOperation(

@@ -7,8 +7,8 @@ namespace Dmorenof\SdkRuntime;
 final class QuerySerializer
 {
     /**
-     * @param array<string, scalar|list<scalar>|null> $parameters
-     * @param array<string, 'multi'|'csv'|'ssv'|'tsv'|'pipes'> $formats Query list name => normalized wire format.
+     * @param array<string, scalar|list<scalar>|DTO|Map|\stdClass|null> $parameters
+     * @param array<string, 'multi'|'csv'|'ssv'|'tsv'|'pipes'|'deepObject'> $formats Query name => normalized wire format.
      */
     public static function encode(array $parameters, array $formats = []): string
     {
@@ -23,6 +23,16 @@ final class QuerySerializer
             $encodedName = rawurlencode((string) $name);
             if (isset($formats[$name])) {
                 $format = $formats[$name];
+                if ($format === 'deepObject') {
+                    foreach (self::objectFields($value, (string) $name) as $key => $item) {
+                        $expanded = $name . '[' . $key . ']';
+                        if (array_key_exists($expanded, $parameters)) {
+                            throw new \UnexpectedValueException("Deep query parameter $expanded collides with another query parameter.");
+                        }
+                        $pairs[] = rawurlencode($expanded) . '=' . rawurlencode(self::scalar($item));
+                    }
+                    continue;
+                }
                 $delimiter = match ($format) { 'ssv' => ' ', 'tsv' => "\t", 'pipes' => '|', default => null };
                 $items = self::encodedList($value, (string) $name, $delimiter);
                 if ($items === []) {
@@ -56,8 +66,43 @@ final class QuerySerializer
 
     private static function assertFormat(mixed $format, string $name): void
     {
-        if (!in_array($format, ['multi', 'csv', 'ssv', 'tsv', 'pipes'], true)) {
+        if (!in_array($format, ['multi', 'csv', 'ssv', 'tsv', 'pipes', 'deepObject'], true)) {
             throw new \InvalidArgumentException("Unsupported query array format for $name.");
+        }
+    }
+
+    /** @return array<array-key, scalar> */
+    private static function objectFields(mixed $value, string $name): array
+    {
+        self::assertObjectKey($name);
+        if ($value instanceof DTO) {
+            $value = $value->jsonSerializeForRequest();
+        }
+        if ($value instanceof Map) {
+            $value = $value->serializeForMode('request');
+        }
+        if (!$value instanceof \stdClass) {
+            throw new \UnexpectedValueException("Expected a flat object for deep query parameter $name.");
+        }
+        $fields = [];
+        foreach (get_object_vars($value) as $key => $item) {
+            self::assertObjectKey((string) $key);
+            if ($item instanceof \BackedEnum) {
+                $item = $item->value;
+            }
+            self::scalar($item); // Null, nested values and non-finite numbers have no supported expansion.
+            if (!is_scalar($item)) {
+                throw new \UnexpectedValueException("Expected a scalar property at $name.$key.");
+            }
+            $fields[$key] = $item;
+        }
+        return $fields;
+    }
+
+    private static function assertObjectKey(string $key): void
+    {
+        if ($key === '' || strpbrk($key, '[]') !== false) {
+            throw new \UnexpectedValueException('Deep query parameter and property names must be non-empty and contain no brackets.');
         }
     }
 

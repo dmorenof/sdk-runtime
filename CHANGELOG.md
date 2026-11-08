@@ -4,6 +4,13 @@
 
 No changes yet.
 
+## [0.8.0] — 2026-11-08
+
+- Add `deepObject` query serialization for flat scalar objects, shared by every HTTP method. Accept stdClass, validated DTOs and typed Maps; use JSON wire names, backed enum values and request-direction filtering.
+- Encode brackets and scalar property values once, preserve empty strings, omit absent/null outer parameters and empty objects. Reject nested/null property values, non-finite numbers, bracketed/empty names and collisions with explicit query keys before transport.
+- Revalidate DTO/Map mutations before serialization and retain API-key scalar precedence. This does not add HTTP forms, nested deepObject semantics or other object styles.
+- Verify encoding, directional fields, mutation rejection, ambiguous names, legacy serializers and the immutable published installation.
+
 ## [0.7.0] — 2026-11-08
 
 - Extend normalized query-list formats with `ssv`, `tsv` and `pipes`. Encode separators as `%20`, `%09` and `%7C` so URLs remain RFC3986-compatible; encode item content once and preserve existing repeated-key/CSV behavior.

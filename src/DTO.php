@@ -295,6 +295,13 @@ class DTO implements \JsonSerializable, \Stringable
         return Serializer::fields($this->fields(), $excluded, $this->declaredMap('WIRE_PROPERTY_MAP'), $mode);
     }
 
+    /** @internal Multipart fields preserve direct PSR uploads, which are not JSON values. */
+    public function multipartSerializeForRequest(): object
+    {
+        $this->validateForRequest();
+        return Serializer::fields($this->fields(), $this->declaredNames('READ_ONLY_FIELDS'), $this->declaredMap('WIRE_PROPERTY_MAP'), 'request', true);
+    }
+
     public function __toString(): string
     {
         return json_encode($this, JSON_THROW_ON_ERROR);

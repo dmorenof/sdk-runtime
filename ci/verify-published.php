@@ -90,3 +90,20 @@ if (!str_contains((string) $encoded, "\r\n\r\n\x00\xff\r\n\r\n")
     throw new RuntimeException('Published Guzzle multipart adaptation failed.');
 }
 echo "PUBLISHED_MULTIPART_SERIALIZATION_OK", PHP_EOL;
+
+$upload = new \GuzzleHttp\Psr7\UploadedFile(\GuzzleHttp\Psr7\Utils::streamFor("\x00\xff\r\n"), 4, UPLOAD_ERR_OK, 'photo.png', 'image/png');
+$payload = new class((object) ['file' => $upload]) extends \Dmorenof\SdkRuntime\DTO {
+    public string|\Psr\Http\Message\UploadedFileInterface $file;
+};
+$encodedUpload = \Dmorenof\SdkRuntime\MultipartSerializer::encode($payload, ['file' => ['contentType' => null, 'filename' => 'fallback.bin']]);
+if ($payload->file !== $upload || !str_contains((string) $encodedUpload, 'filename="photo.png"')
+    || !str_contains((string) $encodedUpload, 'Content-Type: image/png')
+    || !str_contains((string) $encodedUpload, "\r\n\r\n\x00\xff\r\n\r\n")) {
+    throw new RuntimeException('Published PSR uploaded file support failed.');
+}
+try {
+    json_encode($payload, JSON_THROW_ON_ERROR);
+    throw new RuntimeException('PSR upload silently encoded as JSON.');
+} catch (UnexpectedValueException) {
+    echo "PUBLISHED_PSR_UPLOAD_OK", PHP_EOL;
+}

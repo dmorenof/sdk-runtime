@@ -24,7 +24,7 @@ namespace Dmorenof\SdkRuntime;
  *     serverUrl?: string|null,
  *     requestMediaType?: string,
  *     bodySerialization?: array<string,'multi'|'csv'>,
- *     bodyParts?: array<string,array{contentType:string,filename?:string}>,
+ *     bodyParts?: array<string,array{contentType:?string,filename?:string}>,
  *     querySerialization?: array<string, 'multi'|'csv'|'ssv'|'tsv'|'pipes'|'deepObject'>,
  * }
  */
@@ -55,7 +55,7 @@ final readonly class Operation
      * @param array<int|string, string> $errors Status (or 'default') => error model class.
      * @param array<string, array<string, mixed>> $validation Parameter name => rules.
      * @param array<string,'multi'|'csv'> $bodySerialization Form array field name => wire format.
-     * @param array<string,array{contentType:string,filename?:string}> $bodyParts Multipart field metadata.
+     * @param array<string,array{contentType:?string,filename?:string}> $bodyParts Multipart metadata; null MIME accepts the uploaded file's type or octet-stream.
      * @param array<string, 'multi'|'csv'|'ssv'|'tsv'|'pipes'|'deepObject'> $querySerialization Query list name => normalized wire format.
      */
     public function __construct(

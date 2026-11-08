@@ -9,7 +9,7 @@ namespace Dmorenof\SdkRuntime;
  */
 final class Hydrator
 {
-    /** @var array<class-string, array<string, \ReflectionNamedType>> */
+    /** @var array<class-string, array<string, \ReflectionNamedType|\ReflectionUnionType>> */
     private static array $propertyTypes = [];
 
     public static function hydrate(mixed $value, string $kind, bool $nullable, string $where): mixed
@@ -32,10 +32,25 @@ final class Hydrator
                 throw new \InvalidArgumentException('JSON property ' . $model::class . "::$property is not writable.");
             }
             $type = $reflection->getType();
-            if (!$type instanceof \ReflectionNamedType) {
+            if (!$type instanceof \ReflectionNamedType && !$type instanceof \ReflectionUnionType) {
                 throw new \InvalidArgumentException('Unsupported PHP property type at ' . $model::class . "::$property.");
             }
             self::$propertyTypes[$model::class][$property] = $type;
+        }
+        if ($type instanceof \ReflectionUnionType) {
+            $names = [];
+            foreach ($type->getTypes() as $branch) {
+                if (!$branch instanceof \ReflectionNamedType) {
+                    throw new \InvalidArgumentException("Unsupported PHP property type at $where.");
+                }
+                $names[] = $branch->getName();
+            }
+            $upload = \Psr\Http\Message\UploadedFileInterface::class;
+            if (array_diff($names, ['string', $upload, 'null']) !== []
+                || !in_array('string', $names, true) || !in_array($upload, $names, true)) {
+                throw new \InvalidArgumentException("Unsupported PHP property type at $where.");
+            }
+            return self::hydrate($value, is_string($value) ? 'string' : $upload, $type->allowsNull(), $where);
         }
         return self::convert($value, $type->getName(), $type->allowsNull(), $type->isBuiltin(), $where);
     }
@@ -63,6 +78,13 @@ final class Hydrator
 
         if ($builtin) {
             return self::scalar($value, $kind, $where);
+        }
+
+        if ($kind === \Psr\Http\Message\UploadedFileInterface::class) {
+            if (!$value instanceof \Psr\Http\Message\UploadedFileInterface) {
+                throw new \UnexpectedValueException("Expected uploaded file at $where.");
+            }
+            return $value;
         }
 
         if (is_subclass_of($kind, Map::class)) {

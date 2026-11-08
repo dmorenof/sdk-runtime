@@ -11,6 +11,9 @@ final class Serializer
 {
     public static function value(mixed $value, string $mode): mixed
     {
+        if ($value instanceof \Psr\Http\Message\UploadedFileInterface) {
+            throw new \UnexpectedValueException('Uploaded files require multipart serialization.');
+        }
         if ($value instanceof DTO) {
             $effective = $mode === 'neutral'
                 ? ($value instanceof Request ? 'request' : ($value instanceof Response ? 'response' : 'neutral'))
@@ -38,12 +41,13 @@ final class Serializer
      * @param list<string> $excluded Direction-specific fields to omit.
      * @param array<string, string> $wireNames PHP property name => JSON name.
      */
-    public static function fields(array $fields, array $excluded, array $wireNames, string $mode): object
+    public static function fields(array $fields, array $excluded, array $wireNames, string $mode, bool $multipart = false): object
     {
         $serialized = [];
         foreach ($fields as $name => $value) {
             if (!in_array($name, $excluded, true)) {
-                $serialized[$wireNames[$name] ?? $name] = self::value($value, $mode);
+                $serialized[$wireNames[$name] ?? $name] = $multipart && $value instanceof \Psr\Http\Message\UploadedFileInterface
+                    ? $value : self::value($value, $mode);
             }
         }
         return (object) $serialized;

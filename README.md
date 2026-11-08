@@ -163,7 +163,8 @@ represent all OpenAPI styles. Transport remains PSR-18-compatible.
 Set `requestMediaType: 'multipart/form-data'` and `bodyParts` on an Operation.
 Each wire field declares `['contentType' => 'text/plain']`; binary file fields
 use e.g. `['contentType' => 'application/octet-stream', 'filename' => 'upload.bin']`.
-DTO properties contain scalar values, primitive lists or raw binary strings.
+DTO properties contain scalar values, primitive lists or raw binary strings;
+new binary DTOs can also declare the PSR upload union below.
 Lists become repeated parts. Guzzle's PSR-7 `MultipartStream` builds MIME and
 boundaries; no MIME encoder is maintained here. Filenames and field names must
 be printable ASCII without quotes/backslashes; content types are single MIME
@@ -176,3 +177,25 @@ The existing transport contract receives a complete string, so multipart bodies
 are buffered in memory. This API does not promise streaming or bounded memory
 for large uploads. Nested fields, binary lists and arbitrary part headers are
 not supported. JSON operations continue to use JSON serialization.
+
+### PSR uploaded files (v0.12.0)
+
+A binary DTO property can declare `string|\Psr\Http\Message\UploadedFileInterface`
+(or add `|null` when nullable). Construct files using the existing Guzzle PSR-7
+`UploadedFile`, with a readable, seekable stream or local file path. Its client
+filename replaces the static fallback; the same ASCII/quoted-name restrictions
+apply. Filename `0` remains rejected for compatibility with older PSR-7 versions.
+
+A binary `bodyParts` entry can set `contentType` to null to use the upload's MIME
+type, falling back to application/octet-stream when absent. A non-null contentType
+is a contract restriction: conflicting uploaded MIME metadata is rejected
+(case-insensitive matching). MIME types must be single concrete types without
+parameters. Strings retain the declared type or octet-stream fallback and fixed
+filename. Existing string-only SDKs and transport signatures keep working.
+
+Failed uploads, moved/unreadable streams and non-seekable streams fail before
+transport. Guzzle rewinds seekable streams for complete repeat sends. Upload
+objects are allowed only in direct binary multipart fields; JSON, URL-encoded
+forms and nested file values reject them explicitly. General native schema-union
+support is unchanged. Bodies are still buffered: accepting an input stream does
+not provide streaming HTTP or bounded memory for large files.

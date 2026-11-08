@@ -127,7 +127,7 @@ Only scalar properties are defined by this slice. Nested objects/arrays, null
 properties, non-finite numbers, names containing brackets or empty names, and
 collisions with explicit query keys are rejected before sending. DTO/Map
 mutations are revalidated. Query objects coexist with the operation's JSON body;
-form and multipart request bodies remain pending in the generator.
+additional form shapes and multipart capabilities depend on the generator's supported subset.
 
 ### URL-encoded form bodies (v0.9.0)
 
@@ -141,7 +141,7 @@ body has no Content-Type; a present empty DTO sends empty bytes with the form
 Content-Type. Existing operations retain application/json by default.
 
 Only scalar fields and primitive repeated-key/CSV lists are supported. Nested
-objects, files, multipart and other encoding styles fail explicitly. Mutations
+objects, files and other URL-encoded form styles fail explicitly. Mutations
 are validated before transport; query API-key handling remains separate.
 
 ## Shared execution and configuration (v0.10.0)
@@ -157,3 +157,20 @@ validation and omission rules. Forms select native RFC1738 percent-encoding;
 JSON bodies continue through the validated DTO request representation. Generic
 Guzzle query/form_params options use indexed PHP arrays and do not by themselves
 represent all OpenAPI styles. Transport remains PSR-18-compatible.
+
+### Buffered multipart bodies
+
+Set `requestMediaType: 'multipart/form-data'` and `bodyParts` on an Operation.
+Each wire field declares `['contentType' => 'text/plain']`; binary file fields
+use e.g. `['contentType' => 'application/octet-stream', 'filename' => 'upload.bin']`.
+DTO properties contain scalar values, primitive lists or raw binary strings.
+Lists become repeated parts. Guzzle's PSR-7 `MultipartStream` builds MIME and
+boundaries; no MIME encoder is maintained here. Filenames and field names must
+be printable ASCII without quotes/backslashes; content types are single MIME
+types without parameters. Nulls and empty lists are omitted; empty strings
+and empty files produce parts. DTO validation and direction rules still apply.
+
+The existing transport contract receives a complete string, so multipart bodies
+are buffered in memory. This API does not promise streaming or bounded memory
+for large uploads. Nested fields, binary lists and arbitrary part headers are
+not supported. JSON operations continue to use JSON serialization.

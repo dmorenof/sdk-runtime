@@ -75,3 +75,18 @@ if ((new \Dmorenof\SdkRuntime\Configuration())->headers !== []) {
     throw new RuntimeException('Shared configuration leaked state.');
 }
 echo "PUBLISHED_SHARED_EXECUTION_OK", PHP_EOL;
+
+$multipart = new class extends \Dmorenof\SdkRuntime\DTO { public string $file; public bool $active; };
+$multipart->file = "\x00\xff\r\n";
+$multipart->active = false;
+$encoded = \Dmorenof\SdkRuntime\MultipartSerializer::encode($multipart, [
+    'file' => ['contentType' => 'application/octet-stream', 'filename' => 'upload.bin'],
+    'active' => ['contentType' => 'text/plain'],
+]);
+if (!str_contains((string) $encoded, "\r\n\r\n\x00\xff\r\n\r\n")
+    || !str_contains((string) $encoded, 'filename="upload.bin"')
+    || !str_contains((string) $encoded, "\r\n\r\nfalse\r\n")
+    || !str_ends_with((string) $encoded, '--' . $encoded->getBoundary() . "--\r\n")) {
+    throw new RuntimeException('Published Guzzle multipart adaptation failed.');
+}
+echo "PUBLISHED_MULTIPART_SERIALIZATION_OK", PHP_EOL;

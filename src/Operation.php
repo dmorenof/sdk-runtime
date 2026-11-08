@@ -24,6 +24,7 @@ namespace Dmorenof\SdkRuntime;
  *     serverUrl?: string|null,
  *     requestMediaType?: string,
  *     bodySerialization?: array<string,'multi'|'csv'>,
+ *     bodyParts?: array<string,array{contentType:string,filename?:string}>,
  *     querySerialization?: array<string, 'multi'|'csv'|'ssv'|'tsv'|'pipes'|'deepObject'>,
  * }
  */
@@ -42,6 +43,7 @@ final readonly class Operation
         'querySerialization' => [],
         'requestMediaType' => 'application/json',
         'bodySerialization' => [],
+        'bodyParts' => [],
     ];
 
     /** "METHOD path", unless the operation names itself. */
@@ -53,6 +55,7 @@ final readonly class Operation
      * @param array<int|string, string> $errors Status (or 'default') => error model class.
      * @param array<string, array<string, mixed>> $validation Parameter name => rules.
      * @param array<string,'multi'|'csv'> $bodySerialization Form array field name => wire format.
+     * @param array<string,array{contentType:string,filename?:string}> $bodyParts Multipart field metadata.
      * @param array<string, 'multi'|'csv'|'ssv'|'tsv'|'pipes'|'deepObject'> $querySerialization Query list name => normalized wire format.
      */
     public function __construct(
@@ -70,6 +73,7 @@ final readonly class Operation
         public array $querySerialization = self::DEFAULTS['querySerialization'],
         public string $requestMediaType = self::DEFAULTS['requestMediaType'],
         public array $bodySerialization = self::DEFAULTS['bodySerialization'],
+        public array $bodyParts = self::DEFAULTS['bodyParts'],
     ) {
         $this->label = $label ?? $method . ' ' . $path;
     }

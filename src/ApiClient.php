@@ -221,16 +221,23 @@ abstract class ApiClient
         }
         $query = array_filter($queryParameters, static fn ($value): bool => $value !== null);
         $headers = ['Accept' => 'application/json'] + self::stringifyAll($headerParameters);
-        if (!in_array($spec->requestMediaType, ['application/json', 'application/x-www-form-urlencoded'], true)
-            || ($spec->requestMediaType === 'application/json' && $spec->bodySerialization !== [])) {
+        if (!in_array($spec->requestMediaType, ['application/json', 'application/x-www-form-urlencoded', 'multipart/form-data'], true)
+            || ($spec->requestMediaType !== 'application/x-www-form-urlencoded' && $spec->bodySerialization !== [])
+            || ($spec->requestMediaType !== 'multipart/form-data' && $spec->bodyParts !== [])) {
             throw new \InvalidArgumentException('Unsupported request body media type or serialization metadata.');
         }
-        $bodyJson = null;
+        $bodyBytes = null;
         if ($body !== null) {
             $headers['Content-Type'] = $spec->requestMediaType;
-            $bodyJson = $spec->requestMediaType === 'application/x-www-form-urlencoded'
-                ? FormSerializer::encode($body, $spec->bodySerialization)
-                : json_encode($body->jsonSerializeForRequest(), JSON_THROW_ON_ERROR);
+            if ($spec->requestMediaType === 'multipart/form-data') {
+                $multipart = MultipartSerializer::encode($body, $spec->bodyParts);
+                $headers['Content-Type'] .= '; boundary=' . $multipart->getBoundary();
+                $bodyBytes = (string) $multipart;
+            } else {
+                $bodyBytes = $spec->requestMediaType === 'application/x-www-form-urlencoded'
+                    ? FormSerializer::encode($body, $spec->bodySerialization)
+                    : json_encode($body->jsonSerializeForRequest(), JSON_THROW_ON_ERROR);
+            }
         }
 
         $securityQuery = [];
@@ -250,7 +257,7 @@ abstract class ApiClient
         if ($encodedQuery !== '') {
             $url .= '?' . $encodedQuery;
         }
-        $response = $this->transport->send($spec->method, $url, $headers, $bodyJson);
+        $response = $this->transport->send($spec->method, $url, $headers, $bodyBytes);
         if (!$spec->succeeded($response->status)) {
             throw ApiException::fromResponse($response, $spec->label, $spec->errorTypeFor($response->status));
         }

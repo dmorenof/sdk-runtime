@@ -2,7 +2,9 @@
 
 ## Unreleased
 
-No changes yet.
+- Add buffered multipart DTO requests using the existing Guzzle PSR-7 MultipartStream, with primitive text fields, repeated primitive lists and binary string file parts. Optional Operation::bodyParts declares static content types and filenames; JSON/form defaults and public transport interfaces remain compatible.
+- Preserve binary bytes, wire names, direction filtering, required/value validation and mutation checks. Omit nulls and empty lists, retain empty fields/files, distinguish absent and empty multipart bodies; reject unsupported shapes and unsafe part metadata before transport.
+- No streaming/large-file memory guarantees: TransportInterface receives complete string bodies. General per-part headers, nested objects, CSV multipart arrays and request representation negotiation remain outside this slice.
 
 ## [0.10.1] — 2026-11-08
 

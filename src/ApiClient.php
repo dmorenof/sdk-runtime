@@ -121,10 +121,16 @@ abstract class ApiClient
         }
         $query = array_filter($queryParameters, static fn ($value): bool => $value !== null);
         $headers = ['Accept' => 'application/json'] + self::stringifyAll($headerParameters);
+        if (!in_array($spec->requestMediaType, ['application/json', 'application/x-www-form-urlencoded'], true)
+            || ($spec->requestMediaType === 'application/json' && $spec->bodySerialization !== [])) {
+            throw new \InvalidArgumentException('Unsupported request body media type or serialization metadata.');
+        }
         $bodyJson = null;
         if ($body !== null) {
-            $headers['Content-Type'] = 'application/json';
-            $bodyJson = json_encode($body->jsonSerializeForRequest(), JSON_THROW_ON_ERROR);
+            $headers['Content-Type'] = $spec->requestMediaType;
+            $bodyJson = $spec->requestMediaType === 'application/x-www-form-urlencoded'
+                ? FormSerializer::encode($body, $spec->bodySerialization)
+                : json_encode($body->jsonSerializeForRequest(), JSON_THROW_ON_ERROR);
         }
 
         $securityQuery = [];

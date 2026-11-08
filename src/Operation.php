@@ -22,6 +22,8 @@ namespace Dmorenof\SdkRuntime;
  *     noContentAllowed?: bool,
  *     validation?: array<string, array<string, mixed>>,
  *     serverUrl?: string|null,
+ *     requestMediaType?: string,
+ *     bodySerialization?: array<string,'multi'|'csv'>,
  *     querySerialization?: array<string, 'multi'|'csv'|'ssv'|'tsv'|'pipes'|'deepObject'>,
  * }
  */
@@ -38,6 +40,8 @@ final readonly class Operation
         'validation' => [],
         'serverUrl' => null,
         'querySerialization' => [],
+        'requestMediaType' => 'application/json',
+        'bodySerialization' => [],
     ];
 
     /** "METHOD path", unless the operation names itself. */
@@ -48,6 +52,7 @@ final readonly class Operation
      * @param list<int> $success Statuses that are not errors.
      * @param array<int|string, string> $errors Status (or 'default') => error model class.
      * @param array<string, array<string, mixed>> $validation Parameter name => rules.
+     * @param array<string,'multi'|'csv'> $bodySerialization Form array field name => wire format.
      * @param array<string, 'multi'|'csv'|'ssv'|'tsv'|'pipes'|'deepObject'> $querySerialization Query list name => normalized wire format.
      */
     public function __construct(
@@ -63,6 +68,8 @@ final readonly class Operation
         public array $validation = self::DEFAULTS['validation'],
         public ?string $serverUrl = self::DEFAULTS['serverUrl'],
         public array $querySerialization = self::DEFAULTS['querySerialization'],
+        public string $requestMediaType = self::DEFAULTS['requestMediaType'],
+        public array $bodySerialization = self::DEFAULTS['bodySerialization'],
     ) {
         $this->label = $label ?? $method . ' ' . $path;
     }

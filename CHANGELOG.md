@@ -4,6 +4,13 @@
 
 No changes yet.
 
+## [0.9.0] — 2026-11-08
+
+- Add URL-encoded form bodies through optional Operation requestMediaType/bodySerialization metadata. Preserve existing JSON defaults and positional querySerialization constructor compatibility.
+- Serialize validated DTO request fields using HTML form encoding: spaces as +, escaped literal plus/tilde/percent, scalar backed enums and primitive repeated-key/CSV lists. Preserve wire names, request direction and mutation validation; omit null fields and empty lists, retain empty strings.
+- Keep query, headers and body independent. Distinguish absent body (no content type/body) from present empty form (empty bytes with form content type). Reject nested fields, null list items, non-finite values, unsupported modes/media and JSON operations carrying form metadata before transport.
+- Verify exact body bytes, headers, legacy behavior and clean installation of the immutable release. Multipart, files, objects and other form encoding styles remain pending.
+
 ## [0.8.0] — 2026-11-08
 
 - Add `deepObject` query serialization for flat scalar objects, shared by every HTTP method. Accept stdClass, validated DTOs and typed Maps; use JSON wire names, backed enum values and request-direction filtering.

@@ -7,7 +7,7 @@ namespace Dmorenof\SdkRuntime;
 final class QuerySerializer
 {
     /**
-     * @param array<string, scalar|list<scalar>|DTO|Map|\stdClass|null> $parameters
+     * @param array<array-key, scalar|list<scalar>|DTO|Map|\stdClass|null> $parameters
      * @param array<string, 'multi'|'csv'|'ssv'|'tsv'|'pipes'|'deepObject'> $formats Query name => normalized wire format.
      */
     public static function encode(array $parameters, array $formats = []): string

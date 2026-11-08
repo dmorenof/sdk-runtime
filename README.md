@@ -128,3 +128,18 @@ properties, non-finite numbers, names containing brackets or empty names, and
 collisions with explicit query keys are rejected before sending. DTO/Map
 mutations are revalidated. Query objects coexist with the operation's JSON body;
 form and multipart request bodies remain pending in the generator.
+
+### URL-encoded form bodies (v0.9.0)
+
+Operations can declare `requestMediaType: 'application/x-www-form-urlencoded'`
+and `bodySerialization: ['ids' => 'multi', 'codes' => 'csv']`. The body remains a
+typed DTO, independent of path/query/header parameters. The shared serializer
+validates it, applies JSON names and request-direction fields, normalizes backed
+enums and primitive lists, and encodes spaces as + and literal +/~/% as data.
+Null fields/empty lists are omitted; empty strings remain explicit. A missing
+body has no Content-Type; a present empty DTO sends empty bytes with the form
+Content-Type. Existing operations retain application/json by default.
+
+Only scalar fields and primitive repeated-key/CSV lists are supported. Nested
+objects, files, multipart and other encoding styles fail explicitly. Mutations
+are validated before transport; query API-key handling remains separate.

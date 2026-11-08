@@ -23,6 +23,14 @@ echo "PUBLISHED_RUNTIME_INSTALL_OK ", $tag, " ", $expected, PHP_EOL;
 $transport = new class implements \Dmorenof\SdkRuntime\Transport\TransportInterface {
     public function send(string $method, string $url, array $headers, ?string $body): \Dmorenof\SdkRuntime\Transport\HttpResponse
     {
+        if ($method === 'POST') {
+            if ($url !== 'https://example.test/forms?q=a%20b'
+                || $body !== 'name=%C3%B1+%2B%7E&ids=1&ids=2'
+                || ($headers['Content-Type'] ?? null) !== 'application/x-www-form-urlencoded') {
+                throw new RuntimeException('Installed runtime form encoding failed.');
+            }
+            return new \Dmorenof\SdkRuntime\Transport\HttpResponse(204, '');
+        }
         if ($url !== 'https://example.test/search?ids=1&ids=2&codes=a%2Cb,x%20y&spaces=3%204&pipes=a%7Cb&tabs=5%096&filter%5Bcity%5D=Madrid&filter%5Bactive%5D=false') {
             throw new RuntimeException('Installed runtime query serialization failed.');
         }
@@ -30,6 +38,16 @@ $transport = new class implements \Dmorenof\SdkRuntime\Transport\TransportInterf
     }
 };
 $client = new class('https://example.test', transport: $transport) extends \Dmorenof\SdkRuntime\ApiClient {
+    public function formProbe(): void
+    {
+        $body = new class((object) ['name' => 'ñ +~', 'ids' => [1, 2]]) extends \Dmorenof\SdkRuntime\DTO {
+            public string $name;
+            public array $ids;
+        };
+        $this->executeOperation(['method' => 'POST', 'path' => '/forms', 'success' => [204],
+            'requestMediaType' => 'application/x-www-form-urlencoded', 'bodySerialization' => ['ids' => 'multi']],
+            queryParameters: ['q' => 'a b'], body: $body);
+    }
     public function probe(): void
     {
         $this->executeOperation(['method' => 'GET', 'path' => '/search', 'success' => [204],
@@ -39,3 +57,6 @@ $client = new class('https://example.test', transport: $transport) extends \Dmor
 };
 $client->probe();
 echo "PUBLISHED_QUERY_SERIALIZATION_OK", PHP_EOL;
+
+$client->formProbe();
+echo "PUBLISHED_FORM_SERIALIZATION_OK", PHP_EOL;

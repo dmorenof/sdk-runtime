@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+No changes yet.
+
+## [0.12.0] — 2026-11-08
+
 - Accept PSR UploadedFileInterface values for multipart binary DTO fields, preserving the existing string input. Reuse Guzzle's UploadedFile/streams and MultipartStream; no new upload wrapper or transport interface.
 - Hydrate the explicit string|UploadedFileInterface property union, including nullable properties. Preserve wire names, required/directional rules and mutation validation. JSON serialization rejects upload objects instead of silently emitting empty JSON objects; arbitrary schema unions remain outside this change.
 - Null binary part contentType accepts the upload's MIME type or falls back to application/octet-stream. Explicit contract content types remain enforced. Use the client filename with existing safe-name checks, or the declared fallback filename; reject failed uploads and unreadable/non-seekable streams before transport. Seekable streams rewind for repeat sends through Guzzle.

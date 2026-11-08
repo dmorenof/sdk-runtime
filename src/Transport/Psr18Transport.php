@@ -7,6 +7,7 @@ use GuzzleHttp\Psr7\Request;
 use Psr\Http\Client\ClientInterface;
 use Psr\Http\Message\RequestInterface;
 use Psr\Http\Message\ResponseInterface;
+use Psr\Http\Message\StreamInterface;
 
 /**
  * Common PSR-18/Guzzle adapter. Body bytes are already serialized according to the operation media type.
@@ -29,12 +30,18 @@ final class Psr18Transport implements TransportInterface
     }
 
     /** @param array<string, string> $headers */
-    public function send(string $method, string $url, array $headers, ?string $body): HttpResponse
+    public function send(string $method, string $url, array $headers, string|StreamInterface|null $body): HttpResponse
     {
         $request = new Request($method, $url, array_replace($this->defaultHeaders, $headers), $body ?? '');
 
         foreach ($this->middlewares as $middleware) {
             $request = $middleware->beforeRequest($request);
+        }
+
+        // Middleware may inspect or replace a body. Send seekable bodies from their start,
+        // including multipart streams whose source files were consumed by a previous send.
+        if ($request->getBody()->isSeekable()) {
+            $request->getBody()->rewind();
         }
 
         // PSR-18 returns non-2xx responses without throwing for status alone.

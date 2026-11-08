@@ -173,10 +173,10 @@ versions treat it as absent; use e.g. `0.bin`. Numeric field names are supported
 Nulls and empty lists are omitted; empty strings
 and empty files produce parts. DTO validation and direction rules still apply.
 
-The existing transport contract receives a complete string, so multipart bodies
-are buffered in memory. This API does not promise streaming or bounded memory
-for large uploads. Nested fields, binary lists and arbitrary part headers are
-not supported. JSON operations continue to use JSON serialization.
+The standard PSR-18 adapter preserves the MultipartStream since v0.13.0; legacy
+custom TransportInterface implementations still receive complete strings. Use
+file-backed PSR uploads for large files. Nested fields, binary lists and arbitrary
+part headers are not supported. JSON operations continue to use JSON serialization.
 
 ### PSR uploaded files (v0.12.0)
 
@@ -197,5 +197,29 @@ Failed uploads, moved/unreadable streams and non-seekable streams fail before
 transport. Guzzle rewinds seekable streams for complete repeat sends. Upload
 objects are allowed only in direct binary multipart fields; JSON, URL-encoded
 forms and nested file values reject them explicitly. General native schema-union
-support is unchanged. Bodies are still buffered: accepting an input stream does
-not provide streaming HTTP or bounded memory for large files.
+support is unchanged. Since v0.13.0 the standard PSR-18 adapter passes multipart
+streams directly to the client; legacy custom transports keep buffering.
+
+
+### Streaming multipart through PSR-18 (v0.13.0)
+
+ApiClient passes Guzzle MultipartStream directly to the existing Psr18Transport.
+Its send method accepts PSR streams in addition to the original string/null body;
+the legacy TransportInterface signature stays unchanged. No transport interface,
+HTTP stack or stream wrapper is added. Inject a standard PSR-18 client through
+Client::connect/httpClient when implementing custom streaming HTTP behavior.
+
+The adapter rewinds seekable request bodies after middleware inspection or
+replacement, so repeated uploads send complete files. Each file part must use an
+independent stream cursor; reusing the same PSR stream object in multiple parts is
+rejected before HTTP to avoid truncating subsequent parts.
+
+A 32 MiB file was sent twice with default Guzzle/cURL and real cloud-local HTTP,
+under PHP memory_limit=16M, with a measured 4 MiB PHP peak. An independent MIME
+parser checked the full file bytes, name, MIME type, headers and query. CI and the
+published installation smoke also read two 32 MiB multipart requests in chunks
+under that limit. These measurements describe the tested upload path. String
+inputs are already in memory, legacy custom transports buffer, middleware or an
+injected HTTP client can buffer, and response bodies are still collected as
+strings. Non-seekable inputs, file lists and general streaming responses remain
+outside this feature.

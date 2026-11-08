@@ -24,3 +24,6 @@ if [[ "${1:-}" == "--coverage" ]]; then
 else
   vendor/bin/phpunit -c phpunit.xml
 fi
+
+# A body larger than the process limit must pass as a stream, including a repeat send.
+php -d memory_limit=16M tests/streaming-smoke.php "$PWD/vendor/autoload.php"

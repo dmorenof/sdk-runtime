@@ -6,7 +6,7 @@ namespace Dmorenof\SdkRuntime;
 use GuzzleHttp\Psr7\MultipartStream;
 use Psr\Http\Message\UploadedFileInterface;
 
-/** Adapt validated flat DTO fields to Guzzle's MIME encoder. Bodies are buffered. */
+/** Adapt validated flat DTO fields to Guzzle's MIME stream without reading file contents. */
 final class MultipartSerializer
 {
     /**
@@ -18,6 +18,7 @@ final class MultipartSerializer
             self::assertPart((string) $name, $part);
         }
         $elements = [];
+        $usedStreams = [];
         foreach (get_object_vars($body->multipartSerializeForRequest()) as $name => $value) {
             if (!isset($parts[$name])) {
                 throw new \InvalidArgumentException("Missing multipart metadata for $name.");
@@ -49,6 +50,11 @@ final class MultipartSerializer
                     if (!$contents->isReadable() || !$contents->isSeekable()) {
                         throw new \UnexpectedValueException('Uploaded file streams must be readable and seekable.');
                     }
+                    $streamId = spl_object_id($contents);
+                    if (isset($usedStreams[$streamId])) {
+                        throw new \UnexpectedValueException('Multipart file parts must use independent stream cursors.');
+                    }
+                    $usedStreams[$streamId] = true;
                 } else {
                     if (!is_scalar($item) || (is_float($item) && !is_finite($item))
                         || (isset($part['filename']) && !is_string($item))) {

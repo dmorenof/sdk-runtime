@@ -232,7 +232,7 @@ abstract class ApiClient
             if ($spec->requestMediaType === 'multipart/form-data') {
                 $multipart = MultipartSerializer::encode($body, $spec->bodyParts);
                 $headers['Content-Type'] .= '; boundary=' . $multipart->getBoundary();
-                $bodyBytes = (string) $multipart;
+                $bodyBytes = $multipart;
             } else {
                 $bodyBytes = $spec->requestMediaType === 'application/x-www-form-urlencoded'
                     ? FormSerializer::encode($body, $spec->bodySerialization)
@@ -257,7 +257,10 @@ abstract class ApiClient
         if ($encodedQuery !== '') {
             $url .= '?' . $encodedQuery;
         }
-        $response = $this->transport->send($spec->method, $url, $headers, $bodyBytes);
+        $response = $this->transport instanceof Psr18Transport
+            ? $this->transport->send($spec->method, $url, $headers, $bodyBytes)
+            : $this->transport->send($spec->method, $url, $headers,
+                $bodyBytes instanceof \Psr\Http\Message\StreamInterface ? (string) $bodyBytes : $bodyBytes);
         if (!$spec->succeeded($response->status)) {
             throw ApiException::fromResponse($response, $spec->label, $spec->errorTypeFor($response->status));
         }

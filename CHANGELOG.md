@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+No changes yet.
+
+## [0.14.0] — 2026-11-08
+
 - Expand binary multipart list fields into repeated parts with the exact same wire name, preserving item order, per-file PSR filename/MIME and raw string bytes. Reuse the existing Guzzle MultipartStream encoder and seekable-stream transport.
 - Add the bounded binary item descriptor for native PHP list validation (string or UploadedFileInterface). Revalidate list shape, bounds and mutations; permit PSR objects only in multipart traversal, keeping explicit JSON/urlencoded rejection. Text lists, scalar files and independent-cursor checks retain their behavior.
 - Verify mixed inputs, names, per-item MIME conflicts, failed uploads, duplicates, null/empty policies, direction and JSON behavior. Extend CI and installed-package streaming smoke to two independent 16 MiB files (32 MiB aggregate) per request, repeated twice under PHP memory_limit=16M; real default Guzzle/cURL HTTP measured 4 MiB PHP peak and complete files verified by an independent MIME parser.

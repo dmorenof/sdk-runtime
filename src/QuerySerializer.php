@@ -3,6 +3,8 @@ declare(strict_types=1);
 
 namespace Dmorenof\SdkRuntime;
 
+use GuzzleHttp\Psr7\Query;
+
 /** Query scalars and explicitly declared lists. Item encoding precedes CSV joining. */
 final class QuerySerializer
 {
@@ -10,8 +12,13 @@ final class QuerySerializer
      * @param array<array-key, scalar|list<scalar>|DTO|Map|\stdClass|null> $parameters
      * @param array<string, 'multi'|'csv'|'ssv'|'tsv'|'pipes'|'deepObject'> $formats Query name => normalized wire format.
      */
-    public static function encode(array $parameters, array $formats = []): string
+    public static function encode(array $parameters, array $formats = [], int $encoding = PHP_QUERY_RFC3986): string
     {
+        $encode = match ($encoding) {
+            PHP_QUERY_RFC3986 => rawurlencode(...),
+            PHP_QUERY_RFC1738 => urlencode(...),
+            default => throw new \InvalidArgumentException('Unsupported query percent-encoding standard.'),
+        };
         foreach ($formats as $name => $format) {
             self::assertFormat($format, (string) $name);
         }
@@ -20,7 +27,7 @@ final class QuerySerializer
             if ($value === null) {
                 continue;
             }
-            $encodedName = rawurlencode((string) $name);
+            $encodedName = $encode((string) $name);
             if (isset($formats[$name])) {
                 $format = $formats[$name];
                 if ($format === 'deepObject') {
@@ -29,31 +36,29 @@ final class QuerySerializer
                         if (array_key_exists($expanded, $parameters)) {
                             throw new \UnexpectedValueException("Deep query parameter $expanded collides with another query parameter.");
                         }
-                        $pairs[] = rawurlencode($expanded) . '=' . rawurlencode(self::scalar($item));
+                        $pairs[$encode($expanded)] = $encode(self::scalar($item));
                     }
                     continue;
                 }
                 $delimiter = match ($format) { 'ssv' => ' ', 'tsv' => "\t", 'pipes' => '|', default => null };
-                $items = self::encodedList($value, (string) $name, $delimiter);
+                $items = self::encodedList($value, (string) $name, $delimiter, $encode);
                 if ($items === []) {
                     continue; // Empty list expansion has no URI-template members.
                 }
                 if ($format !== 'multi') {
-                    $separator = $delimiter === null ? ',' : rawurlencode($delimiter);
-                    $pairs[] = $encodedName . '=' . implode($separator, $items);
+                    $separator = $delimiter === null ? ',' : $encode($delimiter);
+                    $pairs[$encodedName] = implode($separator, $items);
                 } else {
-                    foreach ($items as $item) {
-                        $pairs[] = $encodedName . '=' . $item;
-                    }
+                    $pairs[$encodedName] = $items;
                 }
             } else {
                 if (is_array($value)) {
                     throw new \UnexpectedValueException("Query array $name requires declared serialization metadata.");
                 }
-                $pairs[] = $encodedName . '=' . rawurlencode(self::scalar($value));
+                $pairs[$encodedName] = $encode(self::scalar($value));
             }
         }
-        return implode('&', $pairs);
+        return Query::build($pairs, false);
     }
 
     private static function scalar(mixed $value): string
@@ -106,8 +111,11 @@ final class QuerySerializer
         }
     }
 
-    /** @return list<string> */
-    private static function encodedList(mixed $value, string $name, ?string $delimiter): array
+    /**
+     * @param callable(string):string $encode
+     * @return list<string>
+     */
+    private static function encodedList(mixed $value, string $name, ?string $delimiter, callable $encode): array
     {
         if (!is_array($value) || !array_is_list($value)) {
             throw new \UnexpectedValueException("Expected a list for query parameter $name.");
@@ -118,7 +126,7 @@ final class QuerySerializer
             if ($delimiter !== null && str_contains($text, $delimiter)) {
                 throw new \UnexpectedValueException("Query parameter $name contains its list delimiter; use a different serialization.");
             }
-            $items[] = rawurlencode($text);
+            $items[] = $encode($text);
         }
         return $items;
     }

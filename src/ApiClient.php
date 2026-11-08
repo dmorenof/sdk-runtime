@@ -91,6 +91,99 @@ abstract class ApiClient
     }
 
     /**
+     * Transfer only initialized properties, preserving OpenAPI wire names.
+     * Shared runtime DTO validation checks required and nested fields.
+     *
+     * @return array{
+     *   path:array<string,bool|float|int|string|null>,
+     *   query:array<string,bool|float|int|string|list<bool|float|int|string>|DTO|Map|null>,
+     *   header:array<string,bool|float|int|string|null>,
+     *   body:?DTO
+     * }
+     */
+    private static function operationFields(DTO $dto): array
+    {
+        $dto->validateForRequest();
+        $values = get_object_vars($dto);
+        $bodyValue = $values['body'] ?? null;
+        // A query or path parameter may also be named "body"; only an explicit operation body is a payload.
+        $hasBody = defined($dto::class . '::OPERATION_BODY') && constant($dto::class . '::OPERATION_BODY') === true;
+        $body = $hasBody && $bodyValue instanceof DTO ? $bodyValue : null;
+        /** @var array{path:array<string,bool|float|int|string|null>,query:array<string,bool|float|int|string|list<bool|float|int|string>|DTO|Map|null>,header:array<string,bool|float|int|string|null>,body:?DTO} $result */
+        $result = ['path' => [], 'query' => [], 'header' => [], 'body' => $body];
+        /** @var array{path:array<string,string>,query:array<string,string>,header:array<string,string>} $locations */
+        $locations = constant($dto::class . '::OPERATION_FIELDS');
+        foreach ($locations as $location => $fields) {
+            foreach ($fields as $wireName => $property) {
+                if (!array_key_exists($property, $values)) {
+                    continue;
+                }
+                $value = $values[$property];
+                if ($location === 'query' && ($value instanceof DTO || $value instanceof Map)) {
+                    $result['query'][$wireName] = $value;
+                    continue;
+                }
+                if (is_array($value)) {
+                    if ($location !== 'query' || !array_is_list($value)) {
+                        throw new \UnexpectedValueException("Only query parameters can carry scalar lists: $wireName");
+                    }
+                    $items = [];
+                    foreach ($value as $item) {
+                        if (!is_scalar($item)) {
+                            throw new \UnexpectedValueException("Query array members must be scalars: $wireName");
+                        }
+                        $items[] = $item;
+                    }
+                    $result['query'][$wireName] = $items;
+                    continue;
+                }
+                if ($value !== null && !is_scalar($value)) {
+                    throw new \UnexpectedValueException("Non-scalar operation parameter: $wireName");
+                }
+                $result[$location][$wireName] = $value;
+            }
+        }
+        return $result;
+    }
+
+    /**
+     * Map identifier + payload to the shared sdk-runtime executor.
+     * @param OperationSpec $operation
+     */
+    protected function executeArguments(
+        array $operation,
+        string|int|float|bool|DTO|null $identifier = null,
+        ?string $identifierName = null,
+        ?DTO $payload = null,
+        ?DTO $body = null,
+    ): mixed {
+        /** @var array<string,bool|float|int|string|null> $path */
+        $path = [];
+        if ($identifier instanceof DTO) {
+            $path = self::operationFields($identifier)['path'];
+        } elseif ($identifierName !== null) {
+            $path[$identifierName] = $identifier;
+        }
+        /** @var array<string,bool|float|int|string|list<bool|float|int|string>|DTO|Map|null> $query */
+        $query = [];
+        /** @var array<string,bool|float|int|string|null> $headers */
+        $headers = [];
+        if ($payload !== null) {
+            $fields = self::operationFields($payload);
+            $query = $fields['query'];
+            $headers = $fields['header'];
+            $body = $fields['body'];
+        }
+        return $this->executeOperation(
+            $operation,
+            pathParameters: $path,
+            queryParameters: $query,
+            headerParameters: $headers,
+            body: $body,
+        );
+    }
+
+    /**
      * Execute one generated operation: validate parameters, serialize the request,
      * send it and decode the typed response.
      *

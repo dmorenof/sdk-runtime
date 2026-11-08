@@ -143,3 +143,17 @@ Content-Type. Existing operations retain application/json by default.
 Only scalar fields and primitive repeated-key/CSV lists are supported. Nested
 objects, files, multipart and other encoding styles fail explicitly. Mutations
 are validated before transport; query API-key handling remains separate.
+
+## Shared execution and configuration (v0.10.0)
+
+Generated SDKs can inherit ApiClient::executeArguments and Configuration instead
+of emitting common field mapping, execution and connection options repeatedly.
+SDK classes supply their typed operation data, default base URL and per-SDK
+connection state. Existing generated executor overrides remain supported.
+
+Query assembly uses the installed Guzzle PSR-7 Query builder. The remaining
+adapter implements OpenAPI-specific repeated/CSV/delimited/deepObject semantics,
+validation and omission rules. Forms select native RFC1738 percent-encoding;
+JSON bodies continue through the validated DTO request representation. Generic
+Guzzle query/form_params options use indexed PHP arrays and do not by themselves
+represent all OpenAPI styles. Transport remains PSR-18-compatible.

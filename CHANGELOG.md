@@ -4,6 +4,13 @@
 
 No changes yet.
 
+## [0.10.0] — 2026-11-08
+
+- Move the common generated argument executor and DTO operation-field mapping into ApiClient so new SDKs inherit them once. Add shared Configuration fields for generated configurations to extend while preserving per-SDK defaults/state and public types.
+- Reuse Guzzle PSR-7 Query::build for query assembly, retaining only OpenAPI format adaptation, scalar validation and per-item delimiter encoding. Support native RFC3986/RFC1738 encoding selection so forms use urlencode rules directly instead of transforming a completed query string.
+- Declare the already-used guzzlehttp/psr7 package as a direct compatible dependency. Keep repeated-key/CSV/delimited/deepObject semantics, boolean text, null omission, percent data, field names, DTO validation and JSON/form payload behavior.
+- Existing SDK executor overrides and transport injection remain compatible. Verify inherited execution, independent configuration, encoding and immutable installed runtime behavior; record reuse/inheritance rules in AGENTS.md.
+
 ## [0.9.0] — 2026-11-08
 
 - Add URL-encoded form bodies through optional Operation requestMediaType/bodySerialization metadata. Preserve existing JSON defaults and positional querySerialization constructor compatibility.

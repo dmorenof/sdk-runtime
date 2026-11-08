@@ -157,6 +157,14 @@ final class QuerySerializationTest extends TestCase
         self::assertSame('https://api.example.test/search?key=secret&filter%5Bcity%5D=Madrid', $transport->sent[0]['url']);
     }
 
+    public function testNativeEncodingModesPreservePercentDataAndDelimiters(): void
+    {
+        self::assertSame('q=%C3%B1+%2B%7E%2520&ids=a%2Cb,x+y', QuerySerializer::encode(
+            ['q' => 'ñ +~%20', 'ids' => ['a,b', 'x y']], ['ids' => 'csv'], PHP_QUERY_RFC1738));
+        $this->expectException(\InvalidArgumentException::class);
+        QuerySerializer::encode(['q' => 'x'], [], -1);
+    }
+
     public function testAbsentNullEmptyListsAndEmptyStringMembersAreDistinctExpansions(): void
     {
         self::assertSame('', QuerySerializer::encode([], ['ids' => 'multi']));

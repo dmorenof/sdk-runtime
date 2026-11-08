@@ -9,7 +9,7 @@ use Psr\Http\Message\RequestInterface;
 use Psr\Http\Message\ResponseInterface;
 
 /**
- * Common PSR-18/Guzzle adapter. Body is already serialized to JSON.
+ * Common PSR-18/Guzzle adapter. Body bytes are already serialized according to the operation media type.
  * Interceptors run in registration order and may replace PSR-7 messages.
  */
 final class Psr18Transport implements TransportInterface

@@ -16,8 +16,7 @@ final class FormSerializer
         foreach (get_object_vars($body->jsonSerializeForRequest()) as $name => $value) {
             $fields[$name] = self::field($value);
         }
-        // Escape a literal tilde and use + for spaces without double-encoding data.
-        return str_replace(['%20', '~'], ['+', '%7E'], QuerySerializer::encode($fields, $formats));
+        return QuerySerializer::encode($fields, $formats, PHP_QUERY_RFC1738);
     }
 
     private static function assertFormat(mixed $format): void

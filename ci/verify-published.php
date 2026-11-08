@@ -44,9 +44,17 @@ $client = new class('https://example.test', transport: $transport) extends \Dmor
             public string $name;
             public array $ids;
         };
-        $this->executeOperation(['method' => 'POST', 'path' => '/forms', 'success' => [204],
+        $params = new class extends \Dmorenof\SdkRuntime\DTO {
+            public const bool OPERATION_BODY = true;
+            public const array OPERATION_FIELDS = ['path' => [], 'query' => ['q' => 'q'], 'header' => []];
+            public string $q;
+            public \Dmorenof\SdkRuntime\DTO $body;
+        };
+        $params->q = 'a b';
+        $params->body = $body;
+        $this->executeArguments(['method' => 'POST', 'path' => '/forms', 'success' => [204],
             'requestMediaType' => 'application/x-www-form-urlencoded', 'bodySerialization' => ['ids' => 'multi']],
-            queryParameters: ['q' => 'a b'], body: $body);
+            payload: $params);
     }
     public function probe(): void
     {
@@ -60,3 +68,10 @@ echo "PUBLISHED_QUERY_SERIALIZATION_OK", PHP_EOL;
 
 $client->formProbe();
 echo "PUBLISHED_FORM_SERIALIZATION_OK", PHP_EOL;
+
+$configuration = new \Dmorenof\SdkRuntime\Configuration();
+$configuration->headers['X-Trace'] = 'one';
+if ((new \Dmorenof\SdkRuntime\Configuration())->headers !== []) {
+    throw new RuntimeException('Shared configuration leaked state.');
+}
+echo "PUBLISHED_SHARED_EXECUTION_OK", PHP_EOL;

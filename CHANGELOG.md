@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+No changes yet.
+
+## [0.13.0] — 2026-11-08
+
 - Preserve Guzzle MultipartStream through the existing PSR-18 adapter instead of casting multipart bodies to strings before sending. Widen Psr18Transport::send contravariantly to accept StreamInterface; keep TransportInterface and legacy custom transports compatible via the existing string fallback. No new transport interface or stream wrapper.
 - Rewind seekable request bodies after middleware inspection/replacement and before every PSR-18 send. Reject duplicate PSR stream cursors across parts before they can truncate a subsequent file. Preserve query, headers, body metadata, validations, empty/absent behavior and legacy sends.
 - Verify unread streams at the PSR-18 boundary, repeat sends, middleware replacement, legacy custom transport fallback and aliases. Add CI/published-package smokes transferring two 32 MiB multipart bodies under PHP memory_limit=16M; default Guzzle/cURL real HTTP measured a 4 MiB PHP peak, with full bytes checked by an independent MIME parser.

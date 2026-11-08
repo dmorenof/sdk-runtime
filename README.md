@@ -102,3 +102,14 @@ not general JSON Schema support. Nested/object/null items, undeclared query
 arrays, other styles/locations and `allowReserved`/`allowEmptyValue` remain outside
 this query-list slice. Generated SDKs declare metadata and use this common
 executor rather than implementing serialization themselves.
+
+### Delimited query lists (v0.7.0)
+
+Normalized `ssv`, `tsv` and `pipes` formats serialize `[1, 2]` as
+`ids=1%202`, `ids=1%092` and `ids=1%7C2`. Separators are percent-encoded to
+produce legal RFC3986 URIs; item content is encoded once. These formats reject
+items containing the corresponding literal space, tab or pipe, including values
+introduced by mutations, because decoding would make them ambiguous. Literal
+percent sequences are encoded as data (`%7C` becomes `%257C`). Repeated-key and
+CSV formats keep their existing behavior. The generator must reject undefined
+style/explode combinations rather than guessing how they should expand.

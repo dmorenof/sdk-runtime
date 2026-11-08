@@ -4,6 +4,13 @@
 
 No changes yet.
 
+## [0.7.0] — 2026-11-08
+
+- Extend normalized query-list formats with `ssv`, `tsv` and `pipes`. Encode separators as `%20`, `%09` and `%7C` so URLs remain RFC3986-compatible; encode item content once and preserve existing repeated-key/CSV behavior.
+- Reject items containing their format's space, tab or pipe delimiter before transport, including mutations. These formats cannot distinguish such data from delimiters after percent-decoding; callers can choose repeated-key or CSV serialization when the contract allows it.
+- Keep list validation, omission/empty-item behavior, scalar parameters and API-key precedence. Verify exact URLs, encoding, ambiguous values, mutation rejection and clean installation of the immutable release.
+- This remains a query primitive-list slice; objects, other locations and undefined OpenAPI explode combinations are not implemented by these formats.
+
 ## [0.6.0] — 2026-11-07
 
 - Add declarative query-list serialization to Operation: `querySerialization` maps wire names to `multi` (repeated keys) or `csv`. Encode items individually before joining; preserve legacy scalar order and encoding.

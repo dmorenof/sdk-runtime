@@ -8,7 +8,7 @@ final class QuerySerializer
 {
     /**
      * @param array<string, scalar|list<scalar>|null> $parameters
-     * @param array<string, 'multi'|'csv'> $formats Query list name => normalized wire format.
+     * @param array<string, 'multi'|'csv'|'ssv'|'tsv'|'pipes'> $formats Query list name => normalized wire format.
      */
     public static function encode(array $parameters, array $formats = []): string
     {
@@ -22,12 +22,15 @@ final class QuerySerializer
             }
             $encodedName = rawurlencode((string) $name);
             if (isset($formats[$name])) {
-                $items = self::encodedList($value, (string) $name);
+                $format = $formats[$name];
+                $delimiter = match ($format) { 'ssv' => ' ', 'tsv' => "\t", 'pipes' => '|', default => null };
+                $items = self::encodedList($value, (string) $name, $delimiter);
                 if ($items === []) {
                     continue; // Empty list expansion has no URI-template members.
                 }
-                if ($formats[$name] === 'csv') {
-                    $pairs[] = $encodedName . '=' . implode(',', $items);
+                if ($format !== 'multi') {
+                    $separator = $delimiter === null ? ',' : rawurlencode($delimiter);
+                    $pairs[] = $encodedName . '=' . implode($separator, $items);
                 } else {
                     foreach ($items as $item) {
                         $pairs[] = $encodedName . '=' . $item;
@@ -53,20 +56,24 @@ final class QuerySerializer
 
     private static function assertFormat(mixed $format, string $name): void
     {
-        if (!in_array($format, ['multi', 'csv'], true)) {
+        if (!in_array($format, ['multi', 'csv', 'ssv', 'tsv', 'pipes'], true)) {
             throw new \InvalidArgumentException("Unsupported query array format for $name.");
         }
     }
 
     /** @return list<string> */
-    private static function encodedList(mixed $value, string $name): array
+    private static function encodedList(mixed $value, string $name, ?string $delimiter): array
     {
         if (!is_array($value) || !array_is_list($value)) {
             throw new \UnexpectedValueException("Expected a list for query parameter $name.");
         }
         $items = [];
         foreach ($value as $item) {
-            $items[] = rawurlencode(self::scalar($item));
+            $text = self::scalar($item);
+            if ($delimiter !== null && str_contains($text, $delimiter)) {
+                throw new \UnexpectedValueException("Query parameter $name contains its list delimiter; use a different serialization.");
+            }
+            $items[] = rawurlencode($text);
         }
         return $items;
     }

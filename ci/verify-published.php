@@ -23,7 +23,7 @@ echo "PUBLISHED_RUNTIME_INSTALL_OK ", $tag, " ", $expected, PHP_EOL;
 $transport = new class implements \Dmorenof\SdkRuntime\Transport\TransportInterface {
     public function send(string $method, string $url, array $headers, ?string $body): \Dmorenof\SdkRuntime\Transport\HttpResponse
     {
-        if ($url !== 'https://example.test/search?ids=1&ids=2&codes=a%2Cb,x%20y') {
+        if ($url !== 'https://example.test/search?ids=1&ids=2&codes=a%2Cb,x%20y&spaces=3%204&pipes=a%7Cb&tabs=5%096') {
             throw new RuntimeException('Installed runtime query serialization failed.');
         }
         return new \Dmorenof\SdkRuntime\Transport\HttpResponse(204, '');
@@ -33,8 +33,8 @@ $client = new class('https://example.test', transport: $transport) extends \Dmor
     public function probe(): void
     {
         $this->executeOperation(['method' => 'GET', 'path' => '/search', 'success' => [204],
-            'querySerialization' => ['ids' => 'multi', 'codes' => 'csv']],
-            queryParameters: ['ids' => [1, 2], 'codes' => ['a,b', 'x y']]);
+            'querySerialization' => ['ids' => 'multi', 'codes' => 'csv', 'spaces' => 'ssv', 'pipes' => 'pipes', 'tabs' => 'tsv']],
+            queryParameters: ['ids' => [1, 2], 'codes' => ['a,b', 'x y'], 'spaces' => [3, 4], 'pipes' => ['a', 'b'], 'tabs' => [5, 6]]);
     }
 };
 $client->probe();

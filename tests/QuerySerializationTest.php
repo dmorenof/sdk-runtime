@@ -39,6 +39,48 @@ final class QuerySerializationTest extends TestCase
         self::assertSame('0=a&0=b', QuerySerializer::encode(['0' => ['a', 'b']], ['0' => 'multi']));
     }
 
+    public function testDelimitedListsEncodeSeparatorsAndItemsForLegalUris(): void
+    {
+        foreach (['ssv' => '%20', 'tsv' => '%09', 'pipes' => '%7C'] as $format => $separator) {
+            self::assertSame('ids=a%2Cb' . $separator . '%C3%B1%2B%26' . $separator . '%2520%257C',
+                QuerySerializer::encode(['ids' => ['a,b', 'ñ+&', '%20%7C']], ['ids' => $format]));
+            self::assertSame('', QuerySerializer::encode(['ids' => []], ['ids' => $format]));
+            self::assertSame('ids=' . $separator . 'x', QuerySerializer::encode(['ids' => ['', 'x']], ['ids' => $format]));
+        }
+    }
+
+    public function testDelimitedRuntimeOperationsKeepScalarSecurityAndValidateMutations(): void
+    {
+        $transport = new FakeTransport(new HttpResponse(204, ''));
+        $client = QueryListClient::connect('https://api.example.test', transport: $transport,
+            securityCredentials: new SecurityCredentials(['Key' => 'secret |']));
+        $client->search(['ids' => [1, 2], 'tags' => ['ñ', '+']], ['ids' => 'ssv', 'tags' => 'pipes'], true);
+        self::assertSame('https://api.example.test/search?ids=1%202&tags=%C3%B1%7C%2B&key=secret%20%7C', $transport->sent[0]['url']);
+        $values = ['a', 'b'];
+        $values[1] = 'b|c';
+        try {
+            $client->search(['ids' => $values], ['ids' => 'pipes']);
+            self::fail('Ambiguous mutation accepted.');
+        } catch (\UnexpectedValueException $exception) {
+            self::assertStringContainsString('ids', $exception->getMessage());
+            self::assertCount(1, $transport->sent);
+        }
+    }
+
+    public function testDelimitedListsRejectTheirOwnDelimiterBeforeTransport(): void
+    {
+        foreach (['ssv' => 'a b', 'tsv' => "a\tb", 'pipes' => 'a|b'] as $format => $value) {
+            $transport = new FakeTransport(new HttpResponse(204, ''));
+            try {
+                QueryListClient::connect('https://api.example.test', transport: $transport)->search(['ids' => [$value]], ['ids' => $format]);
+                self::fail('Ambiguous delimiter accepted.');
+            } catch (\UnexpectedValueException $exception) {
+                self::assertStringContainsString('list delimiter', $exception->getMessage());
+                self::assertSame([], $transport->sent);
+            }
+        }
+    }
+
     public function testAbsentNullEmptyListsAndEmptyStringMembersAreDistinctExpansions(): void
     {
         self::assertSame('', QuerySerializer::encode([], ['ids' => 'multi']));

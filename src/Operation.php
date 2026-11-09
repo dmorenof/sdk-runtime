@@ -19,8 +19,8 @@ namespace Dmorenof\SdkRuntime;
  *     errors?: array<int|string, string>,
  *     responseType?: string|null,
  *     responseTypes?: array<int,array{type:?string,schemaNullable:bool}>,
- *     pathSerialization?: array<array-key,'csv'>,
- *     headerSerialization?: array<array-key,'csv'>,
+ *     pathSerialization?: array<array-key,'csv'|'object'|'object-explode'>,
+ *     headerSerialization?: array<array-key,'csv'|'object'|'object-explode'>,
  *     schemaNullable?: bool,
  *     noContentAllowed?: bool,
  *     validation?: array<array-key, array<string, mixed>>,
@@ -28,7 +28,7 @@ namespace Dmorenof\SdkRuntime;
  *     requestMediaType?: string,
  *     bodySerialization?: array<string,'multi'|'csv'>,
  *     bodyParts?: array<string,array{contentType:?string,filename?:string}>,
- *     querySerialization?: array<string, 'multi'|'csv'|'ssv'|'tsv'|'pipes'|'deepObject'>,
+ *     querySerialization?: array<array-key, 'multi'|'csv'|'ssv'|'tsv'|'pipes'|'deepObject'|'form-object'|'form-object-explode'>,
  * }
  */
 final readonly class Operation
@@ -62,10 +62,10 @@ final readonly class Operation
      * @param array<array-key, array<string, mixed>> $validation Parameter name => rules.
      * @param array<string,'multi'|'csv'> $bodySerialization Form array field name => wire format.
      * @param array<string,array{contentType:?string,filename?:string}> $bodyParts Multipart metadata; null MIME accepts the uploaded file's type or octet-stream.
-     * @param array<array-key,'csv'> $pathSerialization Path list name => simple CSV expansion.
-     * @param array<array-key,'csv'> $headerSerialization Header list name => raw simple CSV expansion.
+     * @param array<array-key,'csv'|'object'|'object-explode'> $pathSerialization Path list name => simple CSV expansion.
+     * @param array<array-key,'csv'|'object'|'object-explode'> $headerSerialization Header list name => raw simple CSV expansion.
      * @param array<int,array{type:?string,schemaNullable:bool}> $responseTypes Explicit status-specific JSON types; null type means no body.
-     * @param array<string, 'multi'|'csv'|'ssv'|'tsv'|'pipes'|'deepObject'> $querySerialization Query list name => normalized wire format.
+     * @param array<array-key, 'multi'|'csv'|'ssv'|'tsv'|'pipes'|'deepObject'|'form-object'|'form-object-explode'> $querySerialization Query list name => normalized wire format.
      */
     public function __construct(
         public string $method,

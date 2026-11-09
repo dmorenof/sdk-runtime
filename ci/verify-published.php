@@ -145,3 +145,11 @@ if ($simpleStatus !== 0) {
     throw new RuntimeException('Installed runtime simple path/header smoke failed.');
 }
 echo "PUBLISHED_SIMPLE_PARAMETER_RUNTIME_OK", PHP_EOL;
+
+$objectCommand = implode(' ', array_map('escapeshellarg', [PHP_BINARY,
+    $directory . '/vendor/dmorenof/sdk-runtime/tests/object-parameters-smoke.php', $directory . '/vendor/autoload.php']));
+passthru($objectCommand, $objectStatus);
+if ($objectStatus !== 0) {
+    throw new RuntimeException('Installed runtime object parameter smoke failed.');
+}
+echo "PUBLISHED_OBJECT_PARAMETER_RUNTIME_OK", PHP_EOL;

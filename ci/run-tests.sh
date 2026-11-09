@@ -34,3 +34,5 @@ php -d memory_limit=16M tests/download-smoke.php "$PWD/vendor/autoload.php"
 php tests/status-response-smoke.php "$PWD/vendor/autoload.php"
 
 php tests/simple-parameters-smoke.php "$PWD/vendor/autoload.php"
+
+php tests/object-parameters-smoke.php "$PWD/vendor/autoload.php"

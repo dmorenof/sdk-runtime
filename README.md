@@ -307,3 +307,23 @@ remain compatible. Objects, label/matrix, non-CSV header/path formats, nullable
 list schemas and general cookie serialization are outside this bounded feature.
 
 Version 0.17.1 also preserves numeric wire names such as `0` when PHP coerces metadata keys to integers; both runtime execution and generated-operation PHPStan shapes cover these keys.
+
+
+### Flat parameter objects (v0.18.0)
+
+Existing pathSerialization/headerSerialization also accept object (key,value CSV)
+and object-explode (key=value CSV). Query metadata accepts form-object and
+form-object-explode, alongside deepObject. Reuse QuerySerializer's DTO/Map field
+extraction and native encoders. Generated DTO request validation and readOnly
+filtering happen before expansion; finite primitive fields retain false/zero.
+
+Exploded query properties cannot overwrite another parameter or expanded field.
+Simple header objects keep raw text and reject commas, equals in exploded keys,
+control bytes and outer whitespace; equals in values remain data. Path keys/values
+are individually percent encoded. Null/nested properties and empty keys are
+unsupported. Optional null parameters are omitted, empty query objects omit all
+pairs and empty simple objects expand to an empty field/segment. DeepObject keeps
+its bracket-key restriction; form/simple encode brackets as ordinary key data.
+No executor signature or constructor position changes, wrappers or transport
+implementations are introduced. Cookies, label/matrix and general nesting remain
+outside this release.

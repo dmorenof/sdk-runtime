@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+No changes yet.
+
+## [0.17.0] — 2026-11-09
+
 - Add optional pathSerialization/headerSerialization CSV list metadata after existing constructor arguments. Reuse scalar-list validation/native item encoding in QuerySerializer::simpleList and the inherited DTO argument executor; keep executeArguments signature unchanged for older SDK overrides.
 - Encode path items before comma joining; keep raw simple headers with explicit rejection of commas, control bytes and outer item whitespace. Preserve query/body separation, scalar paths/headers, both transport paths and response behavior. Missing/null path values and lists without metadata fail before HTTP.
 - Verify finite scalar lists, exact bytes, encoding/percent/Unicode/slash data, bounds, mutations, empty-list policy, invalid formats, PSR/legacy transport and installed-runtime smoke. Objects, other path/header formats and general nullable/cookie expansion remain pending.

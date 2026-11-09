@@ -69,6 +69,9 @@ final class SecurityApplier
                         ?? throw new \LogicException("API key scheme $name declares no parameter name.");
                     if ($scheme['location'] === 'header') {
                         self::addHeader($securityHeaders, $parameterName, $credential);
+                    } elseif ($scheme['location'] === 'cookie') {
+                        $securityHeaders = \Dmorenof\SdkRuntime\CookieHeader::merge($securityHeaders,
+                            ['Cookie' => \Dmorenof\SdkRuntime\CookieHeader::pair($parameterName, $credential)]);
                     } elseif ($scheme['location'] === 'query') {
                         self::addQuery($securityQuery, $parameterName, $credential);
                     } else {
@@ -78,9 +81,7 @@ final class SecurityApplier
                     throw new \LogicException("Unsupported generated security scheme $name.");
                 }
             }
-            foreach ($securityHeaders as $name => $value) {
-                $headers[$name] = $value;
-            }
+            $headers = \Dmorenof\SdkRuntime\CookieHeader::merge($headers, $securityHeaders);
             foreach ($securityQuery as $name => $value) {
                 $query[$name] = $value;
             }

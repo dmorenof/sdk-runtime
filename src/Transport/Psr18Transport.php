@@ -37,7 +37,7 @@ final class Psr18Transport implements TransportInterface
     /** @param array<string, string> $headers */
     public function sendResponse(string $method, string $url, array $headers, string|StreamInterface|null $body): ResponseInterface
     {
-        $request = new Request($method, $url, array_replace($this->defaultHeaders, $headers), $body ?? '');
+        $request = new Request($method, $url, \Dmorenof\SdkRuntime\CookieHeader::merge($this->defaultHeaders, $headers), $body ?? '');
 
         foreach ($this->middlewares as $middleware) {
             $request = $middleware->beforeRequest($request);

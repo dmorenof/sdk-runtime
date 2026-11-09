@@ -99,6 +99,7 @@ abstract class ApiClient
      *   path:array<string,bool|float|int|string|list<bool|float|int|string>|DTO|Map|null>,
      *   query:array<string,bool|float|int|string|list<bool|float|int|string>|DTO|Map|null>,
      *   header:array<string,bool|float|int|string|list<bool|float|int|string>|DTO|Map|null>,
+     *   cookie:array<string,bool|float|int|string|list<bool|float|int|string>|DTO|Map|null>,
      *   body:?DTO
      * }
      */
@@ -110,60 +111,32 @@ abstract class ApiClient
         // A query or path parameter may also be named "body"; only an explicit operation body is a payload.
         $hasBody = defined($dto::class . '::OPERATION_BODY') && constant($dto::class . '::OPERATION_BODY') === true;
         $body = $hasBody && $bodyValue instanceof DTO ? $bodyValue : null;
-        $path = [];
-        $query = [];
-        $headers = [];
-        /** @var array{path:array<string,string>,query:array<string,string>,header:array<string,string>} $locations */
+        $fields = ['path' => [], 'query' => [], 'header' => [], 'cookie' => []];
+        /** @var array<string,array<string,string>> $locations */
         $locations = constant($dto::class . '::OPERATION_FIELDS');
-        foreach ($locations as $location => $fields) {
-            foreach ($fields as $wireName => $property) {
-                if (!array_key_exists($property, $values)) {
-                    continue;
-                }
+        foreach ($locations as $location => $properties) {
+            if (!array_key_exists($location, $fields)) {
+                throw new \UnexpectedValueException('Unsupported operation parameter location.');
+            }
+            foreach ($properties as $wireName => $property) {
+                if (!array_key_exists($property, $values)) { continue; }
                 $value = $values[$property];
                 if ($value instanceof DTO || $value instanceof Map) {
-                    if ($location === 'path') {
-                        $path[$wireName] = $value;
-                    } elseif ($location === 'header') {
-                        $headers[$wireName] = $value;
-                    } else {
-                        $query[$wireName] = $value;
+                    if ($location === 'cookie') { throw new \UnexpectedValueException('Structured cookie parameters are unsupported.'); }
+                } elseif (is_array($value)) {
+                    if ($location === 'cookie' || !array_is_list($value)) {
+                        throw new \UnexpectedValueException("Operation parameter must be a supported scalar list: $wireName");
                     }
-                    continue;
-                }
-                if (is_array($value)) {
-                    if (!array_is_list($value)) {
-                        throw new \UnexpectedValueException("Operation parameter must be a scalar list: $wireName");
-                    }
-                    $items = [];
                     foreach ($value as $item) {
-                        if (!is_scalar($item)) {
-                            throw new \UnexpectedValueException("Parameter list members must be scalars: $wireName");
-                        }
-                        $items[] = $item;
+                        if (!is_scalar($item)) { throw new \UnexpectedValueException("Parameter list members must be scalars: $wireName"); }
                     }
-                    if ($location === 'path') {
-                        $path[$wireName] = $items;
-                    } elseif ($location === 'header') {
-                        $headers[$wireName] = $items;
-                    } else {
-                        $query[$wireName] = $items;
-                    }
-                    continue;
-                }
-                if ($value !== null && !is_scalar($value)) {
+                } elseif ($value !== null && !is_scalar($value)) {
                     throw new \UnexpectedValueException("Non-scalar operation parameter: $wireName");
                 }
-                if ($location === 'path') {
-                    $path[$wireName] = $value;
-                } elseif ($location === 'header') {
-                    $headers[$wireName] = $value;
-                } else {
-                    $query[$wireName] = $value;
-                }
+                $fields[$location][$wireName] = $value;
             }
         }
-        return ['path' => $path, 'query' => $query, 'header' => $headers, 'body' => $body];
+        return $fields + ['body' => $body];
     }
 
     /**
@@ -192,6 +165,19 @@ abstract class ApiClient
             $fields = self::operationFields($payload);
             $query = $fields['query'];
             $headers = $fields['header'];
+            if ($fields['cookie'] !== []) {
+                $cookieHeaders = [];
+                foreach ($headers as $name => $value) {
+                    if (strcasecmp((string) $name, 'Cookie') === 0) {
+                        if ($value !== null) {
+                            if (!is_scalar($value)) { throw new \UnexpectedValueException('Cookie header must be scalar.'); }
+                            $cookieHeaders[$name] = self::stringify($value);
+                        }
+                        unset($headers[$name]);
+                    }
+                }
+                $headers += CookieHeader::merge($cookieHeaders, ['Cookie' => str_replace('&', '; ', QuerySerializer::encode($fields['cookie']))]);
+            }
             $body = $fields['body'];
         }
         return $this->executeOperation(

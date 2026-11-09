@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Add scalar operation cookies through existing DTO argument execution and percent encoding. Preserve query/body/header independence without changing executor signatures; reject structured values.
+- Support raw API key cookie credentials with existing security alternatives/AND selection. Assemble one RFC 6265 Cookie header across operation fields, security and configured headers, preserving case-sensitive cookie names and rejecting malformed/conflicting values without exposing secrets.
+- Reuse Guzzle/PSR transport and native parsing/encoding. No cookie jar, response parser or persistence is added. Verify both transports, mutations, conflicts and real HTTP GET/POST in source and installed-package smoke.
+
 ## [0.19.0] — 2026-11-09
 
 - Add label/matrix expansion for explicit scalar, list and flat-object path metadata, including both explode modes, finite booleans/numbers, numeric keys, encoded data and empty values. Reuse the existing scalar/list/DTO/Map routines instead of a second URI-template engine.

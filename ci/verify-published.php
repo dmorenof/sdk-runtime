@@ -159,3 +159,9 @@ $pathCommand = implode(' ', array_map('escapeshellarg', [PHP_BINARY,
 passthru($pathCommand, $pathStatus);
 if ($pathStatus !== 0) { throw new RuntimeException('Installed runtime label/matrix HTTP smoke failed.'); }
 echo "PUBLISHED_PATH_STYLE_RUNTIME_OK", PHP_EOL;
+
+$cookieCommand = implode(' ', array_map('escapeshellarg', [PHP_BINARY,
+    $directory . '/vendor/dmorenof/sdk-runtime/tests/cookies-smoke.php', $directory . '/vendor/autoload.php']));
+passthru($cookieCommand, $cookieStatus);
+if ($cookieStatus !== 0) { throw new RuntimeException('Installed runtime cookie HTTP smoke failed.'); }
+echo "PUBLISHED_COOKIE_RUNTIME_OK", PHP_EOL;

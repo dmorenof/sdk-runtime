@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## [0.20.0] — 2026-11-09
 
 - Add scalar operation cookies through existing DTO argument execution and percent encoding. Preserve query/body/header independence without changing executor signatures; reject structured values.
 - Support raw API key cookie credentials with existing security alternatives/AND selection. Assemble one RFC 6265 Cookie header across operation fields, security and configured headers, preserving case-sensitive cookie names and rejecting malformed/conflicting values without exposing secrets.

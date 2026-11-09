@@ -305,3 +305,5 @@ signature: generated single-list paths use a PathParams DTO just like composite
 paths. Query, body, response hydration, legacy transports and scalar signatures
 remain compatible. Objects, label/matrix, non-CSV header/path formats, nullable
 list schemas and general cookie serialization are outside this bounded feature.
+
+Version 0.17.1 also preserves numeric wire names such as `0` when PHP coerces metadata keys to integers; both runtime execution and generated-operation PHPStan shapes cover these keys.

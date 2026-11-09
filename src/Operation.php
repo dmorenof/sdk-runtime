@@ -19,11 +19,11 @@ namespace Dmorenof\SdkRuntime;
  *     errors?: array<int|string, string>,
  *     responseType?: string|null,
  *     responseTypes?: array<int,array{type:?string,schemaNullable:bool}>,
- *     pathSerialization?: array<string,'csv'>,
- *     headerSerialization?: array<string,'csv'>,
+ *     pathSerialization?: array<array-key,'csv'>,
+ *     headerSerialization?: array<array-key,'csv'>,
  *     schemaNullable?: bool,
  *     noContentAllowed?: bool,
- *     validation?: array<string, array<string, mixed>>,
+ *     validation?: array<array-key, array<string, mixed>>,
  *     serverUrl?: string|null,
  *     requestMediaType?: string,
  *     bodySerialization?: array<string,'multi'|'csv'>,
@@ -59,11 +59,11 @@ final readonly class Operation
      * @param list<array<string, list<string>>> $security Alternatives are OR; schemes within one entry are AND.
      * @param list<int> $success Statuses that are not errors.
      * @param array<int|string, string> $errors Status (or 'default') => error model class.
-     * @param array<string, array<string, mixed>> $validation Parameter name => rules.
+     * @param array<array-key, array<string, mixed>> $validation Parameter name => rules.
      * @param array<string,'multi'|'csv'> $bodySerialization Form array field name => wire format.
      * @param array<string,array{contentType:?string,filename?:string}> $bodyParts Multipart metadata; null MIME accepts the uploaded file's type or octet-stream.
-     * @param array<string,'csv'> $pathSerialization Path list name => simple CSV expansion.
-     * @param array<string,'csv'> $headerSerialization Header list name => raw simple CSV expansion.
+     * @param array<array-key,'csv'> $pathSerialization Path list name => simple CSV expansion.
+     * @param array<array-key,'csv'> $headerSerialization Header list name => raw simple CSV expansion.
      * @param array<int,array{type:?string,schemaNullable:bool}> $responseTypes Explicit status-specific JSON types; null type means no body.
      * @param array<string, 'multi'|'csv'|'ssv'|'tsv'|'pipes'|'deepObject'> $querySerialization Query list name => normalized wire format.
      */

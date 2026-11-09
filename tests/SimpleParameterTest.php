@@ -88,6 +88,30 @@ final class SimpleParameterTest extends TestCase {
             catch (\UnexpectedValueException) { self::assertCount($psr ? 0 : 1, $transport->sent); }
         }
     }
+    public function testNumericWireNamesRetainTheirProtocolNames(): void {
+        $http = new class implements ClientInterface {
+            public function sendRequest(RequestInterface $request): ResponseInterface {
+                TestCase::assertSame('https://example.test/numeric/a%2Cb,c%2Fd', (string) $request->getUri());
+                TestCase::assertSame('alpha,beta', $request->getHeaderLine('0'));
+                return new Response(204);
+            }
+        };
+        foreach ([false, true] as $psr) {
+            $transport = new FakeTransport(new HttpResponse(204, ''));
+            $client = new class('https://example.test', httpClient: $http, transport: $psr ? null : $transport) extends ApiClient {
+                public function numeric(): void {
+                    $this->executeOperation(['method' => 'GET', 'path' => '/numeric/{0}', 'success' => [204],
+                        'pathSerialization' => ['0' => 'csv'], 'headerSerialization' => ['0' => 'csv']],
+                        pathParameters: ['0' => ['a,b', 'c/d']], headerParameters: ['0' => ['alpha', 'beta']]);
+                }
+            };
+            $client->numeric();
+            if (!$psr) {
+                self::assertSame('https://example.test/numeric/a%2Cb,c%2Fd', $transport->sent[0]['url']);
+                self::assertSame('alpha,beta', $transport->sent[0]['headers'][0]);
+            }
+        }
+    }
     public function testMissingNullUndeclaredAndUnsupportedFormatsFailBeforeTransport(): void {
         $transport = new FakeTransport(new HttpResponse(204, ''));
         $client = SimpleParameterClient::connect('https://example.test', transport: $transport);

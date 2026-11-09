@@ -229,7 +229,7 @@ abstract class ApiClient
                 throw new \UnexpectedValueException("Path parameter $name cannot be null.");
             }
             if (isset($spec->pathSerialization[$name])) {
-                $encoded = QuerySerializer::simpleList($value, $name);
+                $encoded = QuerySerializer::simpleList($value, (string) $name);
             } elseif (is_array($value)) {
                 throw new \UnexpectedValueException("Path list $name requires serialization metadata.");
             } else {
@@ -306,7 +306,7 @@ abstract class ApiClient
 
     /**
      * @param array<string, scalar|list<scalar>|null> $values
-     * @param array<string,'csv'> $formats
+     * @param array<array-key,'csv'> $formats
      * @return array<string, string> Parameters that carry a value, as they appear on the wire.
      */
     private static function stringifyAll(array $values, array $formats = []): array
@@ -315,7 +315,7 @@ abstract class ApiClient
         foreach ($values as $name => $value) {
             if ($value !== null) {
                 if (isset($formats[$name])) {
-                    $result[$name] = QuerySerializer::simpleList($value, $name, header: true);
+                    $result[$name] = QuerySerializer::simpleList($value, (string) $name, header: true);
                 } elseif (is_array($value)) {
                     throw new \UnexpectedValueException("Header list $name requires serialization metadata.");
                 } else {

@@ -2,7 +2,9 @@
 
 ## Unreleased
 
-No changes yet.
+- Add optional Operation responseTypes status-to-JSON-type metadata, appended to the constructor without changing existing positional arguments. Select exactly the declared status type/nullability through the existing JsonHydrator; a no-body status returns null.
+- Preserve responseType/schemaNullable/noContentAllowed fallback for older SDKs and unmapped statuses, binary PSR responses and typed/raw ApiException errors. Explicit body-bearing statuses reject empty/null/wrong-schema bodies even when another success status permits no content; do not probe alternative schemas.
+- Verify both PSR-18 and legacy transport execution, validation, nullable/empty/error cases, partial metadata fallback and independently installed runtime behavior, without new hydrator or response wrappers.
 
 ## [0.15.0] — 2026-11-08
 

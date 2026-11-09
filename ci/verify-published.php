@@ -129,3 +129,11 @@ if ($downloadStatus !== 0) {
     throw new RuntimeException('Installed runtime binary download smoke failed.');
 }
 echo "PUBLISHED_DOWNLOAD_RUNTIME_OK", PHP_EOL;
+
+$statusCommand = implode(' ', array_map('escapeshellarg', [PHP_BINARY,
+    $directory . '/vendor/dmorenof/sdk-runtime/tests/status-response-smoke.php', $directory . '/vendor/autoload.php']));
+passthru($statusCommand, $statusResult);
+if ($statusResult !== 0) {
+    throw new RuntimeException('Installed runtime status response smoke failed.');
+}
+echo "PUBLISHED_STATUS_RESPONSE_RUNTIME_OK", PHP_EOL;

@@ -18,6 +18,7 @@ namespace Dmorenof\SdkRuntime;
  *     success?: list<int>,
  *     errors?: array<int|string, string>,
  *     responseType?: string|null,
+ *     responseTypes?: array<int,array{type:?string,schemaNullable:bool}>,
  *     schemaNullable?: bool,
  *     noContentAllowed?: bool,
  *     validation?: array<string, array<string, mixed>>,
@@ -44,6 +45,7 @@ final readonly class Operation
         'requestMediaType' => 'application/json',
         'bodySerialization' => [],
         'bodyParts' => [],
+        'responseTypes' => [],
     ];
 
     /** "METHOD path", unless the operation names itself. */
@@ -56,6 +58,7 @@ final readonly class Operation
      * @param array<string, array<string, mixed>> $validation Parameter name => rules.
      * @param array<string,'multi'|'csv'> $bodySerialization Form array field name => wire format.
      * @param array<string,array{contentType:?string,filename?:string}> $bodyParts Multipart metadata; null MIME accepts the uploaded file's type or octet-stream.
+     * @param array<int,array{type:?string,schemaNullable:bool}> $responseTypes Explicit status-specific JSON types; null type means no body.
      * @param array<string, 'multi'|'csv'|'ssv'|'tsv'|'pipes'|'deepObject'> $querySerialization Query list name => normalized wire format.
      */
     public function __construct(
@@ -74,6 +77,7 @@ final readonly class Operation
         public string $requestMediaType = self::DEFAULTS['requestMediaType'],
         public array $bodySerialization = self::DEFAULTS['bodySerialization'],
         public array $bodyParts = self::DEFAULTS['bodyParts'],
+        public array $responseTypes = self::DEFAULTS['responseTypes'],
     ) {
         $this->label = $label ?? $method . ' ' . $path;
     }

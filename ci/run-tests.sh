@@ -30,3 +30,5 @@ php -d memory_limit=16M tests/streaming-smoke.php "$PWD/vendor/autoload.php"
 php -d memory_limit=16M tests/streaming-smoke.php "$PWD/vendor/autoload.php" '' list
 
 php -d memory_limit=16M tests/download-smoke.php "$PWD/vendor/autoload.php"
+
+php tests/status-response-smoke.php "$PWD/vendor/autoload.php"

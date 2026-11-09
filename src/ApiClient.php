@@ -274,10 +274,12 @@ abstract class ApiClient
         if (!$spec->succeeded($response->status)) {
             throw ApiException::fromResponse($response, $spec->label, $spec->errorTypeFor($response->status));
         }
-        if ($spec->responseType === null || ($spec->noContentAllowed && $response->body === '')) {
+        $declared = $spec->responseTypes[$response->status] ?? null;
+        $responseType = $declared ?? ['type' => $spec->responseType, 'schemaNullable' => $spec->schemaNullable];
+        if ($responseType['type'] === null || ($declared === null && $spec->noContentAllowed && $response->body === '')) {
             return null;
         }
-        return JsonHydrator::decode($response->body, $spec->responseType, $spec->schemaNullable);
+        return JsonHydrator::decode($response->body, $responseType['type'], $responseType['schemaNullable']);
     }
 
     /**

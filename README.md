@@ -269,3 +269,20 @@ memory_limit=16M, including default Guzzle/cURL against cloud-local HTTP. This
 bounds the tested PHP heap, not RSS or network latency. Guzzle may use a temporary
 disk-backed stream and injected clients/middleware can buffer. This feature does
 not promise progressive network consumption or unbuffered error responses.
+
+
+### JSON types selected by HTTP status (v0.16.0)
+
+Optional Operation responseTypes metadata maps explicit successful statuses to
+`['type' => User::class, 'schemaNullable' => false]` descriptors. A descriptor with
+type null denotes no body. ApiClient selects the entry for the actual HTTP status
+and reuses JsonHydrator/DTO validation; it never probes another schema when that
+body is invalid. Thus 204 can return null while an empty 200 still fails decoding.
+
+Existing responseType/schemaNullable/noContentAllowed behavior remains the
+fallback for SDKs without the metadata and for individual unmapped statuses.
+The constructor option is appended after the existing arguments. Status codes
+still need to be declared in success; unexpected statuses retain ApiException
+and typed/raw error behavior. Binary PSR responses retain their existing path.
+This map describes JSON response selection, not mixed JSON/binary media codecs,
+status ranges, or general JSON Schema/native-property-union support.

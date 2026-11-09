@@ -327,3 +327,20 @@ its bracket-key restriction; form/simple encode brackets as ordinary key data.
 No executor signature or constructor position changes, wrappers or transport
 implementations are introduced. Cookies, label/matrix and general nesting remain
 outside this release.
+
+
+### Label and matrix path parameters (v0.19.0)
+
+Path metadata adds label/matrix scalar, list and flat-object modes with both
+explode forms. QuerySerializer::path reuses existing finite scalar conversion,
+list validation, DTO/Map extraction and native item encoding; it does not parse
+arbitrary URI templates. Numeric object keys remain distinct from list indexes.
+Empty scalar labels expand to a dot; empty matrix scalars to ;name. Empty lists
+and objects contribute no expansion; empty members follow RFC 6570.
+
+Default Guzzle/cURL requests now preserve literal path segments via PATH_AS_IS,
+so an empty label is not silently normalized away. Stream-handler fallback is
+retained when cURL is unavailable; injected HTTP clients/servers must likewise
+preserve the request target. CI and installed-package smoke verify actual local
+HTTP targets and reference RFC examples. No constructor or executor signatures
+change, and header/query serialization remains unchanged.

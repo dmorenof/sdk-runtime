@@ -1,0 +1,214 @@
+{
+  "3.2.5 Label Expansion with Dot-Prefix": {
+    "variables": {
+      "count": [
+        "one",
+        "two",
+        "three"
+      ],
+      "dom": [
+        "example",
+        "com"
+      ],
+      "dub": "me/too",
+      "hello": "Hello World!",
+      "half": "50%",
+      "var": "value",
+      "who": "fred",
+      "base": "http://example.com/home/",
+      "path": "/foo/bar",
+      "list": [
+        "red",
+        "green",
+        "blue"
+      ],
+      "keys": {
+        "semi": ";",
+        "dot": ".",
+        "comma": ","
+      },
+      "v": "6",
+      "x": "1024",
+      "y": "768",
+      "empty": "",
+      "empty_keys": {},
+      "undef": null
+    },
+    "testcases": [
+      [
+        "{.who}",
+        ".fred"
+      ],
+      [
+        "{.who,who}",
+        ".fred.fred"
+      ],
+      [
+        "{.half,who}",
+        ".50%25.fred"
+      ],
+      [
+        "www{.dom*}",
+        "www.example.com"
+      ],
+      [
+        "X{.var}",
+        "X.value"
+      ],
+      [
+        "X{.var:3}",
+        "X.val"
+      ],
+      [
+        "X{.empty}",
+        "X."
+      ],
+      [
+        "X{.undef}",
+        "X"
+      ],
+      [
+        "X{.list}",
+        "X.red,green,blue"
+      ],
+      [
+        "X{.list*}",
+        "X.red.green.blue"
+      ],
+      [
+        "{#keys}",
+        [
+          "#comma,,,dot,.,semi,;",
+          "#comma,,,semi,;,dot,.",
+          "#dot,.,comma,,,semi,;",
+          "#dot,.,semi,;,comma,,",
+          "#semi,;,comma,,,dot,.",
+          "#semi,;,dot,.,comma,,"
+        ]
+      ],
+      [
+        "{#keys*}",
+        [
+          "#comma=,,dot=.,semi=;",
+          "#comma=,,semi=;,dot=.",
+          "#dot=.,comma=,,semi=;",
+          "#dot=.,semi=;,comma=,",
+          "#semi=;,comma=,,dot=.",
+          "#semi=;,dot=.,comma=,"
+        ]
+      ],
+      [
+        "X{.empty_keys}",
+        "X"
+      ],
+      [
+        "X{.empty_keys*}",
+        "X"
+      ]
+    ]
+  },
+  "3.2.7 Path-Style Parameter Expansion": {
+    "variables": {
+      "count": [
+        "one",
+        "two",
+        "three"
+      ],
+      "dom": [
+        "example",
+        "com"
+      ],
+      "dub": "me/too",
+      "hello": "Hello World!",
+      "half": "50%",
+      "var": "value",
+      "who": "fred",
+      "base": "http://example.com/home/",
+      "path": "/foo/bar",
+      "list": [
+        "red",
+        "green",
+        "blue"
+      ],
+      "keys": {
+        "semi": ";",
+        "dot": ".",
+        "comma": ","
+      },
+      "v": "6",
+      "x": "1024",
+      "y": "768",
+      "empty": "",
+      "empty_keys": {},
+      "undef": null
+    },
+    "testcases": [
+      [
+        "{;who}",
+        ";who=fred"
+      ],
+      [
+        "{;half}",
+        ";half=50%25"
+      ],
+      [
+        "{;empty}",
+        ";empty"
+      ],
+      [
+        "{;hello:5}",
+        ";hello=Hello"
+      ],
+      [
+        "{;v,empty,who}",
+        ";v=6;empty;who=fred"
+      ],
+      [
+        "{;v,bar,who}",
+        ";v=6;who=fred"
+      ],
+      [
+        "{;x,y}",
+        ";x=1024;y=768"
+      ],
+      [
+        "{;x,y,empty}",
+        ";x=1024;y=768;empty"
+      ],
+      [
+        "{;x,y,undef}",
+        ";x=1024;y=768"
+      ],
+      [
+        "{;list}",
+        ";list=red,green,blue"
+      ],
+      [
+        "{;list*}",
+        ";list=red;list=green;list=blue"
+      ],
+      [
+        "{;keys}",
+        [
+          ";keys=comma,%2C,dot,.,semi,%3B",
+          ";keys=comma,%2C,semi,%3B,dot,.",
+          ";keys=dot,.,comma,%2C,semi,%3B",
+          ";keys=dot,.,semi,%3B,comma,%2C",
+          ";keys=semi,%3B,comma,%2C,dot,.",
+          ";keys=semi,%3B,dot,.,comma,%2C"
+        ]
+      ],
+      [
+        "{;keys*}",
+        [
+          ";comma=%2C;dot=.;semi=%3B",
+          ";comma=%2C;semi=%3B;dot=.",
+          ";dot=.;comma=%2C;semi=%3B",
+          ";dot=.;semi=%3B;comma=%2C",
+          ";semi=%3B;comma=%2C;dot=.",
+          ";semi=%3B;dot=.;comma=%2C"
+        ]
+      ]
+    ]
+  }
+}

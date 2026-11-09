@@ -116,6 +116,41 @@ final class QuerySerializer
         return implode(',', $items);
     }
 
+    /** Expand one declared path parameter, not an arbitrary URI-template language. */
+    public static function path(mixed $value, string $name, string $format): string
+    {
+        if (in_array($format, ['csv', 'object', 'object-explode'], true)) {
+            return self::simple($value, $name, $format);
+        }
+        if (preg_match('/^(label|matrix)(?:-(list|object)(-explode)?)?$/D', $format, $matches) !== 1) {
+            throw new \InvalidArgumentException('Unsupported path parameter format.');
+        }
+        $label = $matches[1] === 'label';
+        $kind = $matches[2] ?? 'scalar';
+        $explode = isset($matches[3]);
+        $named = static fn (string $key, string $text): string => ';' . $key . ($text === '' ? '' : '=' . $text);
+        if ($kind === 'scalar') {
+            $text = rawurlencode(self::scalar($value));
+            return $label ? '.' . $text : $named(rawurlencode($name), $text);
+        }
+        if ($kind === 'list') {
+            $items = self::encodedList($value, $name, null, rawurlencode(...));
+            if ($items === []) { return ''; }
+            if ($label) { return '.' . implode($explode ? '.' : ',', $items); }
+            if (!$explode) { return $named(rawurlencode($name), implode(',', $items)); }
+            return implode('', array_map(static fn (string $item): string => $named(rawurlencode($name), $item), $items));
+        }
+        $items = [];
+        foreach (self::objectFields($value, $name, deep: false) as $key => $item) {
+            $key = rawurlencode((string) $key); $text = rawurlencode(self::scalar($item));
+            if (!$explode) { $items[] = $key; $items[] = $text; }
+            else { $items[] = $label ? $key . '=' . $text : $named($key, $text); }
+        }
+        if ($items === []) { return ''; }
+        if ($label) { return '.' . implode($explode ? '.' : ',', $items); }
+        return $explode ? implode('', $items) : $named(rawurlencode($name), implode(',', $items));
+    }
+
     private static function headerText(string $text): string
     {
         if ($text !== trim($text, " \t") || preg_match('/^[\x09\x20-\x7E\x80-\xFF]*$/D', $text) !== 1) {

@@ -2,7 +2,9 @@
 
 ## Unreleased
 
-No changes yet.
+- Add label/matrix expansion for explicit scalar, list and flat-object path metadata, including both explode modes, finite booleans/numbers, numeric keys, encoded data and empty values. Reuse the existing scalar/list/DTO/Map routines instead of a second URI-template engine.
+- Preserve literal path segments in the default Guzzle/cURL client so dot-prefixed empty labels survive transport. Keep injected clients, stream-handler fallback, constructor/executor APIs and existing simple/query/header behavior compatible.
+- Verify reference examples from RFC 6570 sections 3.2.5/3.2.7, empty/null/invalid shapes and actual HTTP request targets. Include the real HTTP smoke in source CI and immutable-package installation verification.
 
 ## [0.18.0] — 2026-11-09
 

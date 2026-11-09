@@ -153,3 +153,9 @@ if ($objectStatus !== 0) {
     throw new RuntimeException('Installed runtime object parameter smoke failed.');
 }
 echo "PUBLISHED_OBJECT_PARAMETER_RUNTIME_OK", PHP_EOL;
+
+$pathCommand = implode(' ', array_map('escapeshellarg', [PHP_BINARY,
+    $directory . '/vendor/dmorenof/sdk-runtime/tests/path-styles-smoke.php', $directory . '/vendor/autoload.php']));
+passthru($pathCommand, $pathStatus);
+if ($pathStatus !== 0) { throw new RuntimeException('Installed runtime label/matrix HTTP smoke failed.'); }
+echo "PUBLISHED_PATH_STYLE_RUNTIME_OK", PHP_EOL;

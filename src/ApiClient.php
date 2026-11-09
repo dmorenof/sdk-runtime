@@ -45,7 +45,8 @@ abstract class ApiClient
         $this->serverOverrides = $normalized;
         $this->securityCredentials = $securityCredentials ?? new SecurityCredentials();
         $this->transport = $transport ?? new Psr18Transport(
-            $httpClient ?? new \GuzzleHttp\Client(['http_errors' => false]),
+            $httpClient ?? new \GuzzleHttp\Client(['http_errors' => false,
+                'curl' => defined('CURLOPT_PATH_AS_IS') ? [CURLOPT_PATH_AS_IS => true] : []]),
             $headers,
         );
     }
@@ -227,7 +228,7 @@ abstract class ApiClient
             }
         }
 
-        self::assertSimpleFormats($spec->pathSerialization);
+        self::assertSimpleFormats($spec->pathSerialization, path: true);
         self::assertSimpleFormats($spec->headerSerialization);
         $path = $spec->path;
         foreach ($pathParameters as $name => $value) {
@@ -235,7 +236,7 @@ abstract class ApiClient
                 throw new \UnexpectedValueException("Path parameter $name cannot be null.");
             }
             if (isset($spec->pathSerialization[$name])) {
-                $encoded = QuerySerializer::simple($value, (string) $name, $spec->pathSerialization[$name]);
+                $encoded = QuerySerializer::path($value, (string) $name, $spec->pathSerialization[$name]);
             } elseif (is_array($value) || is_object($value)) {
                 throw new \UnexpectedValueException("Structured path parameter $name requires serialization metadata.");
             } else {
@@ -333,10 +334,11 @@ abstract class ApiClient
     }
 
     /** @param array<array-key,mixed> $formats */
-    private static function assertSimpleFormats(array $formats): void
+    private static function assertSimpleFormats(array $formats, bool $path = false): void
     {
         foreach ($formats as $format) {
-            if (!in_array($format, ['csv', 'object', 'object-explode'], true)) {
+            if (!in_array($format, ['csv', 'object', 'object-explode'], true)
+                && !($path && is_string($format) && preg_match('/^(label|matrix)(?:-(list|object)(-explode)?)?$/D', $format) === 1)) {
                 throw new \InvalidArgumentException('Unsupported simple path/header parameter metadata.');
             }
         }

@@ -19,6 +19,8 @@ namespace Dmorenof\SdkRuntime;
  *     errors?: array<int|string, string>,
  *     responseType?: string|null,
  *     responseTypes?: array<int,array{type:?string,schemaNullable:bool}>,
+ *     pathSerialization?: array<string,'csv'>,
+ *     headerSerialization?: array<string,'csv'>,
  *     schemaNullable?: bool,
  *     noContentAllowed?: bool,
  *     validation?: array<string, array<string, mixed>>,
@@ -46,6 +48,8 @@ final readonly class Operation
         'bodySerialization' => [],
         'bodyParts' => [],
         'responseTypes' => [],
+        'pathSerialization' => [],
+        'headerSerialization' => [],
     ];
 
     /** "METHOD path", unless the operation names itself. */
@@ -58,6 +62,8 @@ final readonly class Operation
      * @param array<string, array<string, mixed>> $validation Parameter name => rules.
      * @param array<string,'multi'|'csv'> $bodySerialization Form array field name => wire format.
      * @param array<string,array{contentType:?string,filename?:string}> $bodyParts Multipart metadata; null MIME accepts the uploaded file's type or octet-stream.
+     * @param array<string,'csv'> $pathSerialization Path list name => simple CSV expansion.
+     * @param array<string,'csv'> $headerSerialization Header list name => raw simple CSV expansion.
      * @param array<int,array{type:?string,schemaNullable:bool}> $responseTypes Explicit status-specific JSON types; null type means no body.
      * @param array<string, 'multi'|'csv'|'ssv'|'tsv'|'pipes'|'deepObject'> $querySerialization Query list name => normalized wire format.
      */
@@ -78,6 +84,8 @@ final readonly class Operation
         public array $bodySerialization = self::DEFAULTS['bodySerialization'],
         public array $bodyParts = self::DEFAULTS['bodyParts'],
         public array $responseTypes = self::DEFAULTS['responseTypes'],
+        public array $pathSerialization = self::DEFAULTS['pathSerialization'],
+        public array $headerSerialization = self::DEFAULTS['headerSerialization'],
     ) {
         $this->label = $label ?? $method . ' ' . $path;
     }

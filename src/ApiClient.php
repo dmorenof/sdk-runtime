@@ -95,9 +95,9 @@ abstract class ApiClient
      * Shared runtime DTO validation checks required and nested fields.
      *
      * @return array{
-     *   path:array<string,bool|float|int|string|null>,
+     *   path:array<string,bool|float|int|string|list<bool|float|int|string>|null>,
      *   query:array<string,bool|float|int|string|list<bool|float|int|string>|DTO|Map|null>,
-     *   header:array<string,bool|float|int|string|null>,
+     *   header:array<string,bool|float|int|string|list<bool|float|int|string>|null>,
      *   body:?DTO
      * }
      */
@@ -125,17 +125,23 @@ abstract class ApiClient
                     continue;
                 }
                 if (is_array($value)) {
-                    if ($location !== 'query' || !array_is_list($value)) {
-                        throw new \UnexpectedValueException("Only query parameters can carry scalar lists: $wireName");
+                    if (!array_is_list($value)) {
+                        throw new \UnexpectedValueException("Operation parameter must be a scalar list: $wireName");
                     }
                     $items = [];
                     foreach ($value as $item) {
                         if (!is_scalar($item)) {
-                            throw new \UnexpectedValueException("Query array members must be scalars: $wireName");
+                            throw new \UnexpectedValueException("Parameter list members must be scalars: $wireName");
                         }
                         $items[] = $item;
                     }
-                    $query[$wireName] = $items;
+                    if ($location === 'path') {
+                        $path[$wireName] = $items;
+                    } elseif ($location === 'header') {
+                        $headers[$wireName] = $items;
+                    } else {
+                        $query[$wireName] = $items;
+                    }
                     continue;
                 }
                 if ($value !== null && !is_scalar($value)) {
@@ -164,7 +170,7 @@ abstract class ApiClient
         ?DTO $payload = null,
         ?DTO $body = null,
     ): mixed {
-        /** @var array<string,bool|float|int|string|null> $path */
+        /** @var array<string,bool|float|int|string|list<bool|float|int|string>|null> $path */
         $path = [];
         if ($identifier instanceof DTO) {
             $path = self::operationFields($identifier)['path'];
@@ -173,7 +179,7 @@ abstract class ApiClient
         }
         /** @var array<string,bool|float|int|string|list<bool|float|int|string>|DTO|Map|null> $query */
         $query = [];
-        /** @var array<string,bool|float|int|string|null> $headers */
+        /** @var array<string,bool|float|int|string|list<bool|float|int|string>|null> $headers */
         $headers = [];
         if ($payload !== null) {
             $fields = self::operationFields($payload);
@@ -195,9 +201,9 @@ abstract class ApiClient
      * send it and decode the typed response.
      *
      * @param OperationSpec $operation
-     * @param array<string, scalar|null> $pathParameters
+     * @param array<string, scalar|list<scalar>|null> $pathParameters
      * @param array<string, scalar|list<scalar>|DTO|Map|\stdClass|null> $queryParameters
-     * @param array<string, scalar|null> $headerParameters
+     * @param array<string, scalar|list<scalar>|null> $headerParameters
      */
     protected function executeOperation(
         array $operation,
@@ -215,13 +221,29 @@ abstract class ApiClient
             }
         }
 
+        self::assertSimpleFormats($spec->pathSerialization);
+        self::assertSimpleFormats($spec->headerSerialization);
         $path = $spec->path;
         foreach ($pathParameters as $name => $value) {
-            $path = str_replace('{' . $name . '}', rawurlencode(self::stringify($value)), $path);
+            if ($value === null) {
+                throw new \UnexpectedValueException("Path parameter $name cannot be null.");
+            }
+            if (isset($spec->pathSerialization[$name])) {
+                $encoded = QuerySerializer::simpleList($value, $name);
+            } elseif (is_array($value)) {
+                throw new \UnexpectedValueException("Path list $name requires serialization metadata.");
+            } else {
+                $encoded = rawurlencode(self::stringify($value));
+            }
+            $path = str_replace('{' . $name . '}', $encoded, $path);
+        }
+        if (preg_match('/\{[^{}]+\}/', $path) === 1) {
+            throw new \UnexpectedValueException('Missing path parameter for ' . $spec->label);
         }
         $query = array_filter($queryParameters, static fn ($value): bool => $value !== null);
         $binary = ltrim($spec->responseType ?? '', '\\') === \Psr\Http\Message\ResponseInterface::class;
-        $headers = ['Accept' => $binary ? 'application/octet-stream' : 'application/json'] + self::stringifyAll($headerParameters);
+        $headers = ['Accept' => $binary ? 'application/octet-stream' : 'application/json']
+            + self::stringifyAll($headerParameters, $spec->headerSerialization);
         if (!in_array($spec->requestMediaType, ['application/json', 'application/x-www-form-urlencoded', 'multipart/form-data'], true)
             || ($spec->requestMediaType !== 'application/x-www-form-urlencoded' && $spec->bodySerialization !== [])
             || ($spec->requestMediaType !== 'multipart/form-data' && $spec->bodyParts !== [])) {
@@ -283,18 +305,35 @@ abstract class ApiClient
     }
 
     /**
-     * @param array<string, scalar|null> $values
+     * @param array<string, scalar|list<scalar>|null> $values
+     * @param array<string,'csv'> $formats
      * @return array<string, string> Parameters that carry a value, as they appear on the wire.
      */
-    private static function stringifyAll(array $values): array
+    private static function stringifyAll(array $values, array $formats = []): array
     {
         $result = [];
         foreach ($values as $name => $value) {
             if ($value !== null) {
-                $result[$name] = self::stringify($value);
+                if (isset($formats[$name])) {
+                    $result[$name] = QuerySerializer::simpleList($value, $name, header: true);
+                } elseif (is_array($value)) {
+                    throw new \UnexpectedValueException("Header list $name requires serialization metadata.");
+                } else {
+                    $result[$name] = self::stringify($value);
+                }
             }
         }
         return $result;
+    }
+
+    /** @param array<array-key,mixed> $formats */
+    private static function assertSimpleFormats(array $formats): void
+    {
+        foreach ($formats as $format) {
+            if ($format !== 'csv') {
+                throw new \InvalidArgumentException('Only simple CSV path/header list metadata is supported.');
+            }
+        }
     }
 
     private static function stringify(string|int|float|bool|null $value): string

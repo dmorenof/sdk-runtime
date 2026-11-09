@@ -61,6 +61,18 @@ final class QuerySerializer
         return Query::build($pairs, false);
     }
 
+    /** Primitive simple lists reuse the query list validation and native item encoding. */
+    public static function simpleList(mixed $value, string $name, bool $header = false): string
+    {
+        $encode = $header ? static function (string $text): string {
+            if ($text !== trim($text, " \t") || preg_match('/^[\x09\x20-\x7E\x80-\xFF]*$/D', $text) !== 1) {
+                throw new \UnexpectedValueException('Simple header items must preserve HTTP field whitespace and contain valid header bytes.');
+            }
+            return $text;
+        } : rawurlencode(...);
+        return implode(',', self::encodedList($value, $name, $header ? ',' : null, $encode));
+    }
+
     private static function scalar(mixed $value): string
     {
         if (!is_scalar($value) || (is_float($value) && !is_finite($value))) {

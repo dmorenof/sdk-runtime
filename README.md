@@ -286,3 +286,22 @@ still need to be declared in success; unexpected statuses retain ApiException
 and typed/raw error behavior. Binary PSR responses retain their existing path.
 This map describes JSON response selection, not mixed JSON/binary media codecs,
 status ranges, or general JSON Schema/native-property-union support.
+
+
+### Simple primitive path/header lists (v0.17.0)
+
+Operation pathSerialization/headerSerialization maps declare list names with csv.
+ApiClient inherits the existing DTO argument extraction and query list validation;
+QuerySerializer::simpleList encodes each path item with rawurlencode before comma
+joining. Raw header values keep their text: embedded comma, control bytes and
+leading/trailing SP/HTAB are rejected rather than inventing header escaping or
+silently letting PSR trim the field. Optional null headers are omitted; explicitly
+empty lists expand to an empty path segment/header value, subject to DTO bounds.
+
+Path/header arrays require declared metadata and finite non-null scalar elements.
+Missing path placeholders and null path values now fail before transport.
+The constructor adds options at the end, and executeArguments keeps its native
+signature: generated single-list paths use a PathParams DTO just like composite
+paths. Query, body, response hydration, legacy transports and scalar signatures
+remain compatible. Objects, label/matrix, non-CSV header/path formats, nullable
+list schemas and general cookie serialization are outside this bounded feature.

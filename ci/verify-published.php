@@ -137,3 +137,11 @@ if ($statusResult !== 0) {
     throw new RuntimeException('Installed runtime status response smoke failed.');
 }
 echo "PUBLISHED_STATUS_RESPONSE_RUNTIME_OK", PHP_EOL;
+
+$simpleCommand = implode(' ', array_map('escapeshellarg', [PHP_BINARY,
+    $directory . '/vendor/dmorenof/sdk-runtime/tests/simple-parameters-smoke.php', $directory . '/vendor/autoload.php']));
+passthru($simpleCommand, $simpleStatus);
+if ($simpleStatus !== 0) {
+    throw new RuntimeException('Installed runtime simple path/header smoke failed.');
+}
+echo "PUBLISHED_SIMPLE_PARAMETER_RUNTIME_OK", PHP_EOL;

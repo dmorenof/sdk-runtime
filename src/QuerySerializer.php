@@ -9,7 +9,7 @@ use GuzzleHttp\Psr7\Query;
 final class QuerySerializer
 {
     /**
-     * @param array<array-key, scalar|list<scalar>|DTO|Map|\stdClass|null> $parameters
+     * @param array<array-key, scalar|list<scalar>|DTO|Map|TypedArray|\stdClass|null> $parameters
      * @param array<array-key, 'multi'|'csv'|'ssv'|'tsv'|'pipes'|'deepObject'|'form-object'|'form-object-explode'> $formats Query name => normalized wire format.
      * @param list<string> $allowReserved Query names whose data uses reserved expansion.
      */
@@ -87,6 +87,23 @@ final class QuerySerializer
             }
         }
         return Query::build($pairs, false);
+    }
+
+    /** Serialize a parameter representation once, before its location's normal encoding. */
+    public static function content(mixed $value, string $media, bool $header = false): string
+    {
+        if ($media === 'text/plain') {
+            if (!is_string($value)) { throw new \UnexpectedValueException('text/plain parameters require strings.'); }
+            return $header ? self::headerText($value) : $value;
+        }
+        if ($media !== 'application/json') { throw new \InvalidArgumentException('Unsupported parameter media type.'); }
+        if ($value === null || (!is_scalar($value) && !is_array($value)
+            && !$value instanceof DTO && !$value instanceof Map && !$value instanceof TypedArray)) {
+            throw new \UnexpectedValueException('JSON parameters require typed models, collections or non-null scalar values.');
+        }
+        DTO::validateNestedValue($value, 'request');
+        $json = json_encode(Serializer::value($value, 'request'), JSON_THROW_ON_ERROR);
+        return $header ? self::headerText($json) : $json;
     }
 
     /** Primitive simple lists reuse the query list validation and native item encoding. */

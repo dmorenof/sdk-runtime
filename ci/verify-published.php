@@ -171,3 +171,9 @@ $reservedCommand = implode(' ', array_map('escapeshellarg', [PHP_BINARY,
 passthru($reservedCommand, $reservedStatus);
 if ($reservedStatus !== 0) { throw new RuntimeException('Installed runtime reserved query HTTP smoke failed.'); }
 echo "PUBLISHED_RESERVED_QUERY_RUNTIME_OK", PHP_EOL;
+
+$contentCommand = implode(' ', array_map('escapeshellarg', [PHP_BINARY,
+    $directory . '/vendor/dmorenof/sdk-runtime/tests/parameter-content-smoke.php', $directory . '/vendor/autoload.php']));
+passthru($contentCommand, $contentStatus);
+if ($contentStatus !== 0) { throw new RuntimeException('Installed runtime parameter content HTTP smoke failed.'); }
+echo "PUBLISHED_PARAMETER_CONTENT_RUNTIME_OK", PHP_EOL;

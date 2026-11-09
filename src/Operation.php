@@ -28,6 +28,7 @@ namespace Dmorenof\SdkRuntime;
  *     requestMediaType?: string,
  *     bodySerialization?: array<string,'multi'|'csv'>,
  *     bodyParts?: array<string,array{contentType:?string,filename?:string}>,
+ *     parameterContent?: array<string,array<array-key,'application/json'|'text/plain'>>,
  *     queryAllowReserved?: list<string>,
  *     querySerialization?: array<array-key, 'multi'|'csv'|'ssv'|'tsv'|'pipes'|'deepObject'|'form-object'|'form-object-explode'>,
  * }
@@ -52,6 +53,7 @@ final readonly class Operation
         'pathSerialization' => [],
         'headerSerialization' => [],
         'queryAllowReserved' => [],
+        'parameterContent' => [],
     ];
 
     /** "METHOD path", unless the operation names itself. */
@@ -59,6 +61,7 @@ final readonly class Operation
 
     /**
      * @param list<array<string, list<string>>> $security Alternatives are OR; schemes within one entry are AND.
+     * @param array<string,array<array-key,'application/json'|'text/plain'>> $parameterContent Parameter media types grouped by location.
      * @param list<string> $queryAllowReserved Query names whose data uses reserved expansion.
      * @param list<int> $success Statuses that are not errors.
      * @param array<int|string, string> $errors Status (or 'default') => error model class.
@@ -90,6 +93,7 @@ final readonly class Operation
         public array $pathSerialization = self::DEFAULTS['pathSerialization'],
         public array $headerSerialization = self::DEFAULTS['headerSerialization'],
         public array $queryAllowReserved = self::DEFAULTS['queryAllowReserved'],
+        public array $parameterContent = self::DEFAULTS['parameterContent'],
     ) {
         $this->label = $label ?? $method . ' ' . $path;
     }

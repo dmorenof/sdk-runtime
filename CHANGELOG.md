@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Add optional per-location parameterContent operation metadata after existing arguments. Serialize application/json through existing request-direction validation/Serializer/json_encode and text/plain as strings before normal path/query encoding or raw header transmission.
+- Support typed model/collection/map parameters without new wrappers or executor signatures. Preserve empty JSON arrays/strings, false/zero, numeric map keys, readOnly filtering and optional-null omission; reject style/media conflicts, malformed headers, invalid JSON and unsupported cookie JSON.
+- Assemble text/plain cookie values as RFC6265 raw pairs alongside configured, schema-form and security cookies, without query percent encoding. Verify both transports, mutations and actual GET/POST/scalar-path HTTP in source and installed-package smoke.
+
 ## [0.21.0] — 2026-11-09
 
 - Add per-query allowReserved metadata to Operation after existing arguments and reuse QuerySerializer/Guzzle query assembly. Preserve safe reserved characters and valid percent triples in values; names, unflagged parameters and security credentials keep ordinary encoding.

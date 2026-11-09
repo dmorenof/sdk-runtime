@@ -96,10 +96,10 @@ abstract class ApiClient
      * Shared runtime DTO validation checks required and nested fields.
      *
      * @return array{
-     *   path:array<string,bool|float|int|string|list<bool|float|int|string>|DTO|Map|null>,
-     *   query:array<string,bool|float|int|string|list<bool|float|int|string>|DTO|Map|null>,
-     *   header:array<string,bool|float|int|string|list<bool|float|int|string>|DTO|Map|null>,
-     *   cookie:array<string,bool|float|int|string|list<bool|float|int|string>|DTO|Map|null>,
+     *   path:array<string,bool|float|int|string|list<bool|float|int|string>|DTO|Map|TypedArray|null>,
+     *   query:array<string,bool|float|int|string|list<bool|float|int|string>|DTO|Map|TypedArray|null>,
+     *   header:array<string,bool|float|int|string|list<bool|float|int|string>|DTO|Map|TypedArray|null>,
+     *   cookie:array<string,bool|float|int|string|list<bool|float|int|string>|DTO|Map|TypedArray|null>,
      *   body:?DTO
      * }
      */
@@ -121,7 +121,7 @@ abstract class ApiClient
             foreach ($properties as $wireName => $property) {
                 if (!array_key_exists($property, $values)) { continue; }
                 $value = $values[$property];
-                if ($value instanceof DTO || $value instanceof Map) {
+                if ($value instanceof DTO || $value instanceof Map || $value instanceof TypedArray) {
                     if ($location === 'cookie') { throw new \UnexpectedValueException('Structured cookie parameters are unsupported.'); }
                 } elseif (is_array($value)) {
                     if ($location === 'cookie' || !array_is_list($value)) {
@@ -153,16 +153,16 @@ abstract class ApiClient
         ?DTO $payload = null,
         ?DTO $body = null,
     ): mixed {
-        /** @var array<string,bool|float|int|string|list<bool|float|int|string>|DTO|Map|null> $path */
+        /** @var array<string,bool|float|int|string|list<bool|float|int|string>|DTO|Map|TypedArray|null> $path */
         $path = [];
         if ($identifier instanceof DTO) {
             $path = self::operationFields($identifier)['path'];
         } elseif ($identifierName !== null) {
             $path[$identifierName] = $identifier;
         }
-        /** @var array<string,bool|float|int|string|list<bool|float|int|string>|DTO|Map|null> $query */
+        /** @var array<string,bool|float|int|string|list<bool|float|int|string>|DTO|Map|TypedArray|null> $query */
         $query = [];
-        /** @var array<string,bool|float|int|string|list<bool|float|int|string>|DTO|Map|null> $headers */
+        /** @var array<string,bool|float|int|string|list<bool|float|int|string>|DTO|Map|TypedArray|null> $headers */
         $headers = [];
         if ($payload !== null) {
             $fields = self::operationFields($payload);
@@ -179,7 +179,17 @@ abstract class ApiClient
                         unset($headers[$name]);
                     }
                 }
-                $headers += CookieHeader::merge($cookieHeaders, ['Cookie' => str_replace('&', '; ', QuerySerializer::encode($fields['cookie']))]);
+                $cookies = $fields['cookie'];
+                $rawCookies = [];
+                foreach ($operation['parameterContent']['cookie'] ?? [] as $name => $media) {
+                    if ($media !== 'text/plain') { throw new \InvalidArgumentException('Cookie content supports only text/plain.'); }
+                    if (array_key_exists($name, $cookies) && $cookies[$name] !== null) {
+                        $rawCookies[] = CookieHeader::pair((string) $name, QuerySerializer::content($cookies[$name], $media));
+                    }
+                    unset($cookies[$name]);
+                }
+                $headers += CookieHeader::merge($cookieHeaders, ['Cookie' => implode('; ', $rawCookies)],
+                    ['Cookie' => str_replace('&', '; ', QuerySerializer::encode($cookies))]);
             }
             $body = $fields['body'];
         }
@@ -197,9 +207,9 @@ abstract class ApiClient
      * send it and decode the typed response.
      *
      * @param OperationSpec $operation
-     * @param array<string, scalar|list<scalar>|DTO|Map|\stdClass|null> $pathParameters
-     * @param array<string, scalar|list<scalar>|DTO|Map|\stdClass|null> $queryParameters
-     * @param array<string, scalar|list<scalar>|DTO|Map|\stdClass|null> $headerParameters
+     * @param array<string, scalar|list<scalar>|DTO|Map|TypedArray|\stdClass|null> $pathParameters
+     * @param array<string, scalar|list<scalar>|DTO|Map|TypedArray|\stdClass|null> $queryParameters
+     * @param array<string, scalar|list<scalar>|DTO|Map|TypedArray|\stdClass|null> $headerParameters
      */
     protected function executeOperation(
         array $operation,
@@ -216,6 +226,11 @@ abstract class ApiClient
                 Constraints::validate($value, $rules, $spec->label . '.' . $name);
             }
         }
+
+        self::assertParameterContent($spec->parameterContent, $spec);
+        $pathParameters = self::contentParameters($pathParameters, $spec->parameterContent['path'] ?? []);
+        $queryParameters = self::contentParameters($queryParameters, $spec->parameterContent['query'] ?? []);
+        $headerParameters = self::contentParameters($headerParameters, $spec->parameterContent['header'] ?? [], true);
 
         self::assertSimpleFormats($spec->pathSerialization, path: true);
         self::assertSimpleFormats($spec->headerSerialization);
@@ -301,8 +316,44 @@ abstract class ApiClient
         return JsonHydrator::decode($response->body, $responseType['type'], $responseType['schemaNullable']);
     }
 
+    /** @param array<array-key,mixed> $content Unvalidated nested metadata at the execution boundary. */
+    private static function assertParameterContent(array $content, Operation $spec): void
+    {
+        foreach ($content as $location => $formats) {
+            if (!in_array($location, ['path', 'query', 'header', 'cookie'], true) || !is_array($formats)) {
+                throw new \InvalidArgumentException('Unsupported parameter content location.');
+            }
+            foreach ($formats as $name => $media) {
+                $styles = match ($location) {
+                    'path' => $spec->pathSerialization, 'query' => $spec->querySerialization,
+                    'header' => $spec->headerSerialization, default => [],
+                };
+                if (!in_array($media, ['application/json', 'text/plain'], true)
+                    || ($location === 'cookie' && $media !== 'text/plain') || isset($styles[$name])
+                    || ($location === 'query' && in_array((string) $name, $spec->queryAllowReserved, true))) {
+                    throw new \InvalidArgumentException('Parameter content cannot combine incompatible media or style metadata.');
+                }
+            }
+        }
+    }
+
     /**
-     * @param array<string, scalar|list<scalar>|DTO|Map|\stdClass|null> $values
+     * @param array<string,scalar|list<scalar>|DTO|Map|TypedArray|\stdClass|null> $parameters
+     * @param array<array-key,'application/json'|'text/plain'> $formats
+     * @return array<string,scalar|list<scalar>|DTO|Map|TypedArray|\stdClass|null>
+     */
+    private static function contentParameters(array $parameters, array $formats, bool $header = false): array
+    {
+        foreach ($formats as $name => $media) {
+            if (array_key_exists($name, $parameters) && $parameters[$name] !== null) {
+                $parameters[$name] = QuerySerializer::content($parameters[$name], $media, $header);
+            }
+        }
+        return $parameters;
+    }
+
+    /**
+     * @param array<string, scalar|list<scalar>|DTO|Map|TypedArray|\stdClass|null> $values
      * @param array<array-key,'csv'|'object'|'object-explode'> $formats
      * @return array<string, string> Parameters that carry a value, as they appear on the wire.
      */

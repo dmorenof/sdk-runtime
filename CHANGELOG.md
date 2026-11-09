@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## [0.22.0] — 2026-11-09
 
 - Add optional per-location parameterContent operation metadata after existing arguments. Serialize application/json through existing request-direction validation/Serializer/json_encode and text/plain as strings before normal path/query encoding or raw header transmission.
 - Support typed model/collection/map parameters without new wrappers or executor signatures. Preserve empty JSON arrays/strings, false/zero, numeric map keys, readOnly filtering and optional-null omission; reject style/media conflicts, malformed headers, invalid JSON and unsupported cookie JSON.

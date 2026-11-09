@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## [0.21.0] — 2026-11-09
 
 - Add per-query allowReserved metadata to Operation after existing arguments and reuse QuerySerializer/Guzzle query assembly. Preserve safe reserved characters and valid percent triples in values; names, unflagged parameters and security credentials keep ordinary encoding.
 - Support existing primitive lists and flat DTO/Map form/deepObject objects. Reject raw query syntax/illegal URI characters and ambiguous structural delimiters; documented pre-encoding remains the caller's responsibility under OpenAPI Appendix C. RFC1738 reserved expansion is not supported.

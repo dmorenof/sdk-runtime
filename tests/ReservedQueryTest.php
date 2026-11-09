@@ -36,6 +36,10 @@ final class ReservedQueryTest extends TestCase {
             self::assertSame('', QuerySerializer::encode(['q' => []], ['q' => $format], allowReserved: ['q']));
         }
         self::assertSame('q=a%2Cb,c/d', QuerySerializer::encode(['q' => ['a%2Cb', 'c/d']], ['q' => 'csv'], allowReserved: ['q']));
+        // OpenAPI 3.1.2 Appendix C.4.2: manually pre-encoded plus, reserved slash and native caret encoding.
+        self::assertSame('a=x%2By&b=x/y&c=x%5Ey&words=math%20is%20fun', QuerySerializer::encode(
+            ['formulas' => (object) ['a' => 'x%2By', 'b' => 'x/y', 'c' => 'x^y'], 'words' => ['math', 'is', 'fun']],
+            ['formulas' => 'form-object-explode', 'words' => 'ssv'], allowReserved: ['formulas']));
         $object = (object) ['a/b' => 'x/y', 'count' => 0];
         self::assertSame('q=a/b,x/y,count,0', QuerySerializer::encode(['q' => $object], ['q' => 'form-object'], allowReserved: ['q']));
         self::assertSame('a%2Fb=x/y&count=0', QuerySerializer::encode(['q' => $object], ['q' => 'form-object-explode'], allowReserved: ['q']));

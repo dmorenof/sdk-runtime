@@ -11,14 +11,19 @@ final class QuerySerializer
     /**
      * @param array<array-key, scalar|list<scalar>|DTO|Map|\stdClass|null> $parameters
      * @param array<array-key, 'multi'|'csv'|'ssv'|'tsv'|'pipes'|'deepObject'|'form-object'|'form-object-explode'> $formats Query name => normalized wire format.
+     * @param list<string> $allowReserved Query names whose data uses reserved expansion.
      */
-    public static function encode(array $parameters, array $formats = [], int $encoding = PHP_QUERY_RFC3986): string
+    public static function encode(array $parameters, array $formats = [], int $encoding = PHP_QUERY_RFC3986, array $allowReserved = []): string
     {
         $encode = match ($encoding) {
             PHP_QUERY_RFC3986 => rawurlencode(...),
             PHP_QUERY_RFC1738 => urlencode(...),
             default => throw new \InvalidArgumentException('Unsupported query percent-encoding standard.'),
         };
+        if ($allowReserved !== [] && $encoding !== PHP_QUERY_RFC3986) {
+            throw new \InvalidArgumentException('Reserved expansion requires RFC3986 encoding.');
+        }
+        $reserved = self::reservedNames($allowReserved);
         foreach ($formats as $name => $format) {
             self::assertFormat($format, (string) $name);
         }
@@ -28,20 +33,25 @@ final class QuerySerializer
                 continue;
             }
             $encodedName = $encode((string) $name);
+            $format = $formats[$name] ?? null;
+            $delimiter = match ($format) { 'ssv' => ' ', 'tsv' => "\t", 'pipes' => '|', default => null };
+            $reservedDelimiter = in_array($format, ['csv', 'form-object'], true) ? ',' : $delimiter;
+            $encodeValue = isset($reserved[$name])
+                ? static fn (string $text): string => self::reserved($text, $reservedDelimiter) : $encode;
             if (isset($formats[$name])) {
                 $format = $formats[$name];
                 if (in_array($format, ['form-object', 'form-object-explode'], true)) {
                     $items = [];
                     foreach (self::objectFields($value, (string) $name, deep: false) as $key => $item) {
-                        $encodedKey = $encode((string) $key);
+                        $encodedKey = $format === 'form-object' ? $encodeValue((string) $key) : $encode((string) $key);
                         if ($format === 'form-object-explode') {
                             if (((string) $key !== (string) $name && array_key_exists($key, $parameters)) || array_key_exists($encodedKey, $pairs)) {
                                 throw new \UnexpectedValueException("Expanded query property $key collides with another parameter.");
                             }
-                            $pairs[$encodedKey] = $encode(self::scalar($item));
+                            $pairs[$encodedKey] = $encodeValue(self::scalar($item));
                         } else {
                             $items[] = $encodedKey;
-                            $items[] = $encode(self::scalar($item));
+                            $items[] = $encodeValue(self::scalar($item));
                         }
                     }
                     if ($items !== []) {
@@ -55,12 +65,11 @@ final class QuerySerializer
                         if (array_key_exists($expanded, $parameters)) {
                             throw new \UnexpectedValueException("Deep query parameter $expanded collides with another query parameter.");
                         }
-                        $pairs[$encode($expanded)] = $encode(self::scalar($item));
+                        $pairs[$encode($expanded)] = $encodeValue(self::scalar($item));
                     }
                     continue;
                 }
-                $delimiter = match ($format) { 'ssv' => ' ', 'tsv' => "\t", 'pipes' => '|', default => null };
-                $items = self::encodedList($value, (string) $name, $delimiter, $encode);
+                $items = self::encodedList($value, (string) $name, $delimiter, $encodeValue);
                 if ($items === []) {
                     continue; // Empty list expansion has no URI-template members.
                 }
@@ -74,7 +83,7 @@ final class QuerySerializer
                 if (is_array($value)) {
                     throw new \UnexpectedValueException("Query array $name requires declared serialization metadata.");
                 }
-                $pairs[$encodedName] = $encode(self::scalar($value));
+                $pairs[$encodedName] = $encodeValue(self::scalar($value));
             }
         }
         return Query::build($pairs, false);
@@ -149,6 +158,38 @@ final class QuerySerializer
         if ($items === []) { return ''; }
         if ($label) { return '.' . implode($explode ? '.' : ',', $items); }
         return $explode ? implode('', $items) : $named(rawurlencode($name), implode(',', $items));
+    }
+
+    /**
+     * @param array<array-key,mixed> $names
+     * @return array<string,true>
+     */
+    private static function reservedNames(array $names): array
+    {
+        $result = [];
+        foreach ($names as $name) {
+            if (!is_string($name) || $name === '') {
+                throw new \InvalidArgumentException('Invalid reserved query parameter metadata.');
+            }
+            $result[$name] = true;
+        }
+        return $result;
+    }
+
+    /** OpenAPI query data, not a second URI-template parser. Names use normal encoding. */
+    private static function reserved(string $text, ?string $delimiter): string
+    {
+        if (strpbrk($text, '#[]&+=' . ($delimiter ?? '')) !== false
+            || ($delimiter !== null && $delimiter !== ',' && str_contains(rawurldecode($text), $delimiter))) {
+            throw new \UnexpectedValueException('Reserved query data must pre-encode forbidden characters and preserve unambiguous list delimiters.');
+        }
+        $encoded = strtr(rawurlencode($text), [
+            '%3A' => ':', '%2F' => '/', '%3F' => '?', '%40' => '@', '%21' => '!', '%24' => '$',
+            '%27' => "'", '%28' => '(', '%29' => ')', '%2A' => '*', '%2C' => ',', '%3B' => ';',
+        ]);
+        // Valid triples pass through once; stray percent bytes retain native encoding.
+        return preg_replace('/%25([0-9A-Fa-f]{2})/', '%$1', $encoded)
+            ?? throw new \LogicException('Reserved query encoding failed.');
     }
 
     private static function headerText(string $text): string

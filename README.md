@@ -346,3 +346,5 @@ HTTP targets and reference RFC examples. No constructor or executor signatures
 change, and header/query serialization remains unchanged.
 
 Scalar operation cookies are percent-encoded using the existing query serializer and assembled as RFC 6265 cookie pairs. API key cookie credentials are already-wire-form strings (base64 characters preserved); invalid octets/conflicts fail before HTTP. Configured Cookie headers coexist case-insensitively; cookie names remain case-sensitive. No jar, Set-Cookie parsing or persistence is provided. Structured form cookies remain unsupported because OpenAPI form expansion uses incompatible delimiters.
+
+Operation queryAllowReserved names opt their values into OpenAPI reserved expansion. Existing QuerySerializer and Guzzle assembly preserve safe reserved data and valid percent triples. Names and security credentials retain normal encoding; raw `#[]&=+` and ambiguous structural delimiters fail before HTTP. Applications must pre-encode such data where a legal unambiguous representation exists. This option does not affect headers, cookies, bodies or general URI templates.

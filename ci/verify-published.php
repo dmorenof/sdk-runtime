@@ -165,3 +165,9 @@ $cookieCommand = implode(' ', array_map('escapeshellarg', [PHP_BINARY,
 passthru($cookieCommand, $cookieStatus);
 if ($cookieStatus !== 0) { throw new RuntimeException('Installed runtime cookie HTTP smoke failed.'); }
 echo "PUBLISHED_COOKIE_RUNTIME_OK", PHP_EOL;
+
+$reservedCommand = implode(' ', array_map('escapeshellarg', [PHP_BINARY,
+    $directory . '/vendor/dmorenof/sdk-runtime/tests/reserved-query-smoke.php', $directory . '/vendor/autoload.php']));
+passthru($reservedCommand, $reservedStatus);
+if ($reservedStatus !== 0) { throw new RuntimeException('Installed runtime reserved query HTTP smoke failed.'); }
+echo "PUBLISHED_RESERVED_QUERY_RUNTIME_OK", PHP_EOL;

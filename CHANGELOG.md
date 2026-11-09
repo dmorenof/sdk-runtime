@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Add per-query allowReserved metadata to Operation after existing arguments and reuse QuerySerializer/Guzzle query assembly. Preserve safe reserved characters and valid percent triples in values; names, unflagged parameters and security credentials keep ordinary encoding.
+- Support existing primitive lists and flat DTO/Map form/deepObject objects. Reject raw query syntax/illegal URI characters and ambiguous structural delimiters; documented pre-encoding remains the caller's responsibility under OpenAPI Appendix C. RFC1738 reserved expansion is not supported.
+- Preserve executor signatures, query/header/cookie/body separation, false/zero/empty/null behavior and existing parameter constraints. Verify both transports, exact wire bytes, credential precedence, mutations and real GET/POST HTTP in source and immutable-package smoke.
+
 ## [0.20.0] — 2026-11-09
 
 - Add scalar operation cookies through existing DTO argument execution and percent encoding. Preserve query/body/header independence without changing executor signatures; reject structured values.

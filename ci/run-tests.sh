@@ -40,3 +40,5 @@ php tests/object-parameters-smoke.php "$PWD/vendor/autoload.php"
 php tests/path-styles-smoke.php "$PWD/vendor/autoload.php"
 
 php tests/cookies-smoke.php "$PWD/vendor/autoload.php"
+
+php tests/reserved-query-smoke.php "$PWD/vendor/autoload.php"

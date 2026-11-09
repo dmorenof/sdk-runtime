@@ -266,7 +266,8 @@ abstract class ApiClient
             $query[$name] = $credential;
             unset($formats[$name]); // Security query keys keep their existing scalar precedence.
         }
-        $encodedQuery = QuerySerializer::encode($query, $formats);
+        $allowReserved = array_values(array_diff($spec->queryAllowReserved, array_keys($securityQuery)));
+        $encodedQuery = QuerySerializer::encode($query, $formats, allowReserved: $allowReserved);
         $baseUrl = $this->baseUrl;
         if ($spec->serverUrl !== null) {
             $declared = ServerUrl::normalize($spec->serverUrl);

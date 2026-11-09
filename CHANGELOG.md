@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## [0.19.0] — 2026-11-09
 
 - Add label/matrix expansion for explicit scalar, list and flat-object path metadata, including both explode modes, finite booleans/numbers, numeric keys, encoded data and empty values. Reuse the existing scalar/list/DTO/Map routines instead of a second URI-template engine.
 - Preserve literal path segments in the default Guzzle/cURL client so dot-prefixed empty labels survive transport. Keep injected clients, stream-handler fallback, constructor/executor APIs and existing simple/query/header behavior compatible.

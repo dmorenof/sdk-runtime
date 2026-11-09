@@ -26,7 +26,7 @@ $path = new class((object) ['ids' => ['a,b', 'c/d', '%2F', 'ñ']]) extends \Dmor
     public array $ids;
 };
 $form = new class((object) ['name' => 'Ada']) extends \Dmorenof\SdkRuntime\DTO { public string $name; };
-$payload = new class((object) ['queryBody' => 'query body', 'q' => [2, false], 'codes' => ['alpha', 'beta'], 'body' => $form]) extends \Dmorenof\SdkRuntime\DTO {
+$payload = new class((object) ['queryBody' => 'query body', 'q' => [2, false], 'codes' => ['alpha', 'beta']]) extends \Dmorenof\SdkRuntime\DTO {
     public const bool OPERATION_BODY = true;
     public const array OPERATION_FIELDS = ['path' => [], 'query' => ['body' => 'queryBody', 'q' => 'q'], 'header' => ['X-Codes' => 'codes']];
     public string $queryBody;
@@ -34,6 +34,7 @@ $payload = new class((object) ['queryBody' => 'query body', 'q' => [2, false], '
     public array $codes;
     public \Dmorenof\SdkRuntime\DTO $body;
 };
+$payload->body = $form;
 $client->submit($path, $payload);
 $payload->codes = ['a,b'];
 try { $client->submit($path, $payload); throw new RuntimeException('Ambiguous header accepted.'); }

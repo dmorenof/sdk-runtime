@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+No changes yet.
+
+## [0.17.1] — 2026-11-09
+
 - Preserve numeric path/header list wire names such as 0 after PHP coerces array keys to integers. Model numeric metadata/validation keys honestly and stringify the protocol name before invoking the shared list serializer. Verify both transports and the installed-runtime consumer.
 
 ## [0.17.0] — 2026-11-09

@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+No changes yet.
+
+## [0.18.0] — 2026-11-09
+
 - Extend the existing flat DTO/Map parameter extraction to simple path/header objects and form query objects. Reuse field serialization, scalar conversion and percent encoding; preserve readOnly filtering, enum values and validation without new transport or object wrappers.
 - Add object/object-explode modes to existing path/header metadata and form-object/form-object-explode query modes. Reject expanded query collisions and ambiguous raw header delimiters; retain deepObject and list/legacy execution behavior. Preserve numeric keys, false/zero values and selected native encoding.
 - Verify both transports, DTO mutations, typed maps, empty/null/nested policies, query collisions, structural header delimiters and installed-package smoke. Nested objects, cookies and label/matrix remain outside this change.

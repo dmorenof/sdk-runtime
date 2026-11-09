@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.23.0] — 2026-11-10
+
+- Support Swagger ssv/tsv/pipes list metadata in path/header through existing QuerySerializer list validation, native encoding and shared ApiClient. Preserve CSV and object formats and executor signatures.
+- Percent-encode path delimiters; preserve raw header delimiters and reject ambiguous data or header whitespace that HTTP would trim. Verify GET/POST query/body separation and all three delimiters with actual HTTP and installed-package smoke.
+
 ## [0.22.1] — 2026-11-09
 
 - Preserve JSON array shape after removing or explicitly indexing TypedArray elements: append serialized values rather than retaining PHP keys. Map/object keys stay unchanged. Reuse the shared Serializer for root/nested collections, parameters and bodies; verify sparse mutations with real HTTP and installed-package smoke.

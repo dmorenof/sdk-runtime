@@ -109,15 +109,18 @@ final class QuerySerializer
     /** Primitive simple lists reuse the query list validation and native item encoding. */
     public static function simpleList(mixed $value, string $name, bool $header = false): string
     {
-        $encode = $header ? self::headerText(...) : rawurlencode(...);
-        return implode(',', self::encodedList($value, $name, $header ? ',' : null, $encode));
+        return self::simple($value, $name, 'csv', $header);
     }
 
     /** Existing metadata keeps csv; object forms use the same flat DTO/Map extraction. */
     public static function simple(mixed $value, string $name, string $format, bool $header = false): string
     {
-        if ($format === 'csv') {
-            return self::simpleList($value, $name, $header);
+        if (in_array($format, ['csv', 'ssv', 'tsv', 'pipes'], true)) {
+            $delimiter = match ($format) { 'ssv' => ' ', 'tsv' => "\t", 'pipes' => '|', default => ',' };
+            $encode = $header ? self::headerText(...) : rawurlencode(...);
+            $items = self::encodedList($value, $name, $header || $format !== 'csv' ? $delimiter : null, $encode);
+            $text = implode($header || $format === 'csv' ? $delimiter : rawurlencode($delimiter), $items);
+            return $header ? self::headerText($text) : $text;
         }
         if (!in_array($format, ['object', 'object-explode'], true)) {
             throw new \InvalidArgumentException('Unsupported simple parameter format.');
@@ -145,7 +148,7 @@ final class QuerySerializer
     /** Expand one declared path parameter, not an arbitrary URI-template language. */
     public static function path(mixed $value, string $name, string $format): string
     {
-        if (in_array($format, ['csv', 'object', 'object-explode'], true)) {
+        if (in_array($format, ['csv', 'ssv', 'tsv', 'pipes', 'object', 'object-explode'], true)) {
             return self::simple($value, $name, $format);
         }
         if (preg_match('/^(label|matrix)(?:-(list|object)(-explode)?)?$/D', $format, $matches) !== 1) {

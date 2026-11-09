@@ -177,3 +177,9 @@ $contentCommand = implode(' ', array_map('escapeshellarg', [PHP_BINARY,
 passthru($contentCommand, $contentStatus);
 if ($contentStatus !== 0) { throw new RuntimeException('Installed runtime parameter content HTTP smoke failed.'); }
 echo "PUBLISHED_PARAMETER_CONTENT_RUNTIME_OK", PHP_EOL;
+
+$delimitedCommand = implode(' ', array_map('escapeshellarg', [PHP_BINARY,
+    $directory . '/vendor/dmorenof/sdk-runtime/tests/delimited-parameters-smoke.php', $directory . '/vendor/autoload.php']));
+passthru($delimitedCommand, $delimitedStatus);
+if ($delimitedStatus !== 0) { throw new RuntimeException('Installed runtime delimited parameter HTTP smoke failed.'); }
+echo "PUBLISHED_DELIMITED_PARAMETER_RUNTIME_OK", PHP_EOL;

@@ -19,8 +19,8 @@ namespace Dmorenof\SdkRuntime;
  *     errors?: array<int|string, string>,
  *     responseType?: string|null,
  *     responseTypes?: array<int,array{type:?string,schemaNullable:bool}>,
- *     pathSerialization?: array<array-key,'csv'|'object'|'object-explode'|'label'|'label-list'|'label-list-explode'|'label-object'|'label-object-explode'|'matrix'|'matrix-list'|'matrix-list-explode'|'matrix-object'|'matrix-object-explode'>,
- *     headerSerialization?: array<array-key,'csv'|'object'|'object-explode'>,
+ *     pathSerialization?: array<array-key,'csv'|'ssv'|'tsv'|'pipes'|'object'|'object-explode'|'label'|'label-list'|'label-list-explode'|'label-object'|'label-object-explode'|'matrix'|'matrix-list'|'matrix-list-explode'|'matrix-object'|'matrix-object-explode'>,
+ *     headerSerialization?: array<array-key,'csv'|'ssv'|'tsv'|'pipes'|'object'|'object-explode'>,
  *     schemaNullable?: bool,
  *     noContentAllowed?: bool,
  *     validation?: array<array-key, array<string, mixed>>,
@@ -68,8 +68,8 @@ final readonly class Operation
      * @param array<array-key, array<string, mixed>> $validation Parameter name => rules.
      * @param array<string,'multi'|'csv'> $bodySerialization Form array field name => wire format.
      * @param array<string,array{contentType:?string,filename?:string}> $bodyParts Multipart metadata; null MIME accepts the uploaded file's type or octet-stream.
-     * @param array<array-key,'csv'|'object'|'object-explode'|'label'|'label-list'|'label-list-explode'|'label-object'|'label-object-explode'|'matrix'|'matrix-list'|'matrix-list-explode'|'matrix-object'|'matrix-object-explode'> $pathSerialization Path list name => simple CSV expansion.
-     * @param array<array-key,'csv'|'object'|'object-explode'> $headerSerialization Header list name => raw simple CSV expansion.
+     * @param array<array-key,'csv'|'ssv'|'tsv'|'pipes'|'object'|'object-explode'|'label'|'label-list'|'label-list-explode'|'label-object'|'label-object-explode'|'matrix'|'matrix-list'|'matrix-list-explode'|'matrix-object'|'matrix-object-explode'> $pathSerialization Path list name => simple CSV expansion.
+     * @param array<array-key,'csv'|'ssv'|'tsv'|'pipes'|'object'|'object-explode'> $headerSerialization Header list name => raw simple CSV expansion.
      * @param array<int,array{type:?string,schemaNullable:bool}> $responseTypes Explicit status-specific JSON types; null type means no body.
      * @param array<array-key, 'multi'|'csv'|'ssv'|'tsv'|'pipes'|'deepObject'|'form-object'|'form-object-explode'> $querySerialization Query list name => normalized wire format.
      */

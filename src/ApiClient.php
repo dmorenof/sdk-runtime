@@ -354,7 +354,7 @@ abstract class ApiClient
 
     /**
      * @param array<string, scalar|list<scalar>|DTO|Map|TypedArray|\stdClass|null> $values
-     * @param array<array-key,'csv'|'object'|'object-explode'> $formats
+     * @param array<array-key,'csv'|'ssv'|'tsv'|'pipes'|'object'|'object-explode'> $formats
      * @return array<string, string> Parameters that carry a value, as they appear on the wire.
      */
     private static function stringifyAll(array $values, array $formats = []): array
@@ -378,7 +378,7 @@ abstract class ApiClient
     private static function assertSimpleFormats(array $formats, bool $path = false): void
     {
         foreach ($formats as $format) {
-            if (!in_array($format, ['csv', 'object', 'object-explode'], true)
+            if (!in_array($format, ['csv', 'ssv', 'tsv', 'pipes', 'object', 'object-explode'], true)
                 && !($path && is_string($format) && preg_match('/^(label|matrix)(?:-(list|object)(-explode)?)?$/D', $format) === 1)) {
                 throw new \InvalidArgumentException('Unsupported simple path/header parameter metadata.');
             }

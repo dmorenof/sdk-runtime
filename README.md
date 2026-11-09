@@ -350,3 +350,7 @@ Scalar operation cookies are percent-encoded using the existing query serializer
 Operation queryAllowReserved names opt their values into OpenAPI reserved expansion. Existing QuerySerializer and Guzzle assembly preserve safe reserved data and valid percent triples. Names and security credentials retain normal encoding; raw `#[]&=+` and ambiguous structural delimiters fail before HTTP. Applications must pre-encode such data where a legal unambiguous representation exists. This option does not affect headers, cookies, bodies or general URI templates.
 
 Operation parameterContent metadata declares application/json or text/plain by location/name. Existing Serializer and DTO validation handle JSON request direction, then ordinary URI encoding is applied once for path/query. Headers retain raw content bytes subject to validation. Cookie content supports text/plain raw RFC6265 pairs; schema-form cookies retain their existing encoding. No new transport/executor API or cookie jar is added.
+
+### Swagger delimited path/header lists — v0.23.0
+
+Use existing pathSerialization/headerSerialization metadata with csv, ssv, tsv or pipes. Paths percent-encode each item and space/tab/pipe separators; headers preserve raw delimiters. Items containing their separator are rejected when ambiguous, and outer header whitespace is rejected rather than silently trimmed by HTTP. multi remains query/form-only. Existing DTO validation, executors and Guzzle/PSR transport are reused.

@@ -112,6 +112,35 @@ final class SimpleParameterTest extends TestCase {
             }
         }
     }
+    public function testSwaggerDelimitedPathAndHeadersReuseListValidation(): void {
+        foreach (['ssv' => ['%20', ' '], 'tsv' => ['%09', "\t"], 'pipes' => ['%7C', '|']] as $format => [$encoded, $raw]) {
+            self::assertSame('a%2Fb' . $encoded . '%252F' . $encoded . '%C3%B1', QuerySerializer::path(['a/b', '%2F', 'ñ'], 'ids', $format));
+            self::assertSame('alpha' . $raw . 'beta', QuerySerializer::simple(['alpha', 'beta'], 'X-Ids', $format, true));
+            $transport = new FakeTransport(new HttpResponse(204, ''));
+            $client = SimpleParameterClient::connect('https://example.test', transport: $transport);
+            $client->raw(['ids' => ['a/b', '%2F']], ['X-Ids' => ['alpha', 'beta']],
+                ['pathSerialization' => ['ids' => $format], 'headerSerialization' => ['X-Ids' => $format]]);
+            self::assertSame('https://example.test/items/a%2Fb' . $encoded . '%252F', $transport->sent[0]['url']);
+            self::assertSame('alpha' . $raw . 'beta', $transport->sent[0]['headers']['X-Ids']);
+            self::assertSame('', QuerySerializer::path([], 'ids', $format));
+            self::assertSame('', QuerySerializer::simple([], 'X-Ids', $format, true));
+            self::assertSame('false' . $raw . '0', QuerySerializer::simple([false, 0], 'X-Ids', $format, true));
+            foreach ([false, true] as $header) {
+                try { QuerySerializer::simple(['a' . $raw . 'b'], 'ids', $format, $header); self::fail('Ambiguous list accepted.'); }
+                catch (\UnexpectedValueException) { self::assertTrue(true); }
+            }
+            foreach ([[null], ['x' => 1], [INF]] as $invalid) {
+                try { QuerySerializer::simple($invalid, 'ids', $format); self::fail('Invalid list accepted.'); }
+                catch (\UnexpectedValueException) { self::assertTrue(true); }
+            }
+            if ($format !== 'pipes') {
+                foreach ([['', 'x'], ['x', '']] as $invalid) {
+                    try { QuerySerializer::simple($invalid, 'X-Ids', $format, true); self::fail('Outer header whitespace accepted.'); }
+                    catch (\UnexpectedValueException) { self::assertTrue(true); }
+                }
+            }
+        }
+    }
     public function testMissingNullUndeclaredAndUnsupportedFormatsFailBeforeTransport(): void {
         $transport = new FakeTransport(new HttpResponse(204, ''));
         $client = SimpleParameterClient::connect('https://example.test', transport: $transport);

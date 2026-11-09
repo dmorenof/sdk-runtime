@@ -24,5 +24,6 @@ try {
         public function scalar(): void { $this->executeOperation(['method' => 'GET', 'path' => '/scalar/{id}', 'success' => [204], 'security' => [['Key' => []]], 'parameterContent' => ['path' => ['id' => 'application/json']]], pathParameters: ['id' => 'Cat']); }
     };
     $client->call('GET', $path, $params); $params->body = $payload('body/x'); $client->call('POST', $path, $params); $client->scalar();
+    $params->records[] = $payload('second'); unset($params->records[0]); $client->call('POST', $path, $params);
 } finally { foreach ($pipes as $pipe) { fclose($pipe); } proc_terminate($process); proc_close($process); }
 echo 'PARAMETER_CONTENT_RUNTIME_HTTP_OK', PHP_EOL;

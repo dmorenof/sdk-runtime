@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.22.1] — 2026-11-09
+
+- Preserve JSON array shape after removing or explicitly indexing TypedArray elements: append serialized values rather than retaining PHP keys. Map/object keys stay unchanged. Reuse the shared Serializer for root/nested collections, parameters and bodies; verify sparse mutations with real HTTP and installed-package smoke.
+
 ## [0.22.0] — 2026-11-09
 
 - Add optional per-location parameterContent operation metadata after existing arguments. Serialize application/json through existing request-direction validation/Serializer/json_encode and text/plain as strings before normal path/query encoding or raw header transmission.

@@ -25,8 +25,8 @@ final class Serializer
         }
         if ($value instanceof TypedArray) {
             $items = [];
-            foreach ($value as $key => $item) {
-                $items[$key] = self::value($item, $mode, $multipart);
+            foreach ($value as $item) {
+                $items[] = self::value($item, $mode, $multipart);
             }
             return $items;
         }

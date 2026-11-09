@@ -34,6 +34,10 @@ final class ParameterContentTest extends TestCase {
         self::assertSame('0', QuerySerializer::content(0, 'application/json'));
         self::assertSame('""', QuerySerializer::content('', 'application/json'));
         self::assertSame('a+/b==', QuerySerializer::content('a+/b==', 'text/plain'));
+        $sparse = new Tags(['first', 'second']); unset($sparse[0]);
+        self::assertSame('["second"]', QuerySerializer::content($sparse, 'application/json'));
+        $user->tags = $sparse;
+        self::assertSame('{"name":"a\/b","age":0,"tags":["second"]}', QuerySerializer::content($user, 'application/json'));
         $user->age = -1; $this->expectException(\UnexpectedValueException::class); QuerySerializer::content($user, 'application/json');
     }
     public function testNativeJsonErrorsAndPlainHeaderOctetsFailBeforeTransport(): void {

@@ -5,7 +5,7 @@ if ($socket === false) { throw new RuntimeException($error); }
 $address = stream_socket_get_name($socket, false);
 if ($address === false) { throw new RuntimeException('Missing address.'); }
 echo substr($address, strrpos($address, ':') + 1), PHP_EOL; flush();
-for ($i = 0; $i < 3; ++$i) {
+for ($i = 0; $i < 4; ++$i) {
     $connection = stream_socket_accept($socket, 15);
     if ($connection === false) { throw new RuntimeException('Missing HTTP request.'); }
     stream_set_timeout($connection, 15); $line = trim((string) fgets($connection)); $headers = [];
@@ -17,7 +17,7 @@ for ($i = 0; $i < 3; ++$i) {
     } else {
         $parts = explode(' ', $line); $target = explode('?', $parts[1] ?? '', 2); $query = [];
         foreach (explode('&', $target[1] ?? '') as $pair) { [$key, $value] = explode('=', $pair, 2); $query[$key][] = $value; }
-        $expected = ['body' => [rawurlencode('{"name":"query\/x"}')], 'records' => [rawurlencode('[{"name":"row\/x"}]')], 'empty' => ['%5B%5D'], 'scalar' => ['%22%22'], 'active' => ['false'], 'values' => [rawurlencode('{"0":"zero"}')], 'plain' => ['100%25%20%2F%20%C3%B1']];
+        $expected = ['body' => [rawurlencode('{"name":"query\/x"}')], 'records' => [rawurlencode($i === 3 ? '[{"name":"second"}]' : '[{"name":"row\/x"}]')], 'empty' => ['%5B%5D'], 'scalar' => ['%22%22'], 'active' => ['false'], 'values' => [rawurlencode('{"0":"zero"}')], 'plain' => ['100%25%20%2F%20%C3%B1']];
         ksort($query); ksort($expected);
         $cookies = explode('; ', $headers['cookie'][0] ?? ''); $expectedCookies = ['default=base', 'session=a+/b==', 'theme=a%2Fb', 'auth=token+/==']; sort($cookies); sort($expectedCookies);
         $valid = ($parts[0] ?? '') === ($i === 0 ? 'GET' : 'POST') && $target[0] === '/items/' . rawurlencode('{"code":"path\/x","flag":false}') . '/a%2Fb%25'

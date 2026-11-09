@@ -127,9 +127,12 @@ abstract class ApiClient
                     if ($location === 'cookie' || !array_is_list($value)) {
                         throw new \UnexpectedValueException("Operation parameter must be a supported scalar list: $wireName");
                     }
+                    $items = [];
                     foreach ($value as $item) {
                         if (!is_scalar($item)) { throw new \UnexpectedValueException("Parameter list members must be scalars: $wireName"); }
+                        $items[] = $item;
                     }
+                    $value = $items;
                 } elseif ($value !== null && !is_scalar($value)) {
                     throw new \UnexpectedValueException("Non-scalar operation parameter: $wireName");
                 }

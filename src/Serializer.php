@@ -11,6 +11,9 @@ final class Serializer
 {
     public static function value(mixed $value, string $mode, bool $multipart = false): mixed
     {
+        if ($value instanceof \Psr\Http\Message\StreamInterface) {
+            throw new \UnexpectedValueException('PSR streams require a binary request body.');
+        }
         if ($value instanceof \Psr\Http\Message\UploadedFileInterface) {
             if ($multipart) {
                 return $value;

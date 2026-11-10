@@ -426,3 +426,20 @@ All execution shares argument mapping, nested validation, Serializer and the
 existing Guzzle/PSR transport. JSON and application/*+json bodies retain declared
 media types; forms retain their existing DTO contracts. Text/binary bodies and
 negotiation among request representations remain outside this release.
+
+### Raw media — v0.29.0
+
+Native requestBody metadata may use `encoding: text` for text/plain or
+`encoding: binary` and `type: stream` for application/octet-stream. Text retains
+string constraints. Binary accepts strings or readable seekable PSR-7 streams
+without custom stream wrappers. PSR-18 preserves the stream and rewinds it;
+legacy custom transports retain their string fallback. The installed smoke
+uploads 32 MiB under a PHP 16 MiB memory limit. Binary constraints and
+non-seekable input remain explicitly unsupported.
+
+Single responses may set responseMediaType to text/plain; per-status entries may
+set mediaType. They hydrate raw strings rather than decoding JSON. JSON, text,
+binary PSR responses and bodyless statuses may coexist by status; Accept lists
+the declared codecs. This does not negotiate multiple schemas at one status.
+Raw null has no representation: optional omission and an empty byte string are
+distinct, while explicit null fails before HTTP. Streams cannot serialize as JSON.

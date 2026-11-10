@@ -310,24 +310,35 @@ abstract class ApiClient
         $query = array_filter($queryParameters, static fn ($value): bool => $value !== null);
         $binary = ltrim($spec->responseType ?? '', '\\') === \Psr\Http\Message\ResponseInterface::class;
         $hasBinary = $binary;
-        $hasJson = !$binary && $spec->responseType !== null;
+        $hasText = !$binary && $spec->responseType !== null && $spec->responseMediaType === 'text/plain';
+        $hasJson = !$binary && !$hasText && $spec->responseType !== null;
         foreach ($spec->responseTypes as $entry) {
             $entryBinary = ltrim($entry['type'] ?? '', '\\') === \Psr\Http\Message\ResponseInterface::class;
             $hasBinary = $hasBinary || $entryBinary;
-            $hasJson = $hasJson || ($entry['type'] !== null && !$entryBinary);
+            $entryText = ($entry['mediaType'] ?? 'application/json') === 'text/plain';
+            $hasText = $hasText || ($entry['type'] !== null && $entryText && !$entryBinary);
+            $hasJson = $hasJson || ($entry['type'] !== null && !$entryText && !$entryBinary);
         }
-        $accept = $hasBinary ? ($hasJson ? 'application/json, application/octet-stream' : 'application/octet-stream') : 'application/json';
+        $acceptTypes = [];
+        if ($hasJson) { $acceptTypes[] = 'application/json'; }
+        if ($hasText) { $acceptTypes[] = 'text/plain'; }
+        if ($hasBinary) { $acceptTypes[] = 'application/octet-stream'; }
+        $accept = implode(', ', $acceptTypes === [] ? ['application/json'] : $acceptTypes);
         $headers = ['Accept' => $accept]
             + self::stringifyAll($headerParameters, $spec->headerSerialization);
         $jsonBody = preg_match('~^application/(?:[a-z0-9!#$&^_.+-]+\+)?json(?:\s*;.*)?$~iD', $spec->requestMediaType) === 1;
-        if ((!$jsonBody && !in_array($spec->requestMediaType, ['application/x-www-form-urlencoded', 'multipart/form-data'], true))
+        $encoding = $spec->requestBody['encoding'] ?? 'json';
+        $rawText = $encoding === 'text' && preg_match('~^text/plain(?:\s*;.*)?$~iD', $spec->requestMediaType) === 1;
+        $rawBinary = $encoding === 'binary' && strtolower($spec->requestMediaType) === 'application/octet-stream';
+        if ((!$jsonBody && !$rawText && !$rawBinary && !in_array($spec->requestMediaType, ['application/x-www-form-urlencoded', 'multipart/form-data'], true))
             || ($spec->requestMediaType !== 'application/x-www-form-urlencoded' && $spec->bodySerialization !== [])
             || ($spec->requestMediaType !== 'multipart/form-data' && $spec->bodyParts !== [])) {
             throw new \InvalidArgumentException('Unsupported request body media type or serialization metadata.');
         }
         $bodyBytes = null;
         if ($spec->requestBody !== null) {
-            if (!$jsonBody) { throw new \InvalidArgumentException('Native body contract currently requires JSON.'); }
+            if ((!$jsonBody && !$rawText && !$rawBinary) || ($jsonBody && $encoding !== 'json')) { throw new \InvalidArgumentException('Request body encoding does not match its media type.'); }
+            if ($rawBinary && ($spec->requestBody['rules'] ?? []) !== []) { throw new \InvalidArgumentException('Binary body constraints are unsupported.'); }
             if (!$bodyPresent && $spec->requestBody['required']) { throw new \UnexpectedValueException($spec->label . ' requires a request body.'); }
             if ($bodyPresent) {
                 $bodyRules = $spec->requestBody['rules'] ?? [];
@@ -341,7 +352,10 @@ abstract class ApiClient
         }
         if ($bodyPresent) {
             $headers['Content-Type'] = $spec->requestMediaType;
-            if ($jsonBody) {
+            if ($rawText || $rawBinary) {
+                if (!is_string($body) && !$body instanceof \Psr\Http\Message\StreamInterface) { throw new \UnexpectedValueException('Raw body must contain bytes.'); }
+                $bodyBytes = $body;
+            } elseif ($jsonBody) {
                 DTO::validateNestedValue($body, 'request');
                 $bodyBytes = json_encode(Serializer::value($body, 'request'), JSON_THROW_ON_ERROR);
             } else {
@@ -391,11 +405,13 @@ abstract class ApiClient
             throw ApiException::fromResponse($response, $spec->label, $spec->errorTypeFor($response->status));
         }
         $declared = $spec->responseTypeFor($response->status);
-        $responseType = $declared ?? ['type' => $spec->responseType, 'schemaNullable' => $spec->schemaNullable];
+        $responseType = $declared ?? ['type' => $spec->responseType, 'schemaNullable' => $spec->schemaNullable, 'mediaType' => $spec->responseMediaType];
         if ($responseType['type'] === null || ($declared === null && $spec->noContentAllowed && $response->body === '')) {
             return null;
         }
-        $result = JsonHydrator::decode($response->body, $responseType['type'], $responseType['schemaNullable']);
+        $result = ($responseType['mediaType'] ?? 'application/json') === 'text/plain'
+            ? Hydrator::hydrate($response->body, $responseType['type'], false, $spec->label . ' response')
+            : JsonHydrator::decode($response->body, $responseType['type'], $responseType['schemaNullable']);
         Constraints::validate($result, $responseType['rules'] ?? $spec->responseValidation, $spec->label . ' response', 'response');
         return $result;
     }

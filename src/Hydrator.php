@@ -14,6 +14,12 @@ final class Hydrator
 
     public static function hydrate(mixed $value, string $kind, bool $nullable, string $where): mixed
     {
+        if ($kind === 'stream') {
+            if ($value === null && $nullable) { return null; }
+            if (is_string($value)) { return $value; }
+            if ($value instanceof \Psr\Http\Message\StreamInterface && $value->isReadable() && $value->isSeekable()) { return $value; }
+            throw new \UnexpectedValueException("Expected binary string or readable seekable PSR stream at $where.");
+        }
         if (str_contains($kind, '|')) { return self::primitiveUnion($value, explode('|', $kind), $nullable, $where); }
         $kind = match ($kind) {
             'integer' => 'int', 'double' => 'float', 'boolean' => 'bool',
@@ -51,6 +57,10 @@ final class Hydrator
             }
             if (array_diff($names, ['string', 'int', 'float', 'bool', 'null']) === []) {
                 return self::primitiveUnion($value, $names, $type->allowsNull(), $where);
+            }
+            $stream = \Psr\Http\Message\StreamInterface::class;
+            if (array_diff($names, ['string', $stream, 'null']) === [] && in_array('string', $names, true) && in_array($stream, $names, true)) {
+                return self::hydrate($value, 'stream', $type->allowsNull(), $where);
             }
             $upload = \Psr\Http\Message\UploadedFileInterface::class;
             if (array_diff($names, ['string', $upload, 'null']) !== []

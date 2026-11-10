@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.29.0] — 2026-11-10
+
+- Execute text/plain and application/octet-stream native request bodies as raw bytes. Reuse string/PSR-7 stream inputs, existing transport rewinding and middleware; readable seekable streams retain identity and avoid materialization in PSR-18. Legacy transports keep their string fallback.
+- Select text/plain response hydration by single or per-status media metadata alongside existing JSON, binary PSR responses and bodyless statuses. Build Accept from declared codecs and retain response constraints. Append optional responseMediaType without changing earlier constructor positions.
+- Preserve optional omission versus empty text, reject explicit raw null/non-seekable streams and prevent streams leaking into JSON. Verify actual 32 MiB upload under PHP 16 MiB, mixed response codecs and independent published-package smoke. Raw binary schema constraints and representation negotiation remain unsupported.
+
 ## [0.28.0] — 2026-11-10
 
 - Support declared native JSON request bodies: primitive values, null, arrays, maps and existing models/collections. Distinguish body absence from explicit JSON null and enforce required/nullability/constraints before transport.

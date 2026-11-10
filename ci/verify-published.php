@@ -213,3 +213,9 @@ $bodyCommand = implode(' ', array_map('escapeshellarg', [PHP_BINARY,
 passthru($bodyCommand, $bodyStatus);
 if ($bodyStatus !== 0) { throw new RuntimeException('Installed runtime request bodies HTTP smoke failed.'); }
 echo "PUBLISHED_REQUEST_BODIES_RUNTIME_OK", PHP_EOL;
+
+$rawCommand = implode(' ', array_map('escapeshellarg', [PHP_BINARY, '-d', 'memory_limit=16M',
+    $directory . '/vendor/dmorenof/sdk-runtime/tests/raw-media-smoke.php', $directory . '/vendor/autoload.php']));
+passthru($rawCommand, $rawStatus);
+if ($rawStatus !== 0) { throw new RuntimeException('Installed runtime raw media HTTP smoke failed.'); }
+echo "PUBLISHED_RAW_MEDIA_RUNTIME_OK", PHP_EOL;

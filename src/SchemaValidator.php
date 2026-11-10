@@ -31,7 +31,7 @@ final class SchemaValidator
             return self::matches($value, $definitions[$name], $definitions, $mode, $depth + 1);
         }
         if ($value === null && ($schema['nullable'] ?? false)) {
-            try { Constraints::validate(null, $schema['rules'] ?? [], 'composition', $mode); }
+            try { Constraints::validate(null, ($schema['rules'] ?? []) + (isset($schema['enum']) ? ['enum' => $schema['enum']] : []), 'composition', $mode); }
             catch (\UnexpectedValueException) { return false; }
             return true;
         }
@@ -65,8 +65,9 @@ final class SchemaValidator
         if (!$valid) {
             return false;
         }
-        if (isset($schema['enum']) && !in_array($value, $schema['enum'], true)) {
-            return false;
+        if (isset($schema['enum'])) {
+            try { Constraints::validate($value, ['enum' => $schema['enum']], 'composition', $mode); }
+            catch (\UnexpectedValueException) { return false; }
         }
         try {
             Constraints::validate($value, $schema['rules'] ?? [], 'composition', $mode);

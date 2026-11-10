@@ -32,7 +32,7 @@ final class Constraints
             self::validate($value, ['schema' => $guard], $where, $mode);
             unset($rules['jsonSchema']);
         }
-        $jsonRules = array_intersect_key($rules, array_flip(['exclusiveMinimum', 'exclusiveMaximum', 'multipleOf', 'uniqueItems', 'minProperties', 'maxProperties', 'const']));
+        $jsonRules = array_intersect_key($rules, array_flip(['exclusiveMinimum', 'exclusiveMaximum', 'multipleOf', 'uniqueItems', 'minProperties', 'maxProperties', 'const', 'enum']));
         $hasSchema = array_key_exists('schema', $rules);
         if ($jsonRules !== [] || $hasSchema) {
             $raw = $hasSchema ? $rules['schema'] : (object) $jsonRules;

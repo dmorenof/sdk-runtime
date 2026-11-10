@@ -269,7 +269,7 @@ class DTO implements \JsonSerializable, \Stringable
     /** @param array<string,mixed> $rules */
     private function rulesApplyToNull(string $field, array $rules): bool
     {
-        if (!array_key_exists('const', $rules) && !array_key_exists('schema', $rules) && !array_key_exists('jsonSchema', $rules)) { return false; }
+        if (!array_key_exists('const', $rules) && !array_key_exists('enum', $rules) && !array_key_exists('schema', $rules) && !array_key_exists('jsonSchema', $rules)) { return false; }
         foreach ($this->declaredRules('OPERATION_FIELDS') as $names) {
             if (is_array($names) && in_array($field, $names, true)) { return false; }
         }

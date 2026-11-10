@@ -461,3 +461,17 @@ A valid nullable error also has payload null, with no decoding cause.
 Binary errors remain buffered bytes in HttpResponse and payload, consistent with
 the existing exception API; success binary responses retain their PSR streaming
 behavior. No exception subclasses, response wrappers or new transport are added.
+
+### Concrete MIME codecs — v0.31.0
+
+Existing json/text/binary codecs retain declared MIME values. String schemas
+can carry opaque CSV/XML; bounded binary schemas retain PSR input/output streams
+for image/png, application/pdf and other concrete media. Vendor/problem +json
+keeps JSON decoding and its declared Accept/Content-Type. Optional responseEncoding
+and per-status encoding metadata select the codec independently of the MIME name.
+Old text/plain and binary SDK metadata remains supported.
+
+The installed smoke sends a 32 MiB PNG body and consumes a 32 MiB PDF response
+under PHP 16 MiB, alongside mixed codecs and general error payloads. Raw CSV/XML
+remain PHP strings: no model parser, charset conversion or new transport is added.
+Wildcard selection and incompatible representation negotiation remain unsupported.

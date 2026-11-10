@@ -60,3 +60,5 @@ php tests/request-bodies-smoke.php "$PWD/vendor/autoload.php"
 php -d memory_limit=16M tests/raw-media-smoke.php "$PWD/vendor/autoload.php"
 
 php tests/error-payloads-smoke.php "$PWD/vendor/autoload.php"
+
+php -d memory_limit=16M tests/mime-media-smoke.php "$PWD/vendor/autoload.php"

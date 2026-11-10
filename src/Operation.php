@@ -18,12 +18,13 @@ namespace Dmorenof\SdkRuntime;
  *     success?: list<int|string>,
  *     errors?: array<int|string, ?string>,
  *     responseType?: string|null,
- *     responseTypes?: array<int|string,array{type:?string,schemaNullable:bool,rules?:array<string,mixed>,mediaType?:string}>,
+ *     responseTypes?: array<int|string,array{type:?string,schemaNullable:bool,rules?:array<string,mixed>,mediaType?:string,encoding?:'json'|'text'|'binary'}>,
  *     pathSerialization?: array<array-key,'csv'|'ssv'|'tsv'|'pipes'|'object'|'object-explode'|'label'|'label-list'|'label-list-explode'|'label-object'|'label-object-explode'|'matrix'|'matrix-list'|'matrix-list-explode'|'matrix-object'|'matrix-object-explode'>,
  *     headerSerialization?: array<array-key,'csv'|'ssv'|'tsv'|'pipes'|'object'|'object-explode'>,
  *     responseValidation?: array<string,mixed>,
  *     responseMediaType?: string,
- *     errorResponses?: array<int|string,array{type:?string,schemaNullable:bool,rules?:array<string,mixed>,mediaType?:string}>,
+ *     responseEncoding?: string,
+ *     errorResponses?: array<int|string,array{type:?string,schemaNullable:bool,rules?:array<string,mixed>,mediaType?:string,encoding?:'json'|'text'|'binary'}>,
  *     requestBody?: array{type:string,nullable:bool,required:bool,rules?:array<string,mixed>,encoding?:'json'|'text'|'binary'}|null,
  *     schemaNullable?: bool,
  *     noContentAllowed?: bool,
@@ -62,6 +63,7 @@ final readonly class Operation
         'requestBody' => null,
         'responseMediaType' => 'application/json',
         'errorResponses' => [],
+        'responseEncoding' => 'json',
     ];
 
     /** "METHOD path", unless the operation names itself. */
@@ -73,7 +75,7 @@ final readonly class Operation
      * @param array<string,mixed> $responseValidation Rules for a legacy/single JSON response.
      * @param array{type:string,nullable:bool,required:bool,rules?:array<string,mixed>,encoding?:'json'|'text'|'binary'}|null $requestBody Native JSON body contract.
      * @param list<string> $queryAllowReserved Query names whose data uses reserved expansion.
-     * @param array<int|string,array{type:?string,schemaNullable:bool,rules?:array<string,mixed>,mediaType?:string}> $errorResponses Declared general error payloads.
+     * @param array<int|string,array{type:?string,schemaNullable:bool,rules?:array<string,mixed>,mediaType?:string,encoding?:'json'|'text'|'binary'}> $errorResponses Declared general error payloads.
      * @param list<int|string> $success Statuses that are not errors.
      * @param array<int|string, ?string> $errors Status (or 'default') => error model class.
      * @param array<array-key, array<string, mixed>> $validation Parameter name => rules.
@@ -81,7 +83,7 @@ final readonly class Operation
      * @param array<string,array{contentType:?string,filename?:string,json?:bool}> $bodyParts Multipart metadata; null MIME accepts the uploaded file's type or octet-stream.
      * @param array<array-key,'csv'|'ssv'|'tsv'|'pipes'|'object'|'object-explode'|'label'|'label-list'|'label-list-explode'|'label-object'|'label-object-explode'|'matrix'|'matrix-list'|'matrix-list-explode'|'matrix-object'|'matrix-object-explode'> $pathSerialization Path list name => simple CSV expansion.
      * @param array<array-key,'csv'|'ssv'|'tsv'|'pipes'|'object'|'object-explode'> $headerSerialization Header list name => raw simple CSV expansion.
-     * @param array<int|string,array{type:?string,schemaNullable:bool,rules?:array<string,mixed>,mediaType?:string}> $responseTypes Explicit status-specific JSON types; null type means no body.
+     * @param array<int|string,array{type:?string,schemaNullable:bool,rules?:array<string,mixed>,mediaType?:string,encoding?:'json'|'text'|'binary'}> $responseTypes Explicit status-specific JSON types; null type means no body.
      * @param array<array-key, 'multi'|'csv'|'ssv'|'tsv'|'pipes'|'deepObject'|'form-object'|'form-object-explode'> $querySerialization Query list name => normalized wire format.
      */
     public function __construct(
@@ -109,6 +111,7 @@ final readonly class Operation
         public ?array $requestBody = self::DEFAULTS['requestBody'],
         public string $responseMediaType = self::DEFAULTS['responseMediaType'],
         public array $errorResponses = self::DEFAULTS['errorResponses'],
+        public string $responseEncoding = self::DEFAULTS['responseEncoding'],
     ) {
         $this->label = $label ?? $method . ' ' . $path;
     }
@@ -125,13 +128,13 @@ final readonly class Operation
         return self::select($this->errors, $status);
     }
 
-    /** @return array{type:?string,schemaNullable:bool,rules?:array<string,mixed>,mediaType?:string}|null */
+    /** @return array{type:?string,schemaNullable:bool,rules?:array<string,mixed>,mediaType?:string,encoding?:'json'|'text'|'binary'}|null */
     public function errorResponseFor(int $status): ?array
     {
         return self::select($this->errorResponses, $status);
     }
 
-    /** @return array{type:?string,schemaNullable:bool,rules?:array<string,mixed>,mediaType?:string}|null */
+    /** @return array{type:?string,schemaNullable:bool,rules?:array<string,mixed>,mediaType?:string,encoding?:'json'|'text'|'binary'}|null */
     public function responseTypeFor(int $status): ?array
     {
         return self::select($this->responseTypes, $status);

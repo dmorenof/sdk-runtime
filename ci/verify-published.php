@@ -225,3 +225,9 @@ $errorCommand = implode(' ', array_map('escapeshellarg', [PHP_BINARY,
 passthru($errorCommand, $errorStatus);
 if ($errorStatus !== 0) { throw new RuntimeException('Installed runtime error payloads HTTP smoke failed.'); }
 echo "PUBLISHED_ERROR_PAYLOADS_RUNTIME_OK", PHP_EOL;
+
+$mimeCommand = implode(' ', array_map('escapeshellarg', [PHP_BINARY, '-d', 'memory_limit=16M',
+    $directory . '/vendor/dmorenof/sdk-runtime/tests/mime-media-smoke.php', $directory . '/vendor/autoload.php']));
+passthru($mimeCommand, $mimeStatus);
+if ($mimeStatus !== 0) { throw new RuntimeException('Installed runtime MIME media HTTP smoke failed.'); }
+echo "PUBLISHED_MIME_MEDIA_RUNTIME_OK", PHP_EOL;

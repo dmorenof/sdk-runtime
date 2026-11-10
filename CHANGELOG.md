@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.31.0] — 2026-11-10
+
+- Preserve concrete declared MIME types for JSON, opaque text and binary request/success/error codecs. CSV/XML string schemas use raw strings; PNG/PDF and other bounded binary schemas reuse PSR streams. Vendor/problem +json retains JSON hydration with its actual Accept/Content-Type.
+- Append optional responseEncoding and per-status encoding metadata without changing earlier constructor positions. Retain legacy binary/text codec inference and header ordering for existing SDKs; explicit codec/media metadata takes precedence.
+- Verify actual CSV/XML/vendor JSON exchanges, mixed status codecs, raw errors, a 32 MiB image upload and 32 MiB PDF download under PHP 16 MiB. No XML/CSV model parsing, charset transcoding, wildcard media selection or incompatible representation negotiation is added.
+
 ## [0.30.0] — 2026-11-10
 
 - Decode declared HTTP error payloads through existing JsonHydrator, native types, DTO/Map/TypedArray/composition validation and raw text/binary codecs. Append optional Operation errorResponses metadata with exact/range/default selection and bodyless overrides.

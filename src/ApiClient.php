@@ -308,28 +308,29 @@ abstract class ApiClient
             throw new \UnexpectedValueException('Missing path parameter for ' . $spec->label);
         }
         $query = array_filter($queryParameters, static fn ($value): bool => $value !== null);
-        $binary = ltrim($spec->responseType ?? '', '\\') === \Psr\Http\Message\ResponseInterface::class;
-        $hasBinary = $binary;
-        $hasText = !$binary && $spec->responseType !== null && $spec->responseMediaType === 'text/plain';
-        $hasJson = !$binary && !$hasText && $spec->responseType !== null;
-        foreach (array_merge($spec->responseTypes, $spec->errorResponses) as $entry) {
-            $entryBinary = ltrim($entry['type'] ?? '', '\\') === \Psr\Http\Message\ResponseInterface::class || ($entry['mediaType'] ?? '') === 'application/octet-stream';
-            $hasBinary = $hasBinary || $entryBinary;
-            $entryText = ($entry['mediaType'] ?? 'application/json') === 'text/plain';
-            $hasText = $hasText || ($entry['type'] !== null && $entryText && !$entryBinary);
-            $hasJson = $hasJson || ($entry['type'] !== null && !$entryText && !$entryBinary);
+        $accepted = [];
+        if ($spec->responseType !== null) {
+            $legacyBinary = ltrim($spec->responseType, '\\') === \Psr\Http\Message\ResponseInterface::class;
+            $accepted[] = $legacyBinary && !array_key_exists('responseMediaType', $operation) ? 'application/octet-stream' : $spec->responseMediaType;
         }
-        $acceptTypes = [];
-        if ($hasJson) { $acceptTypes[] = 'application/json'; }
-        if ($hasText) { $acceptTypes[] = 'text/plain'; }
-        if ($hasBinary) { $acceptTypes[] = 'application/octet-stream'; }
-        $accept = implode(', ', $acceptTypes === [] ? ['application/json'] : $acceptTypes);
+        foreach (array_merge($spec->responseTypes, $spec->errorResponses) as $entry) {
+            if ($entry['type'] === null) { continue; }
+            $accepted[] = $entry['mediaType'] ?? (ltrim($entry['type'], '\\') === \Psr\Http\Message\ResponseInterface::class ? 'application/octet-stream' : 'application/json');
+        }
+        $accepted = array_values(array_unique($accepted));
+        // Preserve the established order for previously emitted SDKs.
+        $rank = static fn (string $media): int => preg_match('~^application/(?:[a-z0-9!#$&^_.+\-]+\+)?json(?:\s*;|$)~i', $media) === 1 ? 0 : match ($media) { 'text/plain' => 1, 'application/octet-stream' => 2, default => 3 };
+        usort($accepted, static fn (string $left, string $right): int => $rank($left) <=> $rank($right));
+        $accept = implode(', ', $accepted === [] ? ['application/json'] : $accepted);
         $headers = ['Accept' => $accept]
             + self::stringifyAll($headerParameters, $spec->headerSerialization);
         $jsonBody = preg_match('~^application/(?:[a-z0-9!#$&^_.+-]+\+)?json(?:\s*;.*)?$~iD', $spec->requestMediaType) === 1;
         $encoding = $spec->requestBody['encoding'] ?? 'json';
-        $rawText = $encoding === 'text' && preg_match('~^text/plain(?:\s*;.*)?$~iD', $spec->requestMediaType) === 1;
-        $rawBinary = $encoding === 'binary' && strtolower($spec->requestMediaType) === 'application/octet-stream';
+        $baseMedia = strtolower(trim(explode(';', $spec->requestMediaType, 2)[0]));
+        $rawMedia = !$jsonBody && !str_contains($baseMedia, '*') && !in_array($baseMedia, ['application/x-www-form-urlencoded', 'multipart/form-data'], true)
+            && preg_match("@^[!#$%&'*+.^_`|~a-z0-9-]+/[!#$%&'*+.^_`|~a-z0-9-]+(?:\\s*;[^\\r\\n]*)?$@iD", $spec->requestMediaType) === 1;
+        $rawText = $encoding === 'text' && $rawMedia;
+        $rawBinary = $encoding === 'binary' && $rawMedia;
         if ((!$jsonBody && !$rawText && !$rawBinary && !in_array($spec->requestMediaType, ['application/x-www-form-urlencoded', 'multipart/form-data'], true))
             || ($spec->requestMediaType !== 'application/x-www-form-urlencoded' && $spec->bodySerialization !== [])
             || ($spec->requestMediaType !== 'multipart/form-data' && $spec->bodyParts !== [])) {
@@ -405,11 +406,13 @@ abstract class ApiClient
             throw ApiException::fromResponse($response, $spec->label, $spec->errorTypeFor($response->status), $spec->errorResponseFor($response->status));
         }
         $declared = $spec->responseTypeFor($response->status);
-        $responseType = $declared ?? ['type' => $spec->responseType, 'schemaNullable' => $spec->schemaNullable, 'mediaType' => $spec->responseMediaType];
+        $responseType = $declared ?? ['type' => $spec->responseType, 'schemaNullable' => $spec->schemaNullable, 'mediaType' => $spec->responseMediaType, 'encoding' => array_key_exists('responseEncoding', $operation) ? $spec->responseEncoding : ($spec->responseMediaType === 'text/plain' ? 'text' : 'json')];
         if ($responseType['type'] === null || ($declared === null && $spec->noContentAllowed && $response->body === '')) {
             return null;
         }
-        $result = ($responseType['mediaType'] ?? 'application/json') === 'text/plain'
+        $responseEncoding = $responseType['encoding'] ?? (($responseType['mediaType'] ?? '') === 'text/plain' ? 'text' : 'json');
+        if (!in_array($responseEncoding, ['json', 'text', 'binary'], true)) { throw new \InvalidArgumentException('Unsupported response encoding.'); }
+        $result = $responseEncoding !== 'json'
             ? Hydrator::hydrate($response->body, $responseType['type'], false, $spec->label . ' response')
             : JsonHydrator::decode($response->body, $responseType['type'], $responseType['schemaNullable']);
         Constraints::validate($result, $responseType['rules'] ?? $spec->responseValidation, $spec->label . ' response', 'response');

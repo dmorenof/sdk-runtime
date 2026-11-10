@@ -29,7 +29,7 @@ class ApiException extends \RuntimeException
     }
 
     /** @param string|null $errorType Legacy DTO error class.
-     * @param array{type:?string,schemaNullable:bool,rules?:array<string,mixed>,mediaType?:string}|null $errorResponse Declared general error response.
+     * @param array{type:?string,schemaNullable:bool,rules?:array<string,mixed>,mediaType?:string,encoding?:'json'|'text'|'binary'}|null $errorResponse Declared general error response.
      */
     public static function fromResponse(HttpResponse $response, string $operation, ?string $errorType, ?array $errorResponse = null): self
     {
@@ -40,9 +40,11 @@ class ApiException extends \RuntimeException
             if ($errorResponse['type'] !== null) {
                 try {
                     $media = $errorResponse['mediaType'] ?? 'application/json';
-                    $payload = in_array($media, ['text/plain', 'application/octet-stream'], true)
-                        ? Hydrator::hydrate($response->body, $errorResponse['type'], false, $operation . ' error')
-                        : JsonHydrator::decode($response->body, $errorResponse['type'], $errorResponse['schemaNullable']);
+                    $encoding = $errorResponse['encoding'] ?? (in_array($media, ['text/plain', 'application/octet-stream'], true) ? 'text' : 'json');
+                    $payload = match ($encoding) {
+                        'text', 'binary' => Hydrator::hydrate($response->body, $errorResponse['type'], false, $operation . ' error'),
+                        'json' => JsonHydrator::decode($response->body, $errorResponse['type'], $errorResponse['schemaNullable']),
+                    };
                     DTO::validateNestedValue($payload, 'response');
                     Constraints::validate($payload, $errorResponse['rules'] ?? [], $operation . ' error', 'response');
                     $error = $payload instanceof DTO ? $payload : null;

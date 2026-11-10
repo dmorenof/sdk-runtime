@@ -36,6 +36,8 @@ final class SchemaValidator
             return true;
         }
         if (in_array($kind, ['allOf', 'oneOf', 'anyOf'], true)) {
+            try { Constraints::validate($value, $schema['rules'] ?? [], 'composition', $mode); }
+            catch (\UnexpectedValueException) { return false; }
             $count = 0;
             $branches = $schema['branches'] ?? [];
             foreach ($branches as $branch) {

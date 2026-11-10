@@ -187,6 +187,13 @@ class DTO implements \JsonSerializable, \Stringable
             ? array_merge($this->declaredNames('READ_ONLY_FIELDS'), $this->declaredNames('WRITE_ONLY_FIELDS'))
             : $this->directionalFields($request, $response);
         foreach ($required as $name) {
+            if ($request && array_key_exists($name, $defined) && $defined[$name] === null) {
+                foreach ($this->declaredRules('OPERATION_FIELDS') as $names) {
+                    if (is_array($names) && in_array($name, $names, true)) {
+                        throw new \UnexpectedValueException("Required wire parameter " . static::class . "::$name cannot be omitted as null.");
+                    }
+                }
+            }
             if (!in_array($name, $skipped, true) && !array_key_exists($name, $defined)) {
                 throw new \UnexpectedValueException("Required JSON property " . static::class . "::$name is absent.");
             }
@@ -243,7 +250,7 @@ class DTO implements \JsonSerializable, \Stringable
             if (!property_exists($this, $field)) {
                 throw new \LogicException("Validation refers to an unknown field " . static::class . "::$field.");
             }
-            if (!array_key_exists($field, $fields) || ($fields[$field] === null && !array_key_exists('const', $rules)) || in_array($field, $skipped, true)) {
+            if (!array_key_exists($field, $fields) || ($fields[$field] === null && !$this->rulesApplyToNull($field, $rules)) || in_array($field, $skipped, true)) {
                 continue;
             }
             Constraints::validate($fields[$field], $rules, static::class . "::$field", $mode);
@@ -254,6 +261,16 @@ class DTO implements \JsonSerializable, \Stringable
                 self::validateNestedValue($value, $mode);
             }
         }
+    }
+
+    /** @param array<string,mixed> $rules */
+    private function rulesApplyToNull(string $field, array $rules): bool
+    {
+        if (!array_key_exists('const', $rules) && !array_key_exists('schema', $rules)) { return false; }
+        foreach ($this->declaredRules('OPERATION_FIELDS') as $names) {
+            if (is_array($names) && in_array($field, $names, true)) { return false; }
+        }
+        return true;
     }
 
     /** Shared traversal for DTO fields, collection items, map values and unions. */

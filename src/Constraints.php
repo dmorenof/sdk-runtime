@@ -19,20 +19,27 @@ final class Constraints
             $value = $value->value;
         }
         $jsonRules = array_intersect_key($rules, array_flip(['exclusiveMinimum', 'exclusiveMaximum', 'multipleOf', 'uniqueItems', 'minProperties', 'maxProperties', 'const']));
-        if ($jsonRules !== []) {
-            $key = json_encode((object) $jsonRules, JSON_THROW_ON_ERROR | JSON_PRESERVE_ZERO_FRACTION);
+        $hasSchema = array_key_exists('schema', $rules);
+        if ($jsonRules !== [] || $hasSchema) {
+            $raw = $hasSchema ? $rules['schema'] : (object) $jsonRules;
+            if (is_array($raw)) { $raw = (object) $raw; }
+            if (!is_bool($raw) && !$raw instanceof \stdClass) { throw new \LogicException('Invalid declarative schema rule.'); }
+            $key = json_encode($raw, JSON_THROW_ON_ERROR | JSON_PRESERVE_ZERO_FRACTION);
             $validator = self::$jsonValidator ??= new \Opis\JsonSchema\Validator();
             $definition = json_decode($key, false, 512, JSON_THROW_ON_ERROR);
-            if (!$definition instanceof \stdClass) { throw new \LogicException('Schema rules must form an object.'); }
-            $schema = self::$jsonSchemas[$key] ??= $validator->loader()->loadObjectSchema($definition, draft: '2020-12');
+            if (!is_bool($definition) && !$definition instanceof \stdClass) { throw new \LogicException('Invalid schema definition.'); }
+            $schema = self::$jsonSchemas[$key] ??= is_bool($definition)
+                ? $validator->loader()->loadBooleanSchema($definition, draft: '2020-12')
+                : $validator->loader()->loadObjectSchema($definition, draft: '2020-12');
             try { $json = SchemaValidator::snapshot(Serializer::value($value, $mode)); }
             catch (\JsonException $error) { throw new \UnexpectedValueException("Invalid JSON value at $where.", 0, $error); }
             $result = $validator->validate($json, $schema);
+            if ($hasSchema && $jsonRules !== []) { self::validate($value, $jsonRules, $where, $mode); }
             if (!$result->isValid()) {
                 throw new \UnexpectedValueException('Validation ' . ($result->error()?->keyword() ?? 'schema') . " failed at $where.");
             }
         }
-        foreach (array_diff_key($rules, $jsonRules) as $rule => $limit) {
+        foreach (array_diff_key($rules, $jsonRules, ['schema' => true]) as $rule => $limit) {
             self::assert($value, $rule, $limit, $where);
         }
     }

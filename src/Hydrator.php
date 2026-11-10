@@ -14,6 +14,7 @@ final class Hydrator
 
     public static function hydrate(mixed $value, string $kind, bool $nullable, string $where): mixed
     {
+        if (str_contains($kind, '|')) { return self::primitiveUnion($value, explode('|', $kind), $nullable, $where); }
         $kind = match ($kind) {
             'integer' => 'int', 'double' => 'float', 'boolean' => 'bool',
             default => ltrim($kind, '\\'),
@@ -47,6 +48,9 @@ final class Hydrator
                     throw new \InvalidArgumentException("Unsupported PHP property type at $where.");
                 }
                 $names[] = $branch->getName();
+            }
+            if (array_diff($names, ['string', 'int', 'float', 'bool', 'null']) === []) {
+                return self::primitiveUnion($value, $names, $type->allowsNull(), $where);
             }
             $upload = \Psr\Http\Message\UploadedFileInterface::class;
             if (array_diff($names, ['string', $upload, 'null']) !== []
@@ -104,6 +108,9 @@ final class Hydrator
             if ($value instanceof $kind) {
                 return $value;
             }
+            if (is_float($value) && (new \ReflectionEnum($kind))->getBackingType()?->getName() === 'int') {
+                $value = self::scalar($value, 'int', $where);
+            }
             if (!is_string($value) && !is_int($value)) {
                 throw new \UnexpectedValueException("Invalid enum value at $where.");
             }
@@ -138,10 +145,30 @@ final class Hydrator
         throw new \UnexpectedValueException("Unsupported nested PHP type $kind at $where.");
     }
 
+    /** @param list<string> $types */
+    private static function primitiveUnion(mixed $value, array $types, bool $nullable, string $where): mixed
+    {
+        if (array_diff($types, ['string', 'int', 'integer', 'float', 'number', 'bool', 'boolean', 'null']) !== []) {
+            throw new \InvalidArgumentException("Unsupported union type at $where.");
+        }
+        if ($value === null && ($nullable || in_array('null', $types, true))) { return null; }
+        $preferred = match (true) { is_int($value) => 'int', is_float($value) => 'float', is_string($value) => 'string', is_bool($value) => 'bool', default => null };
+        if ($preferred !== null && in_array($preferred, $types, true)) { return self::hydrate($value, $preferred, false, $where); }
+        foreach ($types as $type) {
+            try { return self::hydrate($value, $type, false, $where); }
+            catch (\UnexpectedValueException) {}
+        }
+        throw new \UnexpectedValueException("No primitive union branch accepts $where.");
+    }
+
     private static function scalar(mixed $value, string $kind, string $where): mixed
     {
         if ($kind === 'mixed') {
             return $value;
+        }
+        if ($kind === 'int' && is_float($value) && is_finite($value) && floor($value) === $value
+            && $value >= PHP_INT_MIN && $value < (float) PHP_INT_MAX) {
+            return (int) $value;
         }
         // JSON integers are valid floating point values when expected.
         if ($kind === 'float' && is_int($value)) {

@@ -201,3 +201,9 @@ $schemaCommand = implode(' ', array_map('escapeshellarg', [PHP_BINARY,
 passthru($schemaCommand, $schemaStatus);
 if ($schemaStatus !== 0) { throw new RuntimeException('Installed runtime schema rules HTTP smoke failed.'); }
 echo "PUBLISHED_SCHEMA_RULES_RUNTIME_OK", PHP_EOL;
+
+$nativeCommand = implode(' ', array_map('escapeshellarg', [PHP_BINARY,
+    $directory . '/vendor/dmorenof/sdk-runtime/tests/native-schemas-smoke.php', $directory . '/vendor/autoload.php']));
+passthru($nativeCommand, $nativeStatus);
+if ($nativeStatus !== 0) { throw new RuntimeException('Installed runtime native schemas HTTP smoke failed.'); }
+echo "PUBLISHED_NATIVE_SCHEMAS_RUNTIME_OK", PHP_EOL;

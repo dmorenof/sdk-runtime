@@ -403,3 +403,14 @@ responseTypes entries optionally carry rules for their selected status. This
 also validates scalar/array JSON roots rather than relying on object DTOs.
 Only generated declarative keywords are passed to the validator; there is no
 remote schema loading or runtime interpretation of arbitrary API documents.
+
+### Native schema guards — v0.27.0
+
+Primitive union hydration preserves the incoming JSON kind before conversions.
+Integral finite JSON numbers also hydrate PHP integers and integer-backed enums.
+Declarative `schema` rules reuse the existing Opis validator for boolean schemas
+and primitive type sets, including array item guards; they validate the original
+value and mutations. This does not enable arbitrary document loading or class unions.
+Optional null HTTP parameters remain absent on the wire. Required parameters that
+would otherwise disappear now fail before transport; required nullable JSON
+properties still serialize as JSON null.

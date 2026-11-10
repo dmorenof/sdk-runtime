@@ -59,7 +59,7 @@ final class UploadedFileTest extends TestCase
             }
         }
         $this->expectException(\InvalidArgumentException::class);
-        new class((object) ['value' => 1]) extends DTO { public int|string $value; };
+        new class((object) ['value' => 1]) extends DTO { public int|\stdClass $value; };
     }
 
     public function testClientMetadataAndBinaryBytesUseGuzzleWithDirectionalFiltering(): void

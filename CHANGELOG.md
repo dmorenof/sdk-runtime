@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.27.0] — 2026-11-10
+
+- Hydrate primitive PHP unions preserving original JSON kinds, accept finite integral JSON numbers for integers and integer-backed enums, and evaluate declarative boolean/type-set schema guards through existing Opis validation.
+- Validate null and post-construction mutations without bypassing false schemas; optional null wire parameters remain omitted, while required parameters cannot silently disappear. Required nullable JSON properties retain JSON null.
+- Exercise native schemas, aliases, parameter content and request/response mutations through actual HTTP and an independent installed-package smoke. Object/class unions remain bounded by existing composition support.
+
 ## [0.26.1] — 2026-11-10
 
 - Recheck inherited TypedArray item types and rules at validation/serialization boundaries. ArrayObject exchangeArray can bypass append/offsetSet, so boundary validation now delegates item types to the parent library and reapplies declarative rules. The v0.26.0 tag remains immutable.

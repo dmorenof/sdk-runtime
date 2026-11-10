@@ -41,6 +41,10 @@ class TypedArray extends \TypedArray\TypedArray implements \Stringable
     public function validateForMode(string $mode = 'neutral'): void
     {
         Constraints::validate($this, static::COLLECTION_VALIDATION, static::class, $mode);
+        foreach ($this as $item) {
+            parent::validate($item);
+            Constraints::validate($item, static::ITEM_VALIDATION, static::class . ' item', $mode);
+        }
     }
 
     public function __toString(): string

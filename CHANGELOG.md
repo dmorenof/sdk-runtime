@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.26.1] — 2026-11-10
+
+- Recheck inherited TypedArray item types and rules at validation/serialization boundaries. ArrayObject exchangeArray can bypass append/offsetSet, so boundary validation now delegates item types to the parent library and reapplies declarative rules. The v0.26.0 tag remains immutable.
+
 ## [0.26.0] — 2026-11-10
 
 - Reuse maintained opis/json-schema ^2.6.1 for exclusive numeric bounds, multipleOf, uniqueItems, property counts and const instead of adding a second JSON equality/arithmetic implementation. Compile fixed rule sets once; preserve JSON shapes and request/response direction.

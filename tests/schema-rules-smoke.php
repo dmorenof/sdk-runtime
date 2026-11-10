@@ -30,6 +30,9 @@ try {
     $prototype = new class([1, 2]) extends \Dmorenof\SdkRuntime\TypedArray { protected string $expected_type = 'integer'; protected const array COLLECTION_VALIDATION = ['uniqueItems' => true]; };
     $collection = $client->collection($prototype::class); $collection[] = 1;
     try { (string) $collection; throw new RuntimeException('Invalid collection mutation accepted.'); } catch (UnexpectedValueException) {}
+    $items = new class([2, 4]) extends \Dmorenof\SdkRuntime\TypedArray { protected string $expected_type = 'integer'; protected const array ITEM_VALIDATION = ['multipleOf' => 2]; };
+    $items->exchangeArray([3]);
+    try { \Dmorenof\SdkRuntime\DTO::validateNestedValue($items, 'request'); throw new RuntimeException('Inherited collection mutation bypassed item rules.'); } catch (UnexpectedValueException) {}
     $body->tag = 8;
     try { $client->submit($body); throw new RuntimeException('Invalid request mutation reached HTTP.'); } catch (UnexpectedValueException) {}
 } finally { foreach ($pipes as $pipe) { fclose($pipe); } proc_terminate($process); proc_close($process); }

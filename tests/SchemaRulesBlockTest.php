@@ -55,6 +55,15 @@ final class SchemaRulesBlockTest extends TestCase {
         try { $map->jsonSerialize(); self::fail('Map mutation escaped property count validation.'); }
         catch (\UnexpectedValueException) { self::assertTrue(true); }
     }
+    public function testInheritedArrayObjectMutationsCannotBypassItemRules(): void {
+        $values = new class([2, 4]) extends TypedArray {
+            protected string $expected_type = 'integer';
+            protected const array ITEM_VALIDATION = ['multipleOf' => 2];
+        };
+        $values->exchangeArray([3]);
+        $this->expectException(\UnexpectedValueException::class);
+        DTO::validateNestedValue($values, 'request');
+    }
     public function testScalarResponseRulesUseStatusSpecificAndLegacyMetadata(): void {
         foreach ([false, true] as $statusMap) {
             $client = new class('https://example.test', transport: new \Dmorenof\SdkRuntime\Tests\Fixtures\FakeTransport(new \Dmorenof\SdkRuntime\Transport\HttpResponse(200, '0.31'))) extends \Dmorenof\SdkRuntime\ApiClient {

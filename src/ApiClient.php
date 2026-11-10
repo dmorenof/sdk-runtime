@@ -312,8 +312,8 @@ abstract class ApiClient
         $hasBinary = $binary;
         $hasText = !$binary && $spec->responseType !== null && $spec->responseMediaType === 'text/plain';
         $hasJson = !$binary && !$hasText && $spec->responseType !== null;
-        foreach ($spec->responseTypes as $entry) {
-            $entryBinary = ltrim($entry['type'] ?? '', '\\') === \Psr\Http\Message\ResponseInterface::class;
+        foreach (array_merge($spec->responseTypes, $spec->errorResponses) as $entry) {
+            $entryBinary = ltrim($entry['type'] ?? '', '\\') === \Psr\Http\Message\ResponseInterface::class || ($entry['mediaType'] ?? '') === 'application/octet-stream';
             $hasBinary = $hasBinary || $entryBinary;
             $entryText = ($entry['mediaType'] ?? 'application/json') === 'text/plain';
             $hasText = $hasText || ($entry['type'] !== null && $entryText && !$entryBinary);
@@ -402,7 +402,7 @@ abstract class ApiClient
             }
         }
         if (!$spec->succeeded($response->status)) {
-            throw ApiException::fromResponse($response, $spec->label, $spec->errorTypeFor($response->status));
+            throw ApiException::fromResponse($response, $spec->label, $spec->errorTypeFor($response->status), $spec->errorResponseFor($response->status));
         }
         $declared = $spec->responseTypeFor($response->status);
         $responseType = $declared ?? ['type' => $spec->responseType, 'schemaNullable' => $spec->schemaNullable, 'mediaType' => $spec->responseMediaType];

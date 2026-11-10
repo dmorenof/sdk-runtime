@@ -23,6 +23,7 @@ namespace Dmorenof\SdkRuntime;
  *     headerSerialization?: array<array-key,'csv'|'ssv'|'tsv'|'pipes'|'object'|'object-explode'>,
  *     responseValidation?: array<string,mixed>,
  *     responseMediaType?: string,
+ *     errorResponses?: array<int|string,array{type:?string,schemaNullable:bool,rules?:array<string,mixed>,mediaType?:string}>,
  *     requestBody?: array{type:string,nullable:bool,required:bool,rules?:array<string,mixed>,encoding?:'json'|'text'|'binary'}|null,
  *     schemaNullable?: bool,
  *     noContentAllowed?: bool,
@@ -60,6 +61,7 @@ final readonly class Operation
         'responseValidation' => [],
         'requestBody' => null,
         'responseMediaType' => 'application/json',
+        'errorResponses' => [],
     ];
 
     /** "METHOD path", unless the operation names itself. */
@@ -71,6 +73,7 @@ final readonly class Operation
      * @param array<string,mixed> $responseValidation Rules for a legacy/single JSON response.
      * @param array{type:string,nullable:bool,required:bool,rules?:array<string,mixed>,encoding?:'json'|'text'|'binary'}|null $requestBody Native JSON body contract.
      * @param list<string> $queryAllowReserved Query names whose data uses reserved expansion.
+     * @param array<int|string,array{type:?string,schemaNullable:bool,rules?:array<string,mixed>,mediaType?:string}> $errorResponses Declared general error payloads.
      * @param list<int|string> $success Statuses that are not errors.
      * @param array<int|string, ?string> $errors Status (or 'default') => error model class.
      * @param array<array-key, array<string, mixed>> $validation Parameter name => rules.
@@ -105,6 +108,7 @@ final readonly class Operation
         public array $responseValidation = self::DEFAULTS['responseValidation'],
         public ?array $requestBody = self::DEFAULTS['requestBody'],
         public string $responseMediaType = self::DEFAULTS['responseMediaType'],
+        public array $errorResponses = self::DEFAULTS['errorResponses'],
     ) {
         $this->label = $label ?? $method . ' ' . $path;
     }
@@ -119,6 +123,12 @@ final readonly class Operation
     public function errorTypeFor(int $status): ?string
     {
         return self::select($this->errors, $status);
+    }
+
+    /** @return array{type:?string,schemaNullable:bool,rules?:array<string,mixed>,mediaType?:string}|null */
+    public function errorResponseFor(int $status): ?array
+    {
+        return self::select($this->errorResponses, $status);
     }
 
     /** @return array{type:?string,schemaNullable:bool,rules?:array<string,mixed>,mediaType?:string}|null */

@@ -219,3 +219,9 @@ $rawCommand = implode(' ', array_map('escapeshellarg', [PHP_BINARY, '-d', 'memor
 passthru($rawCommand, $rawStatus);
 if ($rawStatus !== 0) { throw new RuntimeException('Installed runtime raw media HTTP smoke failed.'); }
 echo "PUBLISHED_RAW_MEDIA_RUNTIME_OK", PHP_EOL;
+
+$errorCommand = implode(' ', array_map('escapeshellarg', [PHP_BINARY,
+    $directory . '/vendor/dmorenof/sdk-runtime/tests/error-payloads-smoke.php', $directory . '/vendor/autoload.php']));
+passthru($errorCommand, $errorStatus);
+if ($errorStatus !== 0) { throw new RuntimeException('Installed runtime error payloads HTTP smoke failed.'); }
+echo "PUBLISHED_ERROR_PAYLOADS_RUNTIME_OK", PHP_EOL;

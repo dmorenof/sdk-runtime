@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.30.0] — 2026-11-10
+
+- Decode declared HTTP error payloads through existing JsonHydrator, native types, DTO/Map/TypedArray/composition validation and raw text/binary codecs. Append optional Operation errorResponses metadata with exact/range/default selection and bodyless overrides.
+- Add readonly ApiException payload while preserving its DTO-only error property, constructor positions and legacy fromResponse path. Valid DTO errors expose the same object through both properties; scalar/null/list/map/enum/composition payloads use payload. Invalid decoding preserves the HTTP response/status and records the cause instead of replacing the HTTP failure.
+- Include declared error codecs in Accept and verify actual HTTP, constraints/directions, malformed JSON, bodyless precedence and independent installation. Binary errors remain buffered in the existing HttpResponse; this does not add error-response streaming or arbitrary media negotiation.
+
 ## [0.29.0] — 2026-11-10
 
 - Execute text/plain and application/octet-stream native request bodies as raw bytes. Reuse string/PSR-7 stream inputs, existing transport rewinding and middleware; readable seekable streams retain identity and avoid materialization in PSR-18. Legacy transports keep their string fallback.

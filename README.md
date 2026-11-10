@@ -443,3 +443,21 @@ binary PSR responses and bodyless statuses may coexist by status; Accept lists
 the declared codecs. This does not negotiate multiple schemas at one status.
 Raw null has no representation: optional omission and an empty byte string are
 distinct, while explicit null fails before HTTP. Streams cannot serialize as JSON.
+
+### General error payloads — v0.30.0
+
+ApiException retains its HTTP response/status and DTO-only `error` property.
+The new readonly `payload` exposes declared primitive/null, collection, map, enum,
+composition or DTO errors. DTO errors share the same object in both properties.
+Old constructor/fromResponse calls remain compatible.
+
+Optional errorResponses operation metadata uses the existing response descriptor
+shape and exact/range/default selection. A null type explicitly suppresses body
+decoding. JSON/text/binary codecs and constraints reuse existing hydration and
+validation; error media join Accept. Failed decoding leaves payload null, retains
+the raw response and exposes the decoding/validation exception as getPrevious().
+A valid nullable error also has payload null, with no decoding cause.
+
+Binary errors remain buffered bytes in HttpResponse and payload, consistent with
+the existing exception API; success binary responses retain their PSR streaming
+behavior. No exception subclasses, response wrappers or new transport are added.

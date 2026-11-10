@@ -1,5 +1,11 @@
 # Changelog
 
+## [Unreleased — implementation in progress, not validated]
+
+- Share schema compilation with the generator and accept JSON-encoded declarative guards without losing object/list identity. Disable implicit defaults and Opis execution extensions; format remains an annotation.
+- Evaluate model guards against original input JSON and retain validation on mutable values, explicit null bodies and composition direction.
+- Coordinated generator implementation is in release/0.2.0. No tests, analysis or release run for this accumulated development, at the user's request; stable runtime remains v0.31.0.
+
 ## [0.31.0] — 2026-11-10
 
 - Preserve concrete declared MIME types for JSON, opaque text and binary request/success/error codecs. CSV/XML string schemas use raw strings; PNG/PDF and other bounded binary schemas reuse PSR streams. Vendor/problem +json retains JSON hydration with its actual Accept/Content-Type.

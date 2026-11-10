@@ -343,7 +343,7 @@ abstract class ApiClient
             if (!$bodyPresent && $spec->requestBody['required']) { throw new \UnexpectedValueException($spec->label . ' requires a request body.'); }
             if ($bodyPresent) {
                 $bodyRules = $spec->requestBody['rules'] ?? [];
-                if ($body !== null || array_key_exists('schema', $bodyRules) || array_key_exists('const', $bodyRules)) {
+                if ($body !== null || array_key_exists('schema', $bodyRules) || array_key_exists('const', $bodyRules) || array_key_exists('jsonSchema', $bodyRules)) {
                     Constraints::validate($body, $bodyRules, $spec->label . ' body', 'request');
                 }
                 $body = Hydrator::hydrate($body, $spec->requestBody['type'], $spec->requestBody['nullable'], $spec->label . ' body');

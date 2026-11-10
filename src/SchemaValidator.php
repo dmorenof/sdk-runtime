@@ -69,7 +69,7 @@ final class SchemaValidator
             return false;
         }
         try {
-            Constraints::validate($value, $schema['rules'] ?? [], 'composition');
+            Constraints::validate($value, $schema['rules'] ?? [], 'composition', $mode);
         } catch (\UnexpectedValueException) {
             return false;
         }

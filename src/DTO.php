@@ -26,6 +26,9 @@ class DTO implements \JsonSerializable, \Stringable
             return;
         }
 
+        if (array_key_exists('jsonSchema', static::MODEL_VALIDATION)) {
+            Constraints::validate(SchemaValidator::snapshot($json), ['jsonSchema' => static::MODEL_VALIDATION['jsonSchema']], static::class);
+        }
         $propertyMap = $this->declaredMap('PROPERTY_MAP');
         foreach (get_object_vars($json) as $key => $value) {
             $name = (string) $key;
@@ -266,7 +269,7 @@ class DTO implements \JsonSerializable, \Stringable
     /** @param array<string,mixed> $rules */
     private function rulesApplyToNull(string $field, array $rules): bool
     {
-        if (!array_key_exists('const', $rules) && !array_key_exists('schema', $rules)) { return false; }
+        if (!array_key_exists('const', $rules) && !array_key_exists('schema', $rules) && !array_key_exists('jsonSchema', $rules)) { return false; }
         foreach ($this->declaredRules('OPERATION_FIELDS') as $names) {
             if (is_array($names) && in_array($field, $names, true)) { return false; }
         }

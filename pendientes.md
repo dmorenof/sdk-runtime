@@ -99,6 +99,13 @@ Durante las fases 1 y 2, el SDK de Casafari generado sigue pasando como prueba d
 - [ ] Documentación de uso del runtime independiente del generador.
 - [ ] Cobertura de pruebas y PHPStan máximo en la matriz PHP 8.3–8.5 y dependencias mínimas (ya en CI; mantener).
 
+## Cierre de 0.2.0 → 1.0.0 (decidido 2026-11-10)
+
+- La línea de trabajo es `feature/p0-contract-fidelity` (runtime) coordinada con `release/0.2.0` (generador). Al terminarla, runtime y generador se publican como **v1.0.0**, runtime primero.
+- **Sin PR:** la entrega es una release (cambio de `VERSION` → tag inmutable y GitHub Release por el workflow existente). Si la protección de `main` exigiera un PR, se trata como trámite técnico (ver [AGENTS.md](AGENTS.md)).
+- Hasta entonces se acumula sin publicar; `VERSION`, tags y la línea base estable (v0.31.0) no se tocan.
+- **Antes de la 1.0.0** (obligatorio): ejecutar por primera vez PHPUnit, PHPStan máximo, matriz PHP 8.3–8.5, dependencias mínimas e instalación aislada sobre todo lo acumulado; congelar la API pública (apartado 6).
+
 ## Historial de seguimiento
 
 | Fecha | Cambio | Referencia |

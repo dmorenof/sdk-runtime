@@ -54,6 +54,7 @@ Generated SDKs describe each operation as an array that `Operation::fromArray()`
 - `ServerUrl::normalize()`
 - `CookieHeader::pair()`
 - `Constraints::compileSchema()` and `Constraints::validate()`
+- `FormatValidator::check()` and `FormatValidator::asserted()` (see [FORMATS.md](FORMATS.md))
 
 ## Tier 3: internal
 

@@ -122,6 +122,12 @@ final class Constraints
                 throw new \LogicException("Invalid enum constraint for $where.");
             }
             $valid = in_array($value, $limit, true);
+        } elseif ($rule === 'format') {
+            if (!is_string($limit) || $limit === '') {
+                throw new \LogicException("Invalid format constraint for $where.");
+            }
+            // Formats that assert nothing for this value (unknown, or another type) never fail.
+            $valid = FormatValidator::check($limit, $value) ?? true;
         } else {
             if (!is_int($limit) && !is_float($limit)) {
                 throw new \LogicException("Invalid $rule constraint for $where.");
@@ -134,7 +140,7 @@ final class Constraints
             };
         }
         if (!$valid) {
-            $description = ($rule === 'enum' ? 'allowed values ' : 'limit ') . var_export($limit, true);
+            $description = ($rule === 'enum' ? 'allowed values ' : ($rule === 'format' ? 'format ' : 'limit ')) . var_export($limit, true);
             throw new \UnexpectedValueException("Validation $rule failed at $where ($description).");
         }
     }

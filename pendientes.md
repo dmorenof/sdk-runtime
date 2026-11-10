@@ -79,7 +79,7 @@ Durante las fases 1 y 2, el SDK de Casafari generado sigue pasando como prueba d
 - [ ] `prefixItems` y tuplas; `patternProperties`, `propertyNames`.
 - [ ] `unevaluatedProperties`/`unevaluatedItems`.
 - [ ] Uniones nativas de objetos/arrays.
-- [ ] Validadores de `format` (fecha, hora, email, hostname, ip, uri, uuid, json-pointer…) con política explícita.
+- [x] **Sin publicar —** Validadores de `format` con política explícita: regla declarativa `format` (anotación salvo que se pida), delegando en el `FormatResolver` de Opis (fecha, hora, date-time, duration, email, hostname, ip, uri, uuid, json-pointer, regex) y añadiendo `byte`, `int32` e `int64`; ver [docs/FORMATS.md](docs/FORMATS.md). Pendiente en el generador: emitir la regla de forma opcional (`--validate-formats`) y, aparte, la conversión opcional a clases PHP.
 - [ ] Diferencias de `pattern` entre JSON Schema y PCRE.
 - [ ] Política configurable para propiedades JSON desconocidas (ignorar, conservar, rechazar).
 

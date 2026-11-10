@@ -108,6 +108,10 @@ $client->useServer('sandbox');                      // by index or name; null re
 
 The first server is the default. Variables a server does not declare are ignored, so one set of values serves operations with different servers; values that would change the URL structure (`/` in a host, `?`, `#`, `@`, spaces) are rejected. Choices are per client and are inherited by resources created afterwards. `serverOverrides` apply to the final expanded URL. An SDK can also declare root `SERVERS` and expose `Client::serverUrl('production', ['region' => 'us'])` to build the base URL passed to `connect()`.
 
+## Format validation (unreleased)
+
+`format` is an annotation unless a rule asks for it: `'format' => 'date-time'` (also `date`, `time`, `duration`, `email`, `hostname`, `ipv4`, `ipv6`, `uri`, `uuid`, `json-pointer`, `regex`, `byte`, `int32`, `int64`, ...) asserts it, and unknown or inapplicable formats never fail. It checks text only and does not convert to PHP classes. See [docs/FORMATS.md](docs/FORMATS.md).
+
 ## Development
 
 Use PHP 8.3+ and Composer 2:

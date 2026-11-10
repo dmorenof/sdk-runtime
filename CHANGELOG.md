@@ -1,11 +1,17 @@
 # Changelog
 
-## [Unreleased]
+## [Unreleased — implementation in progress, not validated]
 
+- Share schema compilation with the generator and accept JSON-encoded declarative guards without losing object/list identity. Disable implicit defaults and Opis execution extensions; format remains an annotation.
+- Evaluate model guards against original input JSON and retain validation on mutable values, explicit null bodies and composition direction.
+- Extend native union hydration to stdClass/array without converting wire types; delegate enum equality to Opis, including nullable assertions and composition evaluation.
+- Centralize HTTP response body eligibility for HEAD and bodyless statuses, skip incompatible payload decoding while preserving raw error status/response, and reject actual TRACE request bodies.
+- Coordinated generator implementation is in release/0.2.0. No tests, analysis or release run for this accumulated development, at the user's request; stable runtime remains v0.31.0.
 - Add OAuth2 client credentials (RFC 6749 section 4.4): `OAuth2ClientCredentials` obtains, caches and renews tokens over any PSR-18 client, with HTTP Basic or body client authentication, scopes and refresh-token renewal that falls back to a new grant when the refresh token is rejected.
 - Add `TokenProviderInterface`, `TokenStoreInterface`, `InMemoryTokenStore` and `OAuth2Token`. `SecurityCredentials` accepts a provider wherever a bearer token string is accepted; `SecurityApplier` applies provider tokens to `http bearer`, `oauth2` and `openIdConnect` schemes. Existing string credentials behave as before.
 - `ApiClient` replays a request once with a renewed token after a 401 when a token provider was used and the body is replayable. Static tokens are never replayed. Secrets stay out of debug output and error messages.
 - Authorization-code/PKCE, OpenID Connect discovery, scope checking and mTLS remain pending (see pendientes.md).
+- Add opt-in `RetryPolicy` for the PSR-18 transport (`ApiClient::withRetryPolicy()`): retries 429/502/503/504 and network errors for idempotent methods only by default, with exponential backoff and equal jitter, honoring `Retry-After` (seconds or HTTP date) up to a cap; non-seekable bodies are never replayed. Disabled unless configured.
 
 ## [0.31.0] — 2026-11-10
 

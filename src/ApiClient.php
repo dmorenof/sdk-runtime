@@ -285,6 +285,7 @@ abstract class ApiClient
         bool $bodyPresent,
     ): mixed {
         $spec = Operation::fromArray($operation);
+        if (strtoupper($spec->method) === 'TRACE' && $bodyPresent) { throw new \InvalidArgumentException('HTTP TRACE must not contain a request body.'); }
         $parameters = $pathParameters + $queryParameters + $headerParameters;
         foreach ($spec->validation as $name => $rules) {
             $value = $parameters[$name] ?? null;
@@ -353,7 +354,7 @@ abstract class ApiClient
             if (!$bodyPresent && $spec->requestBody['required']) { throw new \UnexpectedValueException($spec->label . ' requires a request body.'); }
             if ($bodyPresent) {
                 $bodyRules = $spec->requestBody['rules'] ?? [];
-                if ($body !== null || array_key_exists('schema', $bodyRules) || array_key_exists('const', $bodyRules)) {
+                if ($body !== null || array_key_exists('schema', $bodyRules) || array_key_exists('const', $bodyRules) || array_key_exists('enum', $bodyRules) || array_key_exists('jsonSchema', $bodyRules)) {
                     Constraints::validate($body, $bodyRules, $spec->label . ' body', 'request');
                 }
                 $body = Hydrator::hydrate($body, $spec->requestBody['type'], $spec->requestBody['nullable'], $spec->label . ' body');
@@ -416,7 +417,7 @@ abstract class ApiClient
                     }
                     continue;
                 }
-                if ($spec->succeeded($psrResponse->getStatusCode()) && ltrim(($spec->responseTypeFor($psrResponse->getStatusCode()) ?? ['type' => $spec->responseType])['type'] ?? '', '\\') === \Psr\Http\Message\ResponseInterface::class) {
+                if (Operation::allowsResponseBody($spec->method, $psrResponse->getStatusCode()) && $spec->succeeded($psrResponse->getStatusCode()) && ltrim(($spec->responseTypeFor($psrResponse->getStatusCode()) ?? ['type' => $spec->responseType])['type'] ?? '', '\\') === \Psr\Http\Message\ResponseInterface::class) {
                     return $psrResponse;
                 }
                 $response = \Dmorenof\SdkRuntime\Transport\HttpResponse::fromPsr($psrResponse);
@@ -429,11 +430,15 @@ abstract class ApiClient
                     }
                     continue;
                 }
-                if ($spec->succeeded($response->status) && ltrim(($spec->responseTypeFor($response->status) ?? ['type' => $spec->responseType])['type'] ?? '', '\\') === \Psr\Http\Message\ResponseInterface::class) {
+                if (Operation::allowsResponseBody($spec->method, $response->status) && $spec->succeeded($response->status) && ltrim(($spec->responseTypeFor($response->status) ?? ['type' => $spec->responseType])['type'] ?? '', '\\') === \Psr\Http\Message\ResponseInterface::class) {
                     return new \GuzzleHttp\Psr7\Response($response->status, $response->headers, $response->body);
                 }
             }
             break;
+        }
+        if (!Operation::allowsResponseBody($spec->method, $response->status)) {
+            if (!$spec->succeeded($response->status)) { throw new ApiException($response, null, $spec->label); }
+            return null;
         }
         if (!$spec->succeeded($response->status)) {
             throw ApiException::fromResponse($response, $spec->label, $spec->errorTypeFor($response->status), $spec->errorResponseFor($response->status));

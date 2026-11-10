@@ -20,7 +20,7 @@ final class Hydrator
             if ($value instanceof \Psr\Http\Message\StreamInterface && $value->isReadable() && $value->isSeekable()) { return $value; }
             throw new \UnexpectedValueException("Expected binary string or readable seekable PSR stream at $where.");
         }
-        if (str_contains($kind, '|')) { return self::primitiveUnion($value, explode('|', $kind), $nullable, $where); }
+        if (str_contains($kind, '|')) { return self::nativeUnion($value, explode('|', $kind), $nullable, $where); }
         $kind = match ($kind) {
             'integer' => 'int', 'double' => 'float', 'boolean' => 'bool',
             default => ltrim($kind, '\\'),
@@ -55,8 +55,8 @@ final class Hydrator
                 }
                 $names[] = $branch->getName();
             }
-            if (array_diff($names, ['string', 'int', 'float', 'bool', 'null']) === []) {
-                return self::primitiveUnion($value, $names, $type->allowsNull(), $where);
+            if (array_diff($names, ['string', 'int', 'float', 'bool', 'null', 'array', \stdClass::class]) === []) {
+                return self::nativeUnion($value, $names, $type->allowsNull(), $where);
             }
             $stream = \Psr\Http\Message\StreamInterface::class;
             if (array_diff($names, ['string', $stream, 'null']) === [] && in_array('string', $names, true) && in_array($stream, $names, true)) {
@@ -101,6 +101,11 @@ final class Hydrator
             if (!$value instanceof \Psr\Http\Message\UploadedFileInterface) {
                 throw new \UnexpectedValueException("Expected uploaded file at $where.");
             }
+            return $value;
+        }
+
+        if ($kind === \stdClass::class) {
+            if (!$value instanceof \stdClass) { throw new \UnexpectedValueException("Expected JSON object at $where."); }
             return $value;
         }
 
@@ -156,19 +161,20 @@ final class Hydrator
     }
 
     /** @param list<string> $types */
-    private static function primitiveUnion(mixed $value, array $types, bool $nullable, string $where): mixed
+    private static function nativeUnion(mixed $value, array $types, bool $nullable, string $where): mixed
     {
-        if (array_diff($types, ['string', 'int', 'integer', 'float', 'number', 'bool', 'boolean', 'null']) !== []) {
+        $types = array_map(static fn (string $type): string => ltrim($type, '\\'), $types);
+        if (array_diff($types, ['string', 'int', 'integer', 'float', 'number', 'bool', 'boolean', 'null', 'array', \stdClass::class]) !== []) {
             throw new \InvalidArgumentException("Unsupported union type at $where.");
         }
         if ($value === null && ($nullable || in_array('null', $types, true))) { return null; }
-        $preferred = match (true) { is_int($value) => 'int', is_float($value) => 'float', is_string($value) => 'string', is_bool($value) => 'bool', default => null };
+        $preferred = match (true) { is_int($value) => 'int', is_float($value) => 'float', is_string($value) => 'string', is_bool($value) => 'bool', is_array($value) => 'array', $value instanceof \stdClass => \stdClass::class, default => null };
         if ($preferred !== null && in_array($preferred, $types, true)) { return self::hydrate($value, $preferred, false, $where); }
         foreach ($types as $type) {
             try { return self::hydrate($value, $type, false, $where); }
             catch (\UnexpectedValueException) {}
         }
-        throw new \UnexpectedValueException("No primitive union branch accepts $where.");
+        throw new \UnexpectedValueException("No native union branch accepts $where.");
     }
 
     private static function scalar(mixed $value, string $kind, string $where): mixed

@@ -18,19 +18,29 @@ final class Constraints
         if ($value instanceof \BackedEnum) {
             $value = $value->value;
         }
-        $jsonRules = array_intersect_key($rules, array_flip(['exclusiveMinimum', 'exclusiveMaximum', 'multipleOf', 'uniqueItems', 'minProperties', 'maxProperties', 'const']));
+        // Preserve JSON object/list identity inside declarative schema values.
+        // The generator supplies JSON rather than PHP arrays for these guards.
+        if (array_key_exists('jsonSchema', $rules)) {
+            if (!is_string($rules['jsonSchema'])) {
+                throw new \LogicException('Invalid JSON schema guard.');
+            }
+            try { $guard = json_decode($rules['jsonSchema'], false, 512, JSON_THROW_ON_ERROR); }
+            catch (\JsonException $error) { throw new \LogicException('Malformed JSON schema guard.', 0, $error); }
+            if (!is_bool($guard) && !$guard instanceof \stdClass) {
+                throw new \LogicException('JSON schema guard must be an object or boolean.');
+            }
+            self::validate($value, ['schema' => $guard], $where, $mode);
+            unset($rules['jsonSchema']);
+        }
+        $jsonRules = array_intersect_key($rules, array_flip(['exclusiveMinimum', 'exclusiveMaximum', 'multipleOf', 'uniqueItems', 'minProperties', 'maxProperties', 'const', 'enum']));
         $hasSchema = array_key_exists('schema', $rules);
         if ($jsonRules !== [] || $hasSchema) {
             $raw = $hasSchema ? $rules['schema'] : (object) $jsonRules;
             if (is_array($raw)) { $raw = (object) $raw; }
             if (!is_bool($raw) && !$raw instanceof \stdClass) { throw new \LogicException('Invalid declarative schema rule.'); }
             $key = json_encode($raw, JSON_THROW_ON_ERROR | JSON_PRESERVE_ZERO_FRACTION);
-            $validator = self::$jsonValidator ??= new \Opis\JsonSchema\Validator();
-            $definition = json_decode($key, false, 512, JSON_THROW_ON_ERROR);
-            if (!is_bool($definition) && !$definition instanceof \stdClass) { throw new \LogicException('Invalid schema definition.'); }
-            $schema = self::$jsonSchemas[$key] ??= is_bool($definition)
-                ? $validator->loader()->loadBooleanSchema($definition, draft: '2020-12')
-                : $validator->loader()->loadObjectSchema($definition, draft: '2020-12');
+            $validator = self::validator();
+            $schema = self::compileSchema($key);
             try { $json = SchemaValidator::snapshot(Serializer::value($value, $mode)); }
             catch (\JsonException $error) { throw new \UnexpectedValueException("Invalid JSON value at $where.", 0, $error); }
             $result = $validator->validate($json, $schema);
@@ -42,6 +52,34 @@ final class Constraints
         foreach (array_diff_key($rules, $jsonRules, ['schema' => true]) as $rule => $limit) {
             self::assert($value, $rule, $limit, $where);
         }
+    }
+
+    /** Compile a self-contained schema once, using the same policy in generator and runtime. */
+    public static function compileSchema(string $json): \Opis\JsonSchema\Schema
+    {
+        if (isset(self::$jsonSchemas[$json])) { return self::$jsonSchemas[$json]; }
+        $definition = json_decode($json, false, 512, JSON_THROW_ON_ERROR);
+        if (!is_bool($definition) && !$definition instanceof \stdClass) {
+            throw new \LogicException('Invalid schema definition.');
+        }
+        $loader = self::validator()->loader();
+        return self::$jsonSchemas[$json] = is_bool($definition)
+            ? $loader->loadBooleanSchema($definition, draft: '2020-12')
+            : $loader->loadObjectSchema($definition, draft: '2020-12');
+    }
+
+    private static function validator(): \Opis\JsonSchema\Validator
+    {
+        if (self::$jsonValidator === null) {
+            $parser = new \Opis\JsonSchema\Parsers\SchemaParser(options: [
+                'allowDefaults' => false, 'allowFormats' => false,
+                'allowFilters' => false, 'allowMappers' => false, 'allowTemplates' => false,
+                'allowGlobals' => false, 'allowSlots' => false, 'allowKeywordValidators' => false,
+                'allowPragmas' => false, 'allowDataKeyword' => false,
+            ]);
+            self::$jsonValidator = new \Opis\JsonSchema\Validator(new \Opis\JsonSchema\SchemaLoader($parser));
+        }
+        return self::$jsonValidator;
     }
 
     private static function assert(mixed $value, string $rule, mixed $limit, string $where): void

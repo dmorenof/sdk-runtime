@@ -153,6 +153,12 @@ final readonly class Operation
         return null;
     }
 
+    /** HTTP body eligibility is independent of the declared JSON/media schema. */
+    public static function allowsResponseBody(string $method, int $status): bool
+    {
+        return strtoupper($method) !== 'HEAD' && $status >= 200 && !in_array($status, [204, 205, 304], true);
+    }
+
     public function succeeded(int $status): bool
     {
         return in_array($status, $this->success, true)

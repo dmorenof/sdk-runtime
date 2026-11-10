@@ -26,6 +26,8 @@ abstract class ApiClient
 
     protected TransportInterface $transport;
 
+    private ?\Dmorenof\SdkRuntime\Transport\ResponseInfo $lastResponse = null;
+
     /**
      * @param array<string, string> $headers
      * @param array<string, string> $serverOverrides Declared server URL => environment URL.
@@ -89,6 +91,15 @@ abstract class ApiClient
         }
         $this->transport->addMiddleware($middleware);
         return $this;
+    }
+
+    /**
+     * Status and headers of the last response this client instance received, including error
+     * statuses; null before the first request. Headers are typed when the operation declares them.
+     */
+    public function lastResponse(): ?\Dmorenof\SdkRuntime\Transport\ResponseInfo
+    {
+        return $this->lastResponse;
     }
 
     /** Opt in to retrying transient failures when using the default PSR-18 adapter. */
@@ -417,6 +428,7 @@ abstract class ApiClient
                     }
                     continue;
                 }
+                $this->recordResponse($spec, $psrResponse->getStatusCode(), $psrResponse->getHeaders());
                 if (Operation::allowsResponseBody($spec->method, $psrResponse->getStatusCode()) && $spec->succeeded($psrResponse->getStatusCode()) && ltrim(($spec->responseTypeFor($psrResponse->getStatusCode()) ?? ['type' => $spec->responseType])['type'] ?? '', '\\') === \Psr\Http\Message\ResponseInterface::class) {
                     return $psrResponse;
                 }
@@ -430,6 +442,7 @@ abstract class ApiClient
                     }
                     continue;
                 }
+                $this->recordResponse($spec, $response->status, $response->headers);
                 if (Operation::allowsResponseBody($spec->method, $response->status) && $spec->succeeded($response->status) && ltrim(($spec->responseTypeFor($response->status) ?? ['type' => $spec->responseType])['type'] ?? '', '\\') === \Psr\Http\Message\ResponseInterface::class) {
                     return new \GuzzleHttp\Psr7\Response($response->status, $response->headers, $response->body);
                 }
@@ -458,6 +471,16 @@ abstract class ApiClient
     }
 
     /** @param array<array-key,mixed> $content Unvalidated nested metadata at the execution boundary. */
+    /** @param array<string, list<string>|string> $headers */
+    private function recordResponse(Operation $spec, int $status, array $headers): void
+    {
+        $this->lastResponse = new \Dmorenof\SdkRuntime\Transport\ResponseInfo(
+            $status,
+            new \Dmorenof\SdkRuntime\Transport\ResponseHeaders($headers, $spec->responseHeadersFor($status)),
+            $spec->label,
+        );
+    }
+
     private static function assertParameterContent(array $content, Operation $spec): void
     {
         foreach ($content as $location => $formats) {

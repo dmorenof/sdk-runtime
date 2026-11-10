@@ -12,6 +12,7 @@
 - `ApiClient` replays a request once with a renewed token after a 401 when a token provider was used and the body is replayable. Static tokens are never replayed. Secrets stay out of debug output and error messages.
 - Authorization-code/PKCE, OpenID Connect discovery, scope checking and mTLS remain pending (see pendientes.md).
 - Add opt-in `RetryPolicy` for the PSR-18 transport (`ApiClient::withRetryPolicy()`): retries 429/502/503/504 and network errors for idempotent methods only by default, with exponential backoff and equal jitter, honoring `Retry-After` (seconds or HTTP date) up to a cap; non-seekable bodies are never replayed. Disabled unless configured.
+- Expose typed response headers: `ApiClient::lastResponse()` returns the last response's status and a case-insensitive `ResponseHeaders` view. Operations may append `responseHeaders` metadata (by status, range or default) declaring `string`/`integer`/`number`/`boolean`/simple-list headers, required flags and rules; `get()` converts and validates on demand, so a malformed header never discards a successful body. `Set-Cookie` lines are parsed with Guzzle's `SetCookie` and stay separate on the PSR-18 transport (legacy transports join repeated lines). Signatures of `execute*` are unchanged.
 
 ## [0.31.0] — 2026-11-10
 

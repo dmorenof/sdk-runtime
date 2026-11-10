@@ -36,6 +36,7 @@ namespace Dmorenof\SdkRuntime;
  *     parameterContent?: array<string,array<array-key,'application/json'|'text/plain'>>,
  *     queryAllowReserved?: list<string>,
  *     querySerialization?: array<array-key, 'multi'|'csv'|'ssv'|'tsv'|'pipes'|'deepObject'|'form-object'|'form-object-explode'>,
+ *     responseHeaders?: array<int|string,array<string,array{type:'string'|'integer'|'number'|'boolean'|'array',items?:'string'|'integer'|'number'|'boolean',required?:bool,rules?:array<string,mixed>}>>,
  * }
  */
 final readonly class Operation
@@ -64,6 +65,7 @@ final readonly class Operation
         'responseMediaType' => 'application/json',
         'errorResponses' => [],
         'responseEncoding' => 'json',
+        'responseHeaders' => [],
     ];
 
     /** "METHOD path", unless the operation names itself. */
@@ -85,6 +87,7 @@ final readonly class Operation
      * @param array<array-key,'csv'|'ssv'|'tsv'|'pipes'|'object'|'object-explode'> $headerSerialization Header list name => raw simple CSV expansion.
      * @param array<int|string,array{type:?string,schemaNullable:bool,rules?:array<string,mixed>,mediaType?:string,encoding?:'json'|'text'|'binary'}> $responseTypes Explicit status-specific JSON types; null type means no body.
      * @param array<array-key, 'multi'|'csv'|'ssv'|'tsv'|'pipes'|'deepObject'|'form-object'|'form-object-explode'> $querySerialization Query list name => normalized wire format.
+     * @param array<int|string,array<string,array{type:'string'|'integer'|'number'|'boolean'|'array',items?:'string'|'integer'|'number'|'boolean',required?:bool,rules?:array<string,mixed>}>> $responseHeaders Declared response headers by status, range or default.
      */
     public function __construct(
         public string $method,
@@ -112,6 +115,7 @@ final readonly class Operation
         public string $responseMediaType = self::DEFAULTS['responseMediaType'],
         public array $errorResponses = self::DEFAULTS['errorResponses'],
         public string $responseEncoding = self::DEFAULTS['responseEncoding'],
+        public array $responseHeaders = self::DEFAULTS['responseHeaders'],
     ) {
         $this->label = $label ?? $method . ' ' . $path;
     }
@@ -138,6 +142,12 @@ final readonly class Operation
     public function responseTypeFor(int $status): ?array
     {
         return self::select($this->responseTypes, $status);
+    }
+
+    /** @return array<string,array{type:'string'|'integer'|'number'|'boolean'|'array',items?:'string'|'integer'|'number'|'boolean',required?:bool,rules?:array<string,mixed>}> */
+    public function responseHeadersFor(int $status): array
+    {
+        return self::select($this->responseHeaders, $status) ?? [];
     }
 
     /**

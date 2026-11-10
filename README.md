@@ -45,6 +45,17 @@ $client = Client::connect(
 
 The provider requests a token on first use, caches it in a `TokenStoreInterface` (in memory by default; implement it to share tokens between processes) and renews it before expiry. After a 401 the client invalidates the token and replays the request once. Pass `credentialsInBody: true` for servers that do not accept HTTP Basic client authentication. Interactive flows (authorization code, PKCE), OpenID Connect discovery and scope checking are not implemented yet.
 
+## Response headers (unreleased)
+
+~~~php
+$items = $client->list();
+$info = $client->lastResponse();           // status + headers of the last response of this client
+$remaining = $info->headers->get('X-Rate-Limit-Remaining'); // int when the operation declares it
+$cookies = $info->headers->cookies();      // list<GuzzleHttp\Cookie\SetCookie>
+~~~
+
+Generated SDKs declare `responseHeaders` per status in the operation metadata; undeclared headers are still readable as raw strings. Conversion happens when you call `get()`, so a malformed header throws there and never hides a successful body. `lastResponse()` is per client instance (a resource obtained with `resource()` keeps its own).
+
 ## Development
 
 Use PHP 8.3+ and Composer 2:

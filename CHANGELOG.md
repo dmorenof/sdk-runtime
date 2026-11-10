@@ -5,6 +5,7 @@
 - Share schema compilation with the generator and accept JSON-encoded declarative guards without losing object/list identity. Disable implicit defaults and Opis execution extensions; format remains an annotation.
 - Evaluate model guards against original input JSON and retain validation on mutable values, explicit null bodies and composition direction.
 - Extend native union hydration to stdClass/array without converting wire types; delegate enum equality to Opis, including nullable assertions and composition evaluation.
+- Centralize HTTP response body eligibility for HEAD and bodyless statuses, skip incompatible payload decoding while preserving raw error status/response, and reject actual TRACE request bodies.
 - Coordinated generator implementation is in release/0.2.0. No tests, analysis or release run for this accumulated development, at the user's request; stable runtime remains v0.31.0.
 
 ## [0.31.0] — 2026-11-10

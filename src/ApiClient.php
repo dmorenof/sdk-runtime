@@ -275,6 +275,7 @@ abstract class ApiClient
         bool $bodyPresent,
     ): mixed {
         $spec = Operation::fromArray($operation);
+        if (strtoupper($spec->method) === 'TRACE' && $bodyPresent) { throw new \InvalidArgumentException('HTTP TRACE must not contain a request body.'); }
         $parameters = $pathParameters + $queryParameters + $headerParameters;
         foreach ($spec->validation as $name => $rules) {
             $value = $parameters[$name] ?? null;
@@ -391,16 +392,20 @@ abstract class ApiClient
         }
         if ($this->transport instanceof Psr18Transport) {
             $psrResponse = $this->transport->sendResponse($spec->method, $url, $headers, $bodyBytes);
-            if ($spec->succeeded($psrResponse->getStatusCode()) && ltrim(($spec->responseTypeFor($psrResponse->getStatusCode()) ?? ['type' => $spec->responseType])['type'] ?? '', '\\') === \Psr\Http\Message\ResponseInterface::class) {
+            if (Operation::allowsResponseBody($spec->method, $psrResponse->getStatusCode()) && $spec->succeeded($psrResponse->getStatusCode()) && ltrim(($spec->responseTypeFor($psrResponse->getStatusCode()) ?? ['type' => $spec->responseType])['type'] ?? '', '\\') === \Psr\Http\Message\ResponseInterface::class) {
                 return $psrResponse;
             }
             $response = \Dmorenof\SdkRuntime\Transport\HttpResponse::fromPsr($psrResponse);
         } else {
             $response = $this->transport->send($spec->method, $url, $headers,
                 $bodyBytes instanceof \Psr\Http\Message\StreamInterface ? (string) $bodyBytes : $bodyBytes);
-            if ($spec->succeeded($response->status) && ltrim(($spec->responseTypeFor($response->status) ?? ['type' => $spec->responseType])['type'] ?? '', '\\') === \Psr\Http\Message\ResponseInterface::class) {
+            if (Operation::allowsResponseBody($spec->method, $response->status) && $spec->succeeded($response->status) && ltrim(($spec->responseTypeFor($response->status) ?? ['type' => $spec->responseType])['type'] ?? '', '\\') === \Psr\Http\Message\ResponseInterface::class) {
                 return new \GuzzleHttp\Psr7\Response($response->status, $response->headers, $response->body);
             }
+        }
+        if (!Operation::allowsResponseBody($spec->method, $response->status)) {
+            if (!$spec->succeeded($response->status)) { throw new ApiException($response, null, $spec->label); }
+            return null;
         }
         if (!$spec->succeeded($response->status)) {
             throw ApiException::fromResponse($response, $spec->label, $spec->errorTypeFor($response->status), $spec->errorResponseFor($response->status));

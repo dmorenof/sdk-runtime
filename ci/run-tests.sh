@@ -54,3 +54,5 @@ php tests/form-block-smoke.php "$PWD/vendor/autoload.php"
 php tests/schema-rules-smoke.php "$PWD/vendor/autoload.php"
 
 php tests/native-schemas-smoke.php "$PWD/vendor/autoload.php"
+
+php tests/request-bodies-smoke.php "$PWD/vendor/autoload.php"

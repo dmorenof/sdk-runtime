@@ -414,3 +414,15 @@ value and mutations. This does not enable arbitrary document loading or class un
 Optional null HTTP parameters remain absent on the wire. Required parameters that
 would otherwise disappear now fail before transport; required nullable JSON
 properties still serialize as JSON null.
+
+### JSON request bodies — v0.28.0
+
+Generated clients may declare optional `requestBody` metadata with `type`,
+`nullable`, `required` and `rules`. The protected `executeBody` entry point accepts
+a value and explicit presence, distinguishing omission from JSON null. Combined
+parameter DTOs use their initialized `body` property for the same distinction.
+The existing protected DTO executor signatures remain compatible with overrides.
+All execution shares argument mapping, nested validation, Serializer and the
+existing Guzzle/PSR transport. JSON and application/*+json bodies retain declared
+media types; forms retain their existing DTO contracts. Text/binary bodies and
+negotiation among request representations remain outside this release.

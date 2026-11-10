@@ -100,7 +100,7 @@ abstract class ApiClient
      *   query:array<string,bool|float|int|string|list<bool|float|int|string>|DTO|Map|TypedArray|null>,
      *   header:array<string,bool|float|int|string|list<bool|float|int|string>|DTO|Map|TypedArray|null>,
      *   cookie:array<string,bool|float|int|string|list<bool|float|int|string>|DTO|Map|TypedArray|null>,
-     *   body:?DTO
+     *   body:mixed, bodyPresent:bool
      * }
      */
     private static function operationFields(DTO $dto): array
@@ -110,7 +110,8 @@ abstract class ApiClient
         $bodyValue = $values['body'] ?? null;
         // A query or path parameter may also be named "body"; only an explicit operation body is a payload.
         $hasBody = defined($dto::class . '::OPERATION_BODY') && constant($dto::class . '::OPERATION_BODY') === true;
-        $body = $hasBody && $bodyValue instanceof DTO ? $bodyValue : null;
+        $body = $hasBody ? $bodyValue : null;
+        $bodyPresent = $hasBody && array_key_exists('body', $values);
         $fields = ['path' => [], 'query' => [], 'header' => [], 'cookie' => []];
         /** @var array<string,array<string,string>> $locations */
         $locations = constant($dto::class . '::OPERATION_FIELDS');
@@ -139,7 +140,7 @@ abstract class ApiClient
                 $fields[$location][$wireName] = $value;
             }
         }
-        return $fields + ['body' => $body];
+        return $fields + ['body' => $body, 'bodyPresent' => $bodyPresent];
     }
 
     /**
@@ -152,6 +153,37 @@ abstract class ApiClient
         ?string $identifierName = null,
         ?DTO $payload = null,
         ?DTO $body = null,
+    ): mixed {
+        return $this->executeInput($operation, $identifier, $identifierName, $payload, $body, $body !== null);
+    }
+
+    /**
+     * Native body entry point. Explicit presence distinguishes omission from JSON null.
+     * Existing protected DTO executor signatures stay compatible with consumer overrides.
+     * @param OperationSpec $operation
+     */
+    protected function executeBody(
+        array $operation,
+        mixed $body,
+        bool $bodyPresent = true,
+        string|int|float|bool|DTO|null $identifier = null,
+        ?string $identifierName = null,
+        ?DTO $payload = null,
+    ): mixed {
+        if (!isset($operation['requestBody'])) {
+            throw new \InvalidArgumentException('Native body execution requires its declared contract.');
+        }
+        return $this->executeInput($operation, $identifier, $identifierName, $payload, $body, $bodyPresent);
+    }
+
+    /** @param OperationSpec $operation */
+    private function executeInput(
+        array $operation,
+        string|int|float|bool|DTO|null $identifier,
+        ?string $identifierName,
+        ?DTO $payload,
+        mixed $body,
+        bool $bodyPresent,
     ): mixed {
         /** @var array<string,bool|float|int|string|list<bool|float|int|string>|DTO|Map|TypedArray|null> $path */
         $path = [];
@@ -192,6 +224,13 @@ abstract class ApiClient
                     ['Cookie' => str_replace('&', '; ', QuerySerializer::encode($cookies))]);
             }
             $body = $fields['body'];
+            $bodyPresent = $fields['bodyPresent'];
+        }
+        if (isset($operation['requestBody'])) {
+            return $this->executeRequest($operation, $path, $query, $headers, $body, $bodyPresent);
+        }
+        if ($body !== null && !$body instanceof DTO) {
+            throw new \UnexpectedValueException('Legacy operation body must be a DTO.');
         }
         return $this->executeOperation(
             $operation,
@@ -217,6 +256,23 @@ abstract class ApiClient
         array $queryParameters = [],
         array $headerParameters = [],
         ?DTO $body = null,
+    ): mixed {
+        return $this->executeRequest($operation, $pathParameters, $queryParameters, $headerParameters, $body, $body !== null);
+    }
+
+    /**
+     * @param OperationSpec $operation
+     * @param array<string,scalar|list<scalar>|DTO|Map|TypedArray|\stdClass|null> $pathParameters
+     * @param array<string,scalar|list<scalar>|DTO|Map|TypedArray|\stdClass|null> $queryParameters
+     * @param array<string,scalar|list<scalar>|DTO|Map|TypedArray|\stdClass|null> $headerParameters
+     */
+    private function executeRequest(
+        array $operation,
+        array $pathParameters,
+        array $queryParameters,
+        array $headerParameters,
+        mixed $body,
+        bool $bodyPresent,
     ): mixed {
         $spec = Operation::fromArray($operation);
         $parameters = $pathParameters + $queryParameters + $headerParameters;
@@ -263,22 +319,40 @@ abstract class ApiClient
         $accept = $hasBinary ? ($hasJson ? 'application/json, application/octet-stream' : 'application/octet-stream') : 'application/json';
         $headers = ['Accept' => $accept]
             + self::stringifyAll($headerParameters, $spec->headerSerialization);
-        if (!in_array($spec->requestMediaType, ['application/json', 'application/x-www-form-urlencoded', 'multipart/form-data'], true)
+        $jsonBody = preg_match('~^application/(?:[a-z0-9!#$&^_.+-]+\+)?json(?:\s*;.*)?$~iD', $spec->requestMediaType) === 1;
+        if ((!$jsonBody && !in_array($spec->requestMediaType, ['application/x-www-form-urlencoded', 'multipart/form-data'], true))
             || ($spec->requestMediaType !== 'application/x-www-form-urlencoded' && $spec->bodySerialization !== [])
             || ($spec->requestMediaType !== 'multipart/form-data' && $spec->bodyParts !== [])) {
             throw new \InvalidArgumentException('Unsupported request body media type or serialization metadata.');
         }
         $bodyBytes = null;
-        if ($body !== null) {
+        if ($spec->requestBody !== null) {
+            if (!$jsonBody) { throw new \InvalidArgumentException('Native body contract currently requires JSON.'); }
+            if (!$bodyPresent && $spec->requestBody['required']) { throw new \UnexpectedValueException($spec->label . ' requires a request body.'); }
+            if ($bodyPresent) {
+                $bodyRules = $spec->requestBody['rules'] ?? [];
+                if ($body !== null || array_key_exists('schema', $bodyRules) || array_key_exists('const', $bodyRules)) {
+                    Constraints::validate($body, $bodyRules, $spec->label . ' body', 'request');
+                }
+                $body = Hydrator::hydrate($body, $spec->requestBody['type'], $spec->requestBody['nullable'], $spec->label . ' body');
+            }
+        } elseif ($bodyPresent && !$body instanceof DTO) {
+            throw new \UnexpectedValueException('Legacy operation body must be a DTO.');
+        }
+        if ($bodyPresent) {
             $headers['Content-Type'] = $spec->requestMediaType;
-            if ($spec->requestMediaType === 'multipart/form-data') {
-                $multipart = MultipartSerializer::encode($body, $spec->bodyParts);
-                $headers['Content-Type'] .= '; boundary=' . $multipart->getBoundary();
-                $bodyBytes = $multipart;
+            if ($jsonBody) {
+                DTO::validateNestedValue($body, 'request');
+                $bodyBytes = json_encode(Serializer::value($body, 'request'), JSON_THROW_ON_ERROR);
             } else {
-                $bodyBytes = $spec->requestMediaType === 'application/x-www-form-urlencoded'
-                    ? FormSerializer::encode($body, $spec->bodySerialization)
-                    : json_encode($body->jsonSerializeForRequest(), JSON_THROW_ON_ERROR);
+                if (!$body instanceof DTO) { throw new \UnexpectedValueException('Form body must be a DTO.'); }
+                if ($spec->requestMediaType === 'multipart/form-data') {
+                    $multipart = MultipartSerializer::encode($body, $spec->bodyParts);
+                    $headers['Content-Type'] .= '; boundary=' . $multipart->getBoundary();
+                    $bodyBytes = $multipart;
+                } else {
+                    $bodyBytes = FormSerializer::encode($body, $spec->bodySerialization);
+                }
             }
         }
 

@@ -22,6 +22,7 @@ namespace Dmorenof\SdkRuntime;
  *     pathSerialization?: array<array-key,'csv'|'ssv'|'tsv'|'pipes'|'object'|'object-explode'|'label'|'label-list'|'label-list-explode'|'label-object'|'label-object-explode'|'matrix'|'matrix-list'|'matrix-list-explode'|'matrix-object'|'matrix-object-explode'>,
  *     headerSerialization?: array<array-key,'csv'|'ssv'|'tsv'|'pipes'|'object'|'object-explode'>,
  *     responseValidation?: array<string,mixed>,
+ *     requestBody?: array{type:string,nullable:bool,required:bool,rules?:array<string,mixed>}|null,
  *     schemaNullable?: bool,
  *     noContentAllowed?: bool,
  *     validation?: array<array-key, array<string, mixed>>,
@@ -56,6 +57,7 @@ final readonly class Operation
         'queryAllowReserved' => [],
         'parameterContent' => [],
         'responseValidation' => [],
+        'requestBody' => null,
     ];
 
     /** "METHOD path", unless the operation names itself. */
@@ -65,6 +67,7 @@ final readonly class Operation
      * @param list<array<string, list<string>>> $security Alternatives are OR; schemes within one entry are AND.
      * @param array<string,array<array-key,'application/json'|'text/plain'>> $parameterContent Parameter media types grouped by location.
      * @param array<string,mixed> $responseValidation Rules for a legacy/single JSON response.
+     * @param array{type:string,nullable:bool,required:bool,rules?:array<string,mixed>}|null $requestBody Native JSON body contract.
      * @param list<string> $queryAllowReserved Query names whose data uses reserved expansion.
      * @param list<int|string> $success Statuses that are not errors.
      * @param array<int|string, ?string> $errors Status (or 'default') => error model class.
@@ -98,6 +101,7 @@ final readonly class Operation
         public array $queryAllowReserved = self::DEFAULTS['queryAllowReserved'],
         public array $parameterContent = self::DEFAULTS['parameterContent'],
         public array $responseValidation = self::DEFAULTS['responseValidation'],
+        public ?array $requestBody = self::DEFAULTS['requestBody'],
     ) {
         $this->label = $label ?? $method . ' ' . $path;
     }

@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.28.0] — 2026-11-10
+
+- Support declared native JSON request bodies: primitive values, null, arrays, maps and existing models/collections. Distinguish body absence from explicit JSON null and enforce required/nullability/constraints before transport.
+- Reuse shared argument mapping, nested validation, Serializer and the existing HTTP executor; retain protected executeOperation/executeArguments signatures for consumer overrides. Append optional Operation requestBody metadata without changing constructor positions.
+- Preserve query/header/body separation, request-direction model filtering, application/*+json media and mutation checks. Exercise actual HTTP and installed-package smoke; text/binary request bodies and representation negotiation remain separate.
+
 ## [0.27.0] — 2026-11-10
 
 - Hydrate primitive PHP unions preserving original JSON kinds, accept finite integral JSON numbers for integers and integer-backed enums, and evaluate declarative boolean/type-set schema guards through existing Opis validation.

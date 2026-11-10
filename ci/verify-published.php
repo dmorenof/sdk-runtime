@@ -207,3 +207,9 @@ $nativeCommand = implode(' ', array_map('escapeshellarg', [PHP_BINARY,
 passthru($nativeCommand, $nativeStatus);
 if ($nativeStatus !== 0) { throw new RuntimeException('Installed runtime native schemas HTTP smoke failed.'); }
 echo "PUBLISHED_NATIVE_SCHEMAS_RUNTIME_OK", PHP_EOL;
+
+$bodyCommand = implode(' ', array_map('escapeshellarg', [PHP_BINARY,
+    $directory . '/vendor/dmorenof/sdk-runtime/tests/request-bodies-smoke.php', $directory . '/vendor/autoload.php']));
+passthru($bodyCommand, $bodyStatus);
+if ($bodyStatus !== 0) { throw new RuntimeException('Installed runtime request bodies HTTP smoke failed.'); }
+echo "PUBLISHED_REQUEST_BODIES_RUNTIME_OK", PHP_EOL;

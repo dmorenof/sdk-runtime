@@ -62,7 +62,7 @@ Durante las fases 1 y 2, el SDK de Casafari generado sigue pasando como prueba d
 
 ## 3. [P1] Negociación y formatos
 
-- [ ] Selección explícita de `Content-Type`/`Accept` entre representaciones alternativas y wildcard MIME.
+- [x] **Sin publicar —** Selección de representación de respuesta entre alternativas declaradas (`alternatives`, `MediaType`) con wildcards `type/*`, `*/*` y `application/*+json`; `Accept` generado desde todas las alternativas. Pendiente: elegir explícitamente el `Content-Type` de la **petición** entre alternativas, pesos q en `Accept` y emitir `alternatives` desde el generador.
 - [ ] Interfaz de códecs para modelos XML/CSV estructurados (hoy son strings opacos).
 - [ ] Entradas no seekables y garantías de streaming generales; errores binarios sin buffer completo.
 - [ ] Transcodificación de charsets.

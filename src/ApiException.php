@@ -29,7 +29,7 @@ class ApiException extends \RuntimeException
     }
 
     /** @param string|null $errorType Legacy DTO error class.
-     * @param array{type:?string,schemaNullable:bool,rules?:array<string,mixed>,mediaType?:string,encoding?:'json'|'text'|'binary'}|null $errorResponse Declared general error response.
+     * @param array{type:?string,schemaNullable:bool,rules?:array<string,mixed>,mediaType?:string,encoding?:'json'|'text'|'binary',alternatives?:list<array{type:?string,schemaNullable:bool,rules?:array<string,mixed>,mediaType:string,encoding?:'json'|'text'|'binary'}>}|null $errorResponse Declared general error response.
      */
     public static function fromResponse(HttpResponse $response, string $operation, ?string $errorType, ?array $errorResponse = null): self
     {

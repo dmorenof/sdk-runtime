@@ -347,12 +347,14 @@ abstract class ApiClient
             $accepted[] = $legacyBinary && !array_key_exists('responseMediaType', $operation) ? 'application/octet-stream' : $spec->responseMediaType;
         }
         foreach (array_merge($spec->responseTypes, $spec->errorResponses) as $entry) {
-            if ($entry['type'] === null) { continue; }
-            $accepted[] = $entry['mediaType'] ?? (ltrim($entry['type'], '\\') === \Psr\Http\Message\ResponseInterface::class ? 'application/octet-stream' : 'application/json');
+            foreach (($entry['alternatives'] ?? []) ?: [$entry] as $alternative) {
+                if ($alternative['type'] === null) { continue; }
+                $accepted[] = $alternative['mediaType'] ?? (ltrim($alternative['type'], '\\') === \Psr\Http\Message\ResponseInterface::class ? 'application/octet-stream' : 'application/json');
+            }
         }
         $accepted = array_values(array_unique($accepted));
         // Preserve the established order for previously emitted SDKs.
-        $rank = static fn (string $media): int => preg_match('~^application/(?:[a-z0-9!#$&^_.+\-]+\+)?json(?:\s*;|$)~i', $media) === 1 ? 0 : match ($media) { 'text/plain' => 1, 'application/octet-stream' => 2, default => 3 };
+        $rank = static fn (string $media): int => MediaType::isRange($media) ? 4 : (preg_match('~^application/(?:[a-z0-9!#$&^_.+\-]+\+)?json(?:\s*;|$)~i', $media) === 1 ? 0 : match ($media) { 'text/plain' => 1, 'application/octet-stream' => 2, default => 3 });
         usort($accepted, static fn (string $left, string $right): int => $rank($left) <=> $rank($right));
         $accept = implode(', ', $accepted === [] ? ['application/json'] : $accepted);
         $headers = ['Accept' => $accept]
@@ -440,7 +442,7 @@ abstract class ApiClient
                     continue;
                 }
                 $this->recordResponse($spec, $psrResponse->getStatusCode(), $psrResponse->getHeaders());
-                if (Operation::allowsResponseBody($spec->method, $psrResponse->getStatusCode()) && $spec->succeeded($psrResponse->getStatusCode()) && ltrim(($spec->responseTypeFor($psrResponse->getStatusCode()) ?? ['type' => $spec->responseType])['type'] ?? '', '\\') === \Psr\Http\Message\ResponseInterface::class) {
+                if (Operation::allowsResponseBody($spec->method, $psrResponse->getStatusCode()) && $spec->succeeded($psrResponse->getStatusCode()) && ltrim(($spec->responseTypeFor($psrResponse->getStatusCode(), $psrResponse->getHeaderLine('Content-Type')) ?? ['type' => $spec->responseType])['type'] ?? '', '\\') === \Psr\Http\Message\ResponseInterface::class) {
                     return $psrResponse;
                 }
                 $response = \Dmorenof\SdkRuntime\Transport\HttpResponse::fromPsr($psrResponse);
@@ -454,7 +456,7 @@ abstract class ApiClient
                     continue;
                 }
                 $this->recordResponse($spec, $response->status, $response->headers);
-                if (Operation::allowsResponseBody($spec->method, $response->status) && $spec->succeeded($response->status) && ltrim(($spec->responseTypeFor($response->status) ?? ['type' => $spec->responseType])['type'] ?? '', '\\') === \Psr\Http\Message\ResponseInterface::class) {
+                if (Operation::allowsResponseBody($spec->method, $response->status) && $spec->succeeded($response->status) && ltrim(($spec->responseTypeFor($response->status, $response->header('Content-Type')) ?? ['type' => $spec->responseType])['type'] ?? '', '\\') === \Psr\Http\Message\ResponseInterface::class) {
                     return new \GuzzleHttp\Psr7\Response($response->status, $response->headers, $response->body);
                 }
             }
@@ -465,9 +467,9 @@ abstract class ApiClient
             return null;
         }
         if (!$spec->succeeded($response->status)) {
-            throw ApiException::fromResponse($response, $spec->label, $spec->errorTypeFor($response->status), $spec->errorResponseFor($response->status));
+            throw ApiException::fromResponse($response, $spec->label, $spec->errorTypeFor($response->status), $spec->errorResponseFor($response->status, $response->header('Content-Type')));
         }
-        $declared = $spec->responseTypeFor($response->status);
+        $declared = $spec->responseTypeFor($response->status, $response->header('Content-Type'));
         $responseType = $declared ?? ['type' => $spec->responseType, 'schemaNullable' => $spec->schemaNullable, 'mediaType' => $spec->responseMediaType, 'encoding' => array_key_exists('responseEncoding', $operation) ? $spec->responseEncoding : ($spec->responseMediaType === 'text/plain' ? 'text' : 'json')];
         if ($responseType['type'] === null || ($declared === null && $spec->noContentAllowed && $response->body === '')) {
             return null;

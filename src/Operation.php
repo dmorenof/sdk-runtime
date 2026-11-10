@@ -18,13 +18,13 @@ namespace Dmorenof\SdkRuntime;
  *     success?: list<int|string>,
  *     errors?: array<int|string, ?string>,
  *     responseType?: string|null,
- *     responseTypes?: array<int|string,array{type:?string,schemaNullable:bool,rules?:array<string,mixed>,mediaType?:string,encoding?:'json'|'text'|'binary'}>,
+ *     responseTypes?: array<int|string,array{type:?string,schemaNullable:bool,rules?:array<string,mixed>,mediaType?:string,encoding?:'json'|'text'|'binary',alternatives?:list<array{type:?string,schemaNullable:bool,rules?:array<string,mixed>,mediaType:string,encoding?:'json'|'text'|'binary'}>}>,
  *     pathSerialization?: array<array-key,'csv'|'ssv'|'tsv'|'pipes'|'object'|'object-explode'|'label'|'label-list'|'label-list-explode'|'label-object'|'label-object-explode'|'matrix'|'matrix-list'|'matrix-list-explode'|'matrix-object'|'matrix-object-explode'>,
  *     headerSerialization?: array<array-key,'csv'|'ssv'|'tsv'|'pipes'|'object'|'object-explode'>,
  *     responseValidation?: array<string,mixed>,
  *     responseMediaType?: string,
  *     responseEncoding?: string,
- *     errorResponses?: array<int|string,array{type:?string,schemaNullable:bool,rules?:array<string,mixed>,mediaType?:string,encoding?:'json'|'text'|'binary'}>,
+ *     errorResponses?: array<int|string,array{type:?string,schemaNullable:bool,rules?:array<string,mixed>,mediaType?:string,encoding?:'json'|'text'|'binary',alternatives?:list<array{type:?string,schemaNullable:bool,rules?:array<string,mixed>,mediaType:string,encoding?:'json'|'text'|'binary'}>}>,
  *     requestBody?: array{type:string,nullable:bool,required:bool,rules?:array<string,mixed>,encoding?:'json'|'text'|'binary'}|null,
  *     schemaNullable?: bool,
  *     noContentAllowed?: bool,
@@ -77,7 +77,7 @@ final readonly class Operation
      * @param array<string,mixed> $responseValidation Rules for a legacy/single JSON response.
      * @param array{type:string,nullable:bool,required:bool,rules?:array<string,mixed>,encoding?:'json'|'text'|'binary'}|null $requestBody Native JSON body contract.
      * @param list<string> $queryAllowReserved Query names whose data uses reserved expansion.
-     * @param array<int|string,array{type:?string,schemaNullable:bool,rules?:array<string,mixed>,mediaType?:string,encoding?:'json'|'text'|'binary'}> $errorResponses Declared general error payloads.
+     * @param array<int|string,array{type:?string,schemaNullable:bool,rules?:array<string,mixed>,mediaType?:string,encoding?:'json'|'text'|'binary',alternatives?:list<array{type:?string,schemaNullable:bool,rules?:array<string,mixed>,mediaType:string,encoding?:'json'|'text'|'binary'}>}> $errorResponses Declared general error payloads.
      * @param list<int|string> $success Statuses that are not errors.
      * @param array<int|string, ?string> $errors Status (or 'default') => error model class.
      * @param array<array-key, array<string, mixed>> $validation Parameter name => rules.
@@ -85,7 +85,7 @@ final readonly class Operation
      * @param array<string,array{contentType:?string,filename?:string,json?:bool}> $bodyParts Multipart metadata; null MIME accepts the uploaded file's type or octet-stream.
      * @param array<array-key,'csv'|'ssv'|'tsv'|'pipes'|'object'|'object-explode'|'label'|'label-list'|'label-list-explode'|'label-object'|'label-object-explode'|'matrix'|'matrix-list'|'matrix-list-explode'|'matrix-object'|'matrix-object-explode'> $pathSerialization Path list name => simple CSV expansion.
      * @param array<array-key,'csv'|'ssv'|'tsv'|'pipes'|'object'|'object-explode'> $headerSerialization Header list name => raw simple CSV expansion.
-     * @param array<int|string,array{type:?string,schemaNullable:bool,rules?:array<string,mixed>,mediaType?:string,encoding?:'json'|'text'|'binary'}> $responseTypes Explicit status-specific JSON types; null type means no body.
+     * @param array<int|string,array{type:?string,schemaNullable:bool,rules?:array<string,mixed>,mediaType?:string,encoding?:'json'|'text'|'binary',alternatives?:list<array{type:?string,schemaNullable:bool,rules?:array<string,mixed>,mediaType:string,encoding?:'json'|'text'|'binary'}>}> $responseTypes Explicit status-specific JSON types; null type means no body.
      * @param array<array-key, 'multi'|'csv'|'ssv'|'tsv'|'pipes'|'deepObject'|'form-object'|'form-object-explode'> $querySerialization Query list name => normalized wire format.
      * @param array<int|string,array<string,array{type:'string'|'integer'|'number'|'boolean'|'array',items?:'string'|'integer'|'number'|'boolean',required?:bool,rules?:array<string,mixed>}>> $responseHeaders Declared response headers by status, range or default.
      */
@@ -132,16 +132,50 @@ final readonly class Operation
         return self::select($this->errors, $status);
     }
 
-    /** @return array{type:?string,schemaNullable:bool,rules?:array<string,mixed>,mediaType?:string,encoding?:'json'|'text'|'binary'}|null */
-    public function errorResponseFor(int $status): ?array
+    /**
+     * Declared error response for a status. With `alternatives`, the one matching the received
+     * Content-Type; when none matches the payload is left undecoded (type null) so the HTTP failure survives.
+     *
+     * @return array{type:?string,schemaNullable:bool,rules?:array<string,mixed>,mediaType?:string,encoding?:'json'|'text'|'binary'}|null
+     */
+    public function errorResponseFor(int $status, ?string $contentType = null): ?array
     {
-        return self::select($this->errorResponses, $status);
+        $entry = self::select($this->errorResponses, $status);
+        return $entry === null ? null : (self::alternative($entry, $contentType) ?? ['type' => null, 'schemaNullable' => false]);
     }
 
-    /** @return array{type:?string,schemaNullable:bool,rules?:array<string,mixed>,mediaType?:string,encoding?:'json'|'text'|'binary'}|null */
-    public function responseTypeFor(int $status): ?array
+    /**
+     * Declared success response for a status. With `alternatives`, the one matching the received
+     * Content-Type (the first when the response names none).
+     *
+     * @return array{type:?string,schemaNullable:bool,rules?:array<string,mixed>,mediaType?:string,encoding?:'json'|'text'|'binary'}|null
+     * @throws \UnexpectedValueException When the response media type is not among the declared alternatives.
+     */
+    public function responseTypeFor(int $status, ?string $contentType = null): ?array
     {
-        return self::select($this->responseTypes, $status);
+        $entry = self::select($this->responseTypes, $status);
+        if ($entry === null) {
+            return null;
+        }
+        return self::alternative($entry, $contentType)
+            ?? throw new \UnexpectedValueException(
+                "Response media type '" . ($contentType ?? '') . "' is not declared for {$this->label} (status $status).",
+            );
+    }
+
+    /**
+     * @param array{type:?string,schemaNullable:bool,rules?:array<string,mixed>,mediaType?:string,encoding?:'json'|'text'|'binary',alternatives?:list<array{type:?string,schemaNullable:bool,rules?:array<string,mixed>,mediaType:string,encoding?:'json'|'text'|'binary'}>} $entry
+     * @return array{type:?string,schemaNullable:bool,rules?:array<string,mixed>,mediaType?:string,encoding?:'json'|'text'|'binary'}|null Null when alternatives exist and none matches.
+     */
+    private static function alternative(array $entry, ?string $contentType): ?array
+    {
+        $alternatives = $entry['alternatives'] ?? [];
+        if ($alternatives === []) {
+            return $entry;
+        }
+        $declared = array_values(array_map(static fn (array $alternative): string => $alternative['mediaType'], $alternatives));
+        $chosen = MediaType::select($contentType, $declared);
+        return $chosen === null ? null : $alternatives[array_search($chosen, $declared, true)];
     }
 
     /** @return array<string,array{type:'string'|'integer'|'number'|'boolean'|'array',items?:'string'|'integer'|'number'|'boolean',required?:bool,rules?:array<string,mixed>}> */

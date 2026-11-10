@@ -67,6 +67,20 @@ $client->withRedirectPolicy(new RedirectPolicy(maxRedirects: 2, followCrossOrigi
 
 By default up to five redirects are followed. A redirect to another origin drops every request header except a safe allowlist (`Accept`, `Accept-Encoding`, `Accept-Language`, `User-Agent`, `Content-Type`), so credentials never leak, and https→http downgrades are refused with a `RedirectException`. The policy applies when the PSR-18 client does not follow redirects itself; the default Guzzle client is built that way.
 
+## Representation selection (unreleased)
+
+An operation may declare several representations for one status, for example JSON, CSV and any image:
+
+~~~php
+'responseTypes' => [200 => ['type' => null, 'schemaNullable' => false, 'alternatives' => [
+    ['type' => Report::class, 'schemaNullable' => false, 'mediaType' => 'application/json', 'encoding' => 'json'],
+    ['type' => 'string', 'schemaNullable' => false, 'mediaType' => 'text/csv', 'encoding' => 'text'],
+    ['type' => '\\Psr\\Http\\Message\\ResponseInterface', 'schemaNullable' => false, 'mediaType' => 'image/*', 'encoding' => 'binary'],
+]]],
+~~~
+
+The request sends `Accept: application/json, text/csv, image/*`; the response `Content-Type` picks the codec, most specific declaration first (`application/vnd.api+json`, then `application/*+json`, `text/*`, `*/*`). A success whose media type is not declared throws `UnexpectedValueException`; an undeclared error type still throws `ApiException` with the raw response and a null `payload`.
+
 ## Development
 
 Use PHP 8.3+ and Composer 2:

@@ -253,7 +253,15 @@ abstract class ApiClient
         }
         $query = array_filter($queryParameters, static fn ($value): bool => $value !== null);
         $binary = ltrim($spec->responseType ?? '', '\\') === \Psr\Http\Message\ResponseInterface::class;
-        $headers = ['Accept' => $binary ? 'application/octet-stream' : 'application/json']
+        $hasBinary = $binary;
+        $hasJson = !$binary && $spec->responseType !== null;
+        foreach ($spec->responseTypes as $entry) {
+            $entryBinary = ltrim($entry['type'] ?? '', '\\') === \Psr\Http\Message\ResponseInterface::class;
+            $hasBinary = $hasBinary || $entryBinary;
+            $hasJson = $hasJson || ($entry['type'] !== null && !$entryBinary);
+        }
+        $accept = $hasBinary ? ($hasJson ? 'application/json, application/octet-stream' : 'application/octet-stream') : 'application/json';
+        $headers = ['Accept' => $accept]
             + self::stringifyAll($headerParameters, $spec->headerSerialization);
         if (!in_array($spec->requestMediaType, ['application/json', 'application/x-www-form-urlencoded', 'multipart/form-data'], true)
             || ($spec->requestMediaType !== 'application/x-www-form-urlencoded' && $spec->bodySerialization !== [])
@@ -294,21 +302,21 @@ abstract class ApiClient
         }
         if ($this->transport instanceof Psr18Transport) {
             $psrResponse = $this->transport->sendResponse($spec->method, $url, $headers, $bodyBytes);
-            if ($binary && $spec->succeeded($psrResponse->getStatusCode())) {
+            if ($spec->succeeded($psrResponse->getStatusCode()) && ltrim(($spec->responseTypeFor($psrResponse->getStatusCode()) ?? ['type' => $spec->responseType])['type'] ?? '', '\\') === \Psr\Http\Message\ResponseInterface::class) {
                 return $psrResponse;
             }
             $response = \Dmorenof\SdkRuntime\Transport\HttpResponse::fromPsr($psrResponse);
         } else {
             $response = $this->transport->send($spec->method, $url, $headers,
                 $bodyBytes instanceof \Psr\Http\Message\StreamInterface ? (string) $bodyBytes : $bodyBytes);
-            if ($binary && $spec->succeeded($response->status)) {
+            if ($spec->succeeded($response->status) && ltrim(($spec->responseTypeFor($response->status) ?? ['type' => $spec->responseType])['type'] ?? '', '\\') === \Psr\Http\Message\ResponseInterface::class) {
                 return new \GuzzleHttp\Psr7\Response($response->status, $response->headers, $response->body);
             }
         }
         if (!$spec->succeeded($response->status)) {
             throw ApiException::fromResponse($response, $spec->label, $spec->errorTypeFor($response->status));
         }
-        $declared = $spec->responseTypes[$response->status] ?? null;
+        $declared = $spec->responseTypeFor($response->status);
         $responseType = $declared ?? ['type' => $spec->responseType, 'schemaNullable' => $spec->schemaNullable];
         if ($responseType['type'] === null || ($declared === null && $spec->noContentAllowed && $response->body === '')) {
             return null;

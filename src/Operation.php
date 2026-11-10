@@ -15,10 +15,10 @@ namespace Dmorenof\SdkRuntime;
  *     path: string,
  *     label?: string|null,
  *     security?: list<array<string, list<string>>>,
- *     success?: list<int>,
- *     errors?: array<int|string, string>,
+ *     success?: list<int|string>,
+ *     errors?: array<int|string, ?string>,
  *     responseType?: string|null,
- *     responseTypes?: array<int,array{type:?string,schemaNullable:bool}>,
+ *     responseTypes?: array<int|string,array{type:?string,schemaNullable:bool}>,
  *     pathSerialization?: array<array-key,'csv'|'ssv'|'tsv'|'pipes'|'object'|'object-explode'|'label'|'label-list'|'label-list-explode'|'label-object'|'label-object-explode'|'matrix'|'matrix-list'|'matrix-list-explode'|'matrix-object'|'matrix-object-explode'>,
  *     headerSerialization?: array<array-key,'csv'|'ssv'|'tsv'|'pipes'|'object'|'object-explode'>,
  *     schemaNullable?: bool,
@@ -63,14 +63,14 @@ final readonly class Operation
      * @param list<array<string, list<string>>> $security Alternatives are OR; schemes within one entry are AND.
      * @param array<string,array<array-key,'application/json'|'text/plain'>> $parameterContent Parameter media types grouped by location.
      * @param list<string> $queryAllowReserved Query names whose data uses reserved expansion.
-     * @param list<int> $success Statuses that are not errors.
-     * @param array<int|string, string> $errors Status (or 'default') => error model class.
+     * @param list<int|string> $success Statuses that are not errors.
+     * @param array<int|string, ?string> $errors Status (or 'default') => error model class.
      * @param array<array-key, array<string, mixed>> $validation Parameter name => rules.
      * @param array<string,'multi'|'csv'> $bodySerialization Form array field name => wire format.
      * @param array<string,array{contentType:?string,filename?:string}> $bodyParts Multipart metadata; null MIME accepts the uploaded file's type or octet-stream.
      * @param array<array-key,'csv'|'ssv'|'tsv'|'pipes'|'object'|'object-explode'|'label'|'label-list'|'label-list-explode'|'label-object'|'label-object-explode'|'matrix'|'matrix-list'|'matrix-list-explode'|'matrix-object'|'matrix-object-explode'> $pathSerialization Path list name => simple CSV expansion.
      * @param array<array-key,'csv'|'ssv'|'tsv'|'pipes'|'object'|'object-explode'> $headerSerialization Header list name => raw simple CSV expansion.
-     * @param array<int,array{type:?string,schemaNullable:bool}> $responseTypes Explicit status-specific JSON types; null type means no body.
+     * @param array<int|string,array{type:?string,schemaNullable:bool}> $responseTypes Explicit status-specific JSON types; null type means no body.
      * @param array<array-key, 'multi'|'csv'|'ssv'|'tsv'|'pipes'|'deepObject'|'form-object'|'form-object-explode'> $querySerialization Query list name => normalized wire format.
      */
     public function __construct(
@@ -107,11 +107,32 @@ final readonly class Operation
     /** The error model for a failed status: its own entry, then the 'default' one. */
     public function errorTypeFor(int $status): ?string
     {
-        return $this->errors[$status] ?? $this->errors['default'] ?? null;
+        return self::select($this->errors, $status);
+    }
+
+    /** @return array{type:?string,schemaNullable:bool}|null */
+    public function responseTypeFor(int $status): ?array
+    {
+        return self::select($this->responseTypes, $status);
+    }
+
+    /**
+     * @template T
+     * @param array<int|string,T> $entries
+     * @return T|null
+     */
+    private static function select(array $entries, int $status): mixed
+    {
+        foreach ([$status, intdiv($status, 100) . 'XX', 'default'] as $key) {
+            if (array_key_exists($key, $entries)) { return $entries[$key]; }
+        }
+        return null;
     }
 
     public function succeeded(int $status): bool
     {
-        return in_array($status, $this->success, true);
+        return in_array($status, $this->success, true)
+            || in_array(intdiv($status, 100) . 'XX', $this->success, true)
+            || ($status >= 200 && $status < 300 && in_array('default', $this->success, true));
     }
 }

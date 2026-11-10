@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.24.0] — 2026-11-10
+
+- Select responses by exact HTTP status, class range and default, in that order, using existing operation metadata. Explicit bodyless errors suppress fallback hydration. Default success applies only to HTTP 2xx.
+- Mix JSON, binary PSR-7 streams and bodyless successes by selected status, retaining both transport paths and old metadata behavior. Negotiate JSON/octet-stream when both are declared and preserve binary streams without materialization on PSR-18.
+- Verify precedence, typed errors/raw failure retention, exact empty responses, request query/body isolation and real GET/POST HTTP in source and immutable-package smoke.
+
 ## [0.23.0] — 2026-11-10
 
 - Support Swagger ssv/tsv/pipes list metadata in path/header through existing QuerySerializer list validation, native encoding and shared ApiClient. Preserve CSV and object formats and executor signatures.

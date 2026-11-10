@@ -183,3 +183,9 @@ $delimitedCommand = implode(' ', array_map('escapeshellarg', [PHP_BINARY,
 passthru($delimitedCommand, $delimitedStatus);
 if ($delimitedStatus !== 0) { throw new RuntimeException('Installed runtime delimited parameter HTTP smoke failed.'); }
 echo "PUBLISHED_DELIMITED_PARAMETER_RUNTIME_OK", PHP_EOL;
+
+$selectionCommand = implode(' ', array_map('escapeshellarg', [PHP_BINARY,
+    $directory . '/vendor/dmorenof/sdk-runtime/tests/response-selection-smoke.php', $directory . '/vendor/autoload.php']));
+passthru($selectionCommand, $selectionStatus);
+if ($selectionStatus !== 0) { throw new RuntimeException('Installed runtime response selection HTTP smoke failed.'); }
+echo "PUBLISHED_RESPONSE_SELECTION_RUNTIME_OK", PHP_EOL;

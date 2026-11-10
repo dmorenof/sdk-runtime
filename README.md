@@ -354,3 +354,19 @@ Operation parameterContent metadata declares application/json or text/plain by l
 ### Swagger delimited path/header lists — v0.23.0
 
 Use existing pathSerialization/headerSerialization metadata with csv, ssv, tsv or pipes. Paths percent-encode each item and space/tab/pipe separators; headers preserve raw delimiters. Items containing their separator are rejected when ambiguous, and outer header whitespace is rejected rather than silently trimmed by HTTP. multi remains query/form-only. Existing DTO validation, executors and Guzzle/PSR transport are reused.
+
+### Response selection block — v0.24.0
+
+Existing success, responseTypes and errors metadata accepts exact status codes,
+uppercase class ranges (2XX, 4XX, etc.) and default. Exact entries precede ranges,
+which precede default; explicit null error types suppress fallback decoding.
+default marks only unmatched HTTP 2xx responses as successes. Non-2xx remain
+ApiException instances with raw status/headers/body and typed object errors where
+declared. Existing integer-only metadata remains compatible.
+
+A mixed success map may select a JSON type, PSR-7 ResponseInterface for binary
+streams, or null for no body. JSON and octet-stream Accept values are combined
+only when both are declared. The selected binary PSR response returns unchanged,
+without reading its stream; the legacy string transport retains its existing
+buffered behavior. This does not add MIME negotiation among schemas at one status,
+binary error decoding, redirect policy, HEAD/205 rules or scalar error models.

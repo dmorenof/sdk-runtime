@@ -56,6 +56,17 @@ $cookies = $info->headers->cookies();      // list<GuzzleHttp\Cookie\SetCookie>
 
 Generated SDKs declare `responseHeaders` per status in the operation metadata; undeclared headers are still readable as raw strings. Conversion happens when you call `get()`, so a malformed header throws there and never hides a successful body. `lastResponse()` is per client instance (a resource obtained with `resource()` keeps its own).
 
+## Redirects (unreleased)
+
+~~~php
+use Dmorenof\SdkRuntime\Transport\RedirectPolicy;
+
+$client->withRedirectPolicy(RedirectPolicy::none());              // inspect the 3xx yourself
+$client->withRedirectPolicy(new RedirectPolicy(maxRedirects: 2, followCrossOrigin: false));
+~~~
+
+By default up to five redirects are followed. A redirect to another origin drops every request header except a safe allowlist (`Accept`, `Accept-Encoding`, `Accept-Language`, `User-Agent`, `Content-Type`), so credentials never leak, and https→http downgrades are refused with a `RedirectException`. The policy applies when the PSR-18 client does not follow redirects itself; the default Guzzle client is built that way.
+
 ## Development
 
 Use PHP 8.3+ and Composer 2:

@@ -47,7 +47,8 @@ abstract class ApiClient
         $this->serverOverrides = $normalized;
         $this->securityCredentials = $securityCredentials ?? new SecurityCredentials();
         $this->transport = $transport ?? new Psr18Transport(
-            $httpClient ?? new \GuzzleHttp\Client(['http_errors' => false,
+            // Redirects are handled by the shared RedirectPolicy, not by the client.
+            $httpClient ?? new \GuzzleHttp\Client(['http_errors' => false, 'allow_redirects' => false,
                 'curl' => defined('CURLOPT_PATH_AS_IS') ? [CURLOPT_PATH_AS_IS => true] : []]),
             $headers,
         );
@@ -100,6 +101,16 @@ abstract class ApiClient
     public function lastResponse(): ?\Dmorenof\SdkRuntime\Transport\ResponseInfo
     {
         return $this->lastResponse;
+    }
+
+    /** Choose how 3xx responses are followed (default: up to 5 hops with safe cross-origin rules). */
+    public function withRedirectPolicy(?\Dmorenof\SdkRuntime\Transport\RedirectPolicy $policy): static
+    {
+        if (!$this->transport instanceof Psr18Transport) {
+            throw new \LogicException('Redirect policy requires the PSR-18 adapter.');
+        }
+        $this->transport->setRedirectPolicy($policy);
+        return $this;
     }
 
     /** Opt in to retrying transient failures when using the default PSR-18 adapter. */

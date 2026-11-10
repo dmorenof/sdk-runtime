@@ -3,7 +3,11 @@ declare(strict_types=1);
 
 namespace Dmorenof\SdkRuntime;
 
-/** Form fields share the query expansion rules, with HTML form percent-encoding. */
+/**
+ * Form fields share the query expansion rules, with HTML form percent-encoding.
+ *
+ * @internal Implementation detail: not covered by the backward-compatibility promise (see docs/PUBLIC_API.md).
+ */
 final class FormSerializer
 {
     /** @param array<string,'multi'|'csv'|'ssv'|'tsv'|'pipes'|'form-object'|'form-object-explode'|'deepObject'> $formats */

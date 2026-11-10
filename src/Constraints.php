@@ -5,6 +5,8 @@ namespace Dmorenof\SdkRuntime;
 
 /**
  * Declarative value rules (pattern, enum, length, range, item count) taken from the API contract.
+ *
+ * @internal Not for application code. Frozen only as the contract with sdk-generator of the same major version (see docs/PUBLIC_API.md).
  */
 final class Constraints
 {

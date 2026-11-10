@@ -3,7 +3,11 @@ declare(strict_types=1);
 
 namespace Dmorenof\SdkRuntime;
 
-/** Evaluates generated schema descriptors against JSON, without hydrating or dispatching classes. */
+/**
+ * Evaluates generated schema descriptors against JSON, without hydrating or dispatching classes.
+ *
+ * @internal Implementation detail: not covered by the backward-compatibility promise (see docs/PUBLIC_API.md).
+ */
 final class SchemaValidator
 {
     /** Make an independent JSON snapshot, preserving objects, lists and floating point numbers. */

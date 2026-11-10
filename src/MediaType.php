@@ -8,6 +8,8 @@ namespace Dmorenof\SdkRuntime;
  * (`application/json`, `application/vnd.api+json`), a structured-suffix range
  * (`application/*+json`), a type range (`text/*`) or `*` / `*` + `/` + `*`. Parameters
  * (charset, version...) are ignored on both sides.
+ *
+ * @internal Implementation detail: not covered by the backward-compatibility promise (see docs/PUBLIC_API.md).
  */
 final class MediaType
 {

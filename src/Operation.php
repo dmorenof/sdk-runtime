@@ -197,7 +197,11 @@ final readonly class Operation
         return null;
     }
 
-    /** HTTP body eligibility is independent of the declared JSON/media schema. */
+    /**
+     * HTTP body eligibility is independent of the declared JSON/media schema.
+     *
+     * @internal Generator contract: used by sdk-generator of the same major version.
+     */
     public static function allowsResponseBody(string $method, int $status): bool
     {
         return strtoupper($method) !== 'HEAD' && $status >= 200 && !in_array($status, [204, 205, 304], true);

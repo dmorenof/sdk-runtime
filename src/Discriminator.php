@@ -3,7 +3,11 @@ declare(strict_types=1);
 
 namespace Dmorenof\SdkRuntime;
 
-/** Declarative dispatch only; schema validity is checked independently. */
+/**
+ * Declarative dispatch only; schema validity is checked independently.
+ *
+ * @internal Implementation detail: not covered by the backward-compatibility promise (see docs/PUBLIC_API.md).
+ */
 final class Discriminator
 {
     /** @param array<string, class-string> $mapping @return class-string */

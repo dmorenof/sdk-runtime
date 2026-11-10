@@ -107,6 +107,7 @@ class AnyOf implements \JsonSerializable
         return $this->matches;
     }
 
+    /** @internal Used by the runtime itself; not covered by the backward-compatibility promise. */
     protected static function assertMatchCount(int $count): void
     {
         if ($count < 1) {
@@ -114,6 +115,7 @@ class AnyOf implements \JsonSerializable
         }
     }
 
+    /** @internal Used by the runtime itself; not covered by the backward-compatibility promise. */
     public function validateForMode(string $mode): void
     {
         foreach ($this->matches as $match) {

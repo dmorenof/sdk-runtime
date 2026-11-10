@@ -1,0 +1,238 @@
+class Dmorenof\SdkRuntime\AnyOf implements JsonSerializable
+    const protected BRANCH_SCHEMAS
+    const protected DISCRIMINATOR_MAPPING
+    const protected DISCRIMINATOR_PROPERTY
+    const protected SCHEMA_DEFINITIONS
+    const protected TYPES
+    method protected final __construct(mixed $original, array $matches)
+    method public jsonSerialize(): mixed
+    method public matchedVariants(): array
+    method public static fromValue(mixed $value): static
+
+abstract class Dmorenof\SdkRuntime\ApiClient
+    const protected SECURITY_SCHEMES
+    method protected executeArguments(array $operation, Dmorenof\SdkRuntime\DTO|string|int|float|bool|null $identifier = NULL, ?string $identifierName = NULL, ?Dmorenof\SdkRuntime\DTO $payload = NULL, ?Dmorenof\SdkRuntime\DTO $body = NULL): mixed
+    method protected executeBody(array $operation, mixed $body, bool $bodyPresent = true, Dmorenof\SdkRuntime\DTO|string|int|float|bool|null $identifier = NULL, ?string $identifierName = NULL, ?Dmorenof\SdkRuntime\DTO $payload = NULL): mixed
+    method protected executeOperation(array $operation, array $pathParameters = array ( ), array $queryParameters = array ( ), array $headerParameters = array ( ), ?Dmorenof\SdkRuntime\DTO $body = NULL): mixed
+    method public final __construct(string $baseUrl, ?Psr\Http\Client\ClientInterface $httpClient = NULL, array $headers = array ( ), ?Dmorenof\SdkRuntime\Security\SecurityCredentials $securityCredentials = NULL, ?Dmorenof\SdkRuntime\Transport\TransportInterface $transport = NULL, array $serverOverrides = array ( ))
+    method public lastResponse(): ?Dmorenof\SdkRuntime\Transport\ResponseInfo
+    method public resource(string $type): Dmorenof\SdkRuntime\ApiClient
+    method public static connect(string $baseUrl, ?Psr\Http\Client\ClientInterface $httpClient = NULL, array $headers = array ( ), ?Dmorenof\SdkRuntime\Security\SecurityCredentials $securityCredentials = NULL, ?Dmorenof\SdkRuntime\Transport\TransportInterface $transport = NULL, array $serverOverrides = array ( )): static
+    method public withMiddleware(Dmorenof\SdkRuntime\Transport\HttpMiddlewareInterface $middleware): static
+    method public withRedirectPolicy(?Dmorenof\SdkRuntime\Transport\RedirectPolicy $policy): static
+    method public withRetryPolicy(?Dmorenof\SdkRuntime\Transport\RetryPolicy $policy): static
+    property protected Dmorenof\SdkRuntime\Security\SecurityCredentials $securityCredentials
+    property protected Dmorenof\SdkRuntime\Transport\TransportInterface $transport
+    property protected array $serverOverrides
+    property protected string $baseUrl
+
+class Dmorenof\SdkRuntime\ApiException extends RuntimeException
+    method public __construct(Dmorenof\SdkRuntime\Transport\HttpResponse $response, ?Dmorenof\SdkRuntime\DTO $error, string $operation, ?Throwable $previous = NULL, mixed $payload = NULL)
+    property public readonly ?Dmorenof\SdkRuntime\DTO $error
+    property public readonly Dmorenof\SdkRuntime\Transport\HttpResponse $response
+    property public readonly mixed $payload
+
+class Dmorenof\SdkRuntime\Configuration
+    property public ?Dmorenof\SdkRuntime\Security\SecurityCredentials $securityCredentials
+    property public ?Dmorenof\SdkRuntime\Transport\TransportInterface $transport
+    property public ?Psr\Http\Client\ClientInterface $httpClient
+    property public array $headers
+    property public array $middleware
+    property public array $serverOverrides
+    property public string $baseUrl
+
+class Dmorenof\SdkRuntime\DTO implements JsonSerializable, Stringable
+    const protected MODEL_VALIDATION
+    const protected VALIDATION
+    method public __construct(?object $json = NULL)
+    method public __toString(): string
+    method public additionalProperties(): array
+    method public getAdditionalProperty(string $name): mixed
+    method public jsonSerialize(): object
+    method public jsonSerializeForRequest(): object
+    method public jsonSerializeForResponse(): object
+    method public setAdditionalProperty(string $name, mixed $value): void
+    method public static fromValue(object $json): static
+    method public validate(): void
+    method public validateForRequest(): void
+    method public validateForResponse(): void
+
+class Dmorenof\SdkRuntime\Map implements ArrayAccess, Countable, IteratorAggregate, JsonSerializable, Traversable
+    const protected MAP_VALIDATION
+    const protected VALUE_NULLABLE
+    const protected VALUE_TYPE
+    const protected VALUE_VALIDATION
+    method public __construct(object|array $values = array ( ))
+    method public count(): int
+    method public getArrayCopy(): array
+    method public getIterator(): Traversable
+    method public jsonSerialize(): object
+    method public offsetExists(mixed $offset): bool
+    method public offsetGet(mixed $offset): mixed
+    method public offsetSet(mixed $offset, mixed $value): void
+    method public offsetUnset(mixed $offset): void
+    method public validate(): void
+    method public validateForRequest(): void
+    method public validateForResponse(): void
+
+class Dmorenof\SdkRuntime\OneOf extends Dmorenof\SdkRuntime\AnyOf
+    method protected static assertMatchCount(int $count): void
+
+final readonly class Dmorenof\SdkRuntime\Operation
+    const public DEFAULTS
+    method public __construct(string $method, string $path, ?string $label = NULL, array $security = array ( ), array $success = array ( 0 => 200, ), array $errors = array ( ), ?string $responseType = NULL, bool $schemaNullable = false, bool $noContentAllowed = false, array $validation = array ( ), ?string $serverUrl = NULL, array $querySerialization = array ( ), string $requestMediaType = 'application/json', array $bodySerialization = array ( ), array $bodyParts = array ( ), array $responseTypes = array ( ), array $pathSerialization = array ( ), array $headerSerialization = array ( ), array $queryAllowReserved = array ( ), array $parameterContent = array ( ), array $responseValidation = array ( ), ?array $requestBody = NULL, string $responseMediaType = 'application/json', array $errorResponses = array ( ), string $responseEncoding = 'json', array $responseHeaders = array ( ))
+    method public errorResponseFor(int $status, ?string $contentType = NULL): ?array
+    method public errorTypeFor(int $status): ?string
+    method public responseHeadersFor(int $status): array
+    method public responseTypeFor(int $status, ?string $contentType = NULL): ?array
+    method public static fromArray(array $spec): self
+    method public succeeded(int $status): bool
+    property public readonly ?array $requestBody
+    property public readonly ?string $responseType
+    property public readonly ?string $serverUrl
+    property public readonly array $bodyParts
+    property public readonly array $bodySerialization
+    property public readonly array $errorResponses
+    property public readonly array $errors
+    property public readonly array $headerSerialization
+    property public readonly array $parameterContent
+    property public readonly array $pathSerialization
+    property public readonly array $queryAllowReserved
+    property public readonly array $querySerialization
+    property public readonly array $responseHeaders
+    property public readonly array $responseTypes
+    property public readonly array $responseValidation
+    property public readonly array $security
+    property public readonly array $success
+    property public readonly array $validation
+    property public readonly bool $noContentAllowed
+    property public readonly bool $schemaNullable
+    property public readonly string $label
+    property public readonly string $method
+    property public readonly string $path
+    property public readonly string $requestMediaType
+    property public readonly string $responseEncoding
+    property public readonly string $responseMediaType
+
+class Dmorenof\SdkRuntime\Request extends Dmorenof\SdkRuntime\DTO
+    method public jsonSerialize(): object
+    method public validate(): void
+
+class Dmorenof\SdkRuntime\Response extends Dmorenof\SdkRuntime\DTO
+    method public jsonSerialize(): object
+    method public validate(): void
+
+final readonly class Dmorenof\SdkRuntime\Security\BasicAuthCredentials
+    method public __construct(string $username, string $password)
+    method public __debugInfo(): array
+    method public password(): string
+    method public username(): string
+
+final class Dmorenof\SdkRuntime\Security\InMemoryTokenStore implements Dmorenof\SdkRuntime\Security\TokenStoreInterface
+    method public delete(string $key): void
+    method public get(string $key): ?Dmorenof\SdkRuntime\Security\OAuth2Token
+    method public set(string $key, Dmorenof\SdkRuntime\Security\OAuth2Token $token): void
+
+final class Dmorenof\SdkRuntime\Security\OAuth2ClientCredentials implements Dmorenof\SdkRuntime\Security\TokenProviderInterface
+    method public __construct(string $tokenUrl, string $clientId, string $clientSecret, Psr\Http\Client\ClientInterface $http, array $scopes = array ( ), ?Dmorenof\SdkRuntime\Security\TokenStoreInterface $store = NULL, bool $credentialsInBody = false, int $leeway = 30, ?Closure $clock = NULL)
+    method public __debugInfo(): array
+    method public accessToken(): string
+    method public invalidate(): void
+
+final readonly class Dmorenof\SdkRuntime\Security\OAuth2Token
+    method public __construct(string $accessToken, ?int $expiresAt = NULL, ?string $refreshToken = NULL)
+    method public __debugInfo(): array
+    method public isValid(int $now, int $leeway = 0): bool
+    property public readonly ?int $expiresAt
+    property public readonly ?string $refreshToken
+    property public readonly string $accessToken
+
+final readonly class Dmorenof\SdkRuntime\Security\SecurityCredentials
+    method public __construct(array $credentials = array ( ))
+    method public __debugInfo(): array
+    method public forScheme(string $name): Dmorenof\SdkRuntime\Security\BasicAuthCredentials|Dmorenof\SdkRuntime\Security\TokenProviderInterface|string|null
+
+interface Dmorenof\SdkRuntime\Security\TokenProviderInterface
+    method public accessToken(): string
+    method public invalidate(): void
+
+interface Dmorenof\SdkRuntime\Security\TokenStoreInterface
+    method public delete(string $key): void
+    method public get(string $key): ?Dmorenof\SdkRuntime\Security\OAuth2Token
+    method public set(string $key, Dmorenof\SdkRuntime\Security\OAuth2Token $token): void
+
+interface Dmorenof\SdkRuntime\Transport\HttpMiddlewareInterface
+    method public afterResponse(Psr\Http\Message\RequestInterface $request, Psr\Http\Message\ResponseInterface $response): Psr\Http\Message\ResponseInterface
+    method public beforeRequest(Psr\Http\Message\RequestInterface $request): Psr\Http\Message\RequestInterface
+
+final readonly class Dmorenof\SdkRuntime\Transport\HttpResponse
+    method public __construct(int $status, string $body, array $headers = array ( ))
+    method public header(string $name): ?string
+    method public static fromPsr(Psr\Http\Message\ResponseInterface $response): self
+    property public readonly array $headers
+    property public readonly int $status
+    property public readonly string $body
+
+final class Dmorenof\SdkRuntime\Transport\Psr18Transport implements Dmorenof\SdkRuntime\Transport\TransportInterface
+    method public __construct(Psr\Http\Client\ClientInterface $client, array $defaultHeaders = array ( ), ?Dmorenof\SdkRuntime\Transport\RetryPolicy $retryPolicy = NULL, ?Closure $sleeper = NULL, ?Dmorenof\SdkRuntime\Transport\RedirectPolicy $redirectPolicy = NULL)
+    method public addMiddleware(Dmorenof\SdkRuntime\Transport\HttpMiddlewareInterface $middleware): void
+    method public send(string $method, string $url, array $headers, Psr\Http\Message\StreamInterface|string|null $body): Dmorenof\SdkRuntime\Transport\HttpResponse
+    method public sendResponse(string $method, string $url, array $headers, Psr\Http\Message\StreamInterface|string|null $body): Psr\Http\Message\ResponseInterface
+    method public setRedirectPolicy(?Dmorenof\SdkRuntime\Transport\RedirectPolicy $policy): void
+    method public setRetryPolicy(?Dmorenof\SdkRuntime\Transport\RetryPolicy $policy): void
+    property protected Psr\Http\Client\ClientInterface $client
+
+final class Dmorenof\SdkRuntime\Transport\RedirectException extends RuntimeException
+    method public __construct(string $message, Psr\Http\Message\ResponseInterface $response)
+    property public readonly Psr\Http\Message\ResponseInterface $response
+
+final readonly class Dmorenof\SdkRuntime\Transport\RedirectPolicy
+    method public __construct(int $maxRedirects = 5, array $statuses = array ( 0 => 301, 1 => 302, 2 => 303, 3 => 307, 4 => 308, ), bool $allowDowngrade = false, bool $followCrossOrigin = true, array $crossOriginHeaders = array ( 0 => 'Accept', 1 => 'Accept-Encoding', 2 => 'Accept-Language', 3 => 'User-Agent', 4 => 'Content-Type', ))
+    method public follows(int $status): bool
+    method public forwardsAcrossOrigins(string $header): bool
+    method public static none(): self
+    property public readonly array $crossOriginHeaders
+    property public readonly array $statuses
+    property public readonly bool $allowDowngrade
+    property public readonly bool $followCrossOrigin
+    property public readonly int $maxRedirects
+
+final readonly class Dmorenof\SdkRuntime\Transport\ResponseHeaders
+    method public __construct(array $headers = array ( ), array $declared = array ( ))
+    method public __debugInfo(): array
+    method public cookies(): array
+    method public first(string $name): ?string
+    method public get(string $name): array|string|int|float|bool|null
+    method public has(string $name): bool
+    method public names(): array
+    method public values(string $name): array
+
+final readonly class Dmorenof\SdkRuntime\Transport\ResponseInfo
+    method public __construct(int $status, Dmorenof\SdkRuntime\Transport\ResponseHeaders $headers, string $operation)
+    property public readonly Dmorenof\SdkRuntime\Transport\ResponseHeaders $headers
+    property public readonly int $status
+    property public readonly string $operation
+
+final readonly class Dmorenof\SdkRuntime\Transport\RetryPolicy
+    method public __construct(int $maxAttempts = 3, array $statuses = array ( 0 => 429, 1 => 502, 2 => 503, 3 => 504, ), array $methods = array ( 0 => 'GET', 1 => 'HEAD', 2 => 'OPTIONS', 3 => 'PUT', 4 => 'DELETE', ), int $baseDelayMs = 200, int $maxDelayMs = 10000, bool $retryNetworkErrors = true)
+    method public allows(string $method): bool
+    method public delayMs(int $retry, ?Psr\Http\Message\ResponseInterface $response = NULL, ?int $now = NULL): int
+    method public retriesStatus(int $status): bool
+    property public readonly array $methods
+    property public readonly array $statuses
+    property public readonly bool $retryNetworkErrors
+    property public readonly int $baseDelayMs
+    property public readonly int $maxAttempts
+    property public readonly int $maxDelayMs
+
+interface Dmorenof\SdkRuntime\Transport\TransportInterface
+    method public send(string $method, string $url, array $headers, ?string $body): Dmorenof\SdkRuntime\Transport\HttpResponse
+
+class Dmorenof\SdkRuntime\TypedArray extends TypedArray\TypedArray
+    const protected COLLECTION_VALIDATION
+    const protected ITEM_VALIDATION
+    method public __construct(array $items = array ( ))
+    method public __toString(): string
+    method public append(mixed $value): void
+    method public getExpectedType(): string
+    method public offsetSet(mixed $key, mixed $value): void

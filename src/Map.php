@@ -111,6 +111,7 @@ class Map implements \ArrayAccess, \Countable, \IteratorAggregate, \JsonSerializ
         return $this->serializeForMode('neutral');
     }
 
+    /** @internal Used by the runtime itself; not covered by the backward-compatibility promise. */
     public function serializeForMode(string $mode): object
     {
         $this->validateForMode($mode);

@@ -276,7 +276,11 @@ class DTO implements \JsonSerializable, \Stringable
         return true;
     }
 
-    /** Shared traversal for DTO fields, collection items, map values and unions. */
+    /**
+     * Shared traversal for DTO fields, collection items, map values and unions.
+     *
+     * @internal Used by the runtime itself; not covered by the backward-compatibility promise.
+     */
     public static function validateNestedValue(mixed $value, string $mode): void
     {
         if ($value instanceof self || $value instanceof Map) {

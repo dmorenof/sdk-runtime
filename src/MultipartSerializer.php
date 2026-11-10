@@ -6,7 +6,11 @@ namespace Dmorenof\SdkRuntime;
 use GuzzleHttp\Psr7\MultipartStream;
 use Psr\Http\Message\UploadedFileInterface;
 
-/** Adapt validated flat DTO fields to Guzzle's MIME stream without reading file contents. */
+/**
+ * Adapt validated flat DTO fields to Guzzle's MIME stream without reading file contents.
+ *
+ * @internal Implementation detail: not covered by the backward-compatibility promise (see docs/PUBLIC_API.md).
+ */
 final class MultipartSerializer
 {
     /**

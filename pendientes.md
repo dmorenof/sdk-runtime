@@ -92,8 +92,8 @@ Durante las fases 1 y 2, el SDK de Casafari generado sigue pasando como prueba d
 
 ## 6. [P0] Cierre 1.0
 
-- [ ] Definir y documentar qué es API pública y qué es interna (`@internal`).
-- [ ] Política de compatibilidad (SemVer desde 1.0) y de deprecaciones.
+- [x] **Sin publicar —** API pública definida en tres niveles (estable, contrato con el generador, interna) y marcada con `@internal`; ver [docs/PUBLIC_API.md](docs/PUBLIC_API.md). Instantánea por reflexión `tests/Fixtures/public-api.txt` verificada por `tests/PublicApiTest.php`.
+- [x] **Sin publicar —** Política de compatibilidad (SemVer desde 1.0) y de deprecaciones documentada en [docs/PUBLIC_API.md](docs/PUBLIC_API.md). Falta revisar con calma la superficie antes de publicar: cada línea de la instantánea será promesa de 1.x.
 - [ ] Prueba de compatibilidad con SDKs generados por versiones 0.x anteriores del generador.
 - [ ] Registro en Packagist y verificación de instalación aislada.
 - [ ] Documentación de uso del runtime independiente del generador.

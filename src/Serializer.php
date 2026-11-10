@@ -6,6 +6,8 @@ namespace Dmorenof\SdkRuntime;
 /**
  * Turns already validated models, collections, maps and unions back into JSON-ready values.
  * The mode ('request', 'response' or 'neutral') selects which directional fields are omitted.
+ *
+ * @internal Implementation detail: not covered by the backward-compatibility promise (see docs/PUBLIC_API.md).
  */
 final class Serializer
 {

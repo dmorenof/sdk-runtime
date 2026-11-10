@@ -6,6 +6,8 @@ namespace Dmorenof\SdkRuntime;
 /**
  * Converts decoded JSON values into the PHP types a model declares.
  * One entry point serves properties, collection items, map values and union branches.
+ *
+ * @internal Implementation detail: not covered by the backward-compatibility promise (see docs/PUBLIC_API.md).
  */
 final class Hydrator
 {

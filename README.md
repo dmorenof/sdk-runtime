@@ -81,6 +81,10 @@ An operation may declare several representations for one status, for example JSO
 
 The request sends `Accept: application/json, text/csv, image/*`; the response `Content-Type` picks the codec, most specific declaration first (`application/vnd.api+json`, then `application/*+json`, `text/*`, `*/*`). A success whose media type is not declared throws `UnexpectedValueException`; an undeclared error type still throws `ApiException` with the raw response and a null `payload`.
 
+## Compatibility
+
+From 1.0.0 the package follows Semantic Versioning. What is stable, what is internal and what counts as a breaking change is defined in [docs/PUBLIC_API.md](docs/PUBLIC_API.md).
+
 ## Development
 
 Use PHP 8.3+ and Composer 2:

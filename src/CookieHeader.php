@@ -3,7 +3,11 @@ declare(strict_types=1);
 
 namespace Dmorenof\SdkRuntime;
 
-/** Request-cookie assembly only: no cookie jar, response parser or persistence. */
+/**
+ * Request-cookie assembly only: no cookie jar, response parser or persistence.
+ *
+ * @internal Not for application code. Frozen only as the contract with sdk-generator of the same major version (see docs/PUBLIC_API.md).
+ */
 final class CookieHeader
 {
     public static function pair(string $name, string $value): string

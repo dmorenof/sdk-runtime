@@ -4,7 +4,11 @@ declare(strict_types=1);
 namespace Dmorenof\SdkRuntime;
 
 
-/** JSON decoding delegates every type conversion to the shared DTO runtime. */
+/**
+ * JSON decoding delegates every type conversion to the shared DTO runtime.
+ *
+ * @internal Implementation detail: not covered by the backward-compatibility promise (see docs/PUBLIC_API.md).
+ */
 final class JsonHydrator
 {
     public static function decode(string $body, string $type, bool $nullable = false): mixed

@@ -5,7 +5,11 @@ namespace Dmorenof\SdkRuntime;
 
 use GuzzleHttp\Psr7\Query;
 
-/** Query scalars and explicitly declared lists. Item encoding precedes CSV joining. */
+/**
+ * Query scalars and explicitly declared lists. Item encoding precedes CSV joining.
+ *
+ * @internal Implementation detail: not covered by the backward-compatibility promise (see docs/PUBLIC_API.md).
+ */
 final class QuerySerializer
 {
     /**

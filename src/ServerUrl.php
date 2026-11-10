@@ -3,7 +3,11 @@ declare(strict_types=1);
 
 namespace Dmorenof\SdkRuntime;
 
-/** Literal operation servers supported by the shared URL builder. */
+/**
+ * Literal operation servers supported by the shared URL builder.
+ *
+ * @internal Not for application code. Frozen only as the contract with sdk-generator of the same major version (see docs/PUBLIC_API.md).
+ */
 final class ServerUrl
 {
     public static function normalize(string $url): string

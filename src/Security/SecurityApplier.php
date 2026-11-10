@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace Dmorenof\SdkRuntime\Security;
 
+/** @internal Implementation detail: not covered by the backward-compatibility promise (see docs/PUBLIC_API.md). */
 final class SecurityApplier
 {
     /**

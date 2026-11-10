@@ -38,6 +38,7 @@ class TypedArray extends \TypedArray\TypedArray implements \Stringable
         parent::offsetSet($key, $value);
     }
 
+    /** @internal Used by the runtime itself; not covered by the backward-compatibility promise. */
     public function validateForMode(string $mode = 'neutral'): void
     {
         Constraints::validate($this, static::COLLECTION_VALIDATION, static::class, $mode);

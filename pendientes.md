@@ -41,9 +41,9 @@ Durante las fases 1 y 2, el SDK de Casafari generado sigue pasando como prueba d
 
 ## 1. [P0] Autenticación
 
-- [ ] OAuth2 `clientCredentials` con obtención de token.
-- [ ] Interfaz de almacén de tokens inyectable (memoria por defecto) y expiración.
-- [ ] Renovación de token (`refresh_token` / `refreshUrl`) y un único reintento tras 401.
+- [x] **Sin publicar —** OAuth2 `clientCredentials` con obtención de token, Basic o body, scopes y caché (`OAuth2ClientCredentials`).
+- [x] **Sin publicar —** Interfaz de almacén de tokens inyectable (`TokenStoreInterface`, memoria por defecto) y expiración con margen.
+- [x] **Sin publicar —** Renovación con `refresh_token` y un único reintento tras 401. Pendiente: `refreshUrl` distinto del `tokenUrl`.
 - [ ] OAuth2 `authorizationCode` con PKCE (utilidades del flujo; la interacción con el usuario queda fuera).
 - [ ] OAuth2 `password` e `implicit` solo por compatibilidad heredada.
 - [ ] OpenID Connect y descubrimiento de configuración.

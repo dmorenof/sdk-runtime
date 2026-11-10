@@ -10,6 +10,7 @@ final class SecurityApplier
      * @param array<string, array{type:string,scheme:?string,location:?string,parameterName:?string}> $schemes
      * @param array<string, string> $headers
      * @param array<string, string> $query
+     * @param list<TokenProviderInterface>|null $providers Receives the token providers used, so callers can invalidate them.
      */
     public static function apply(
         SecurityCredentials $credentials,
@@ -17,6 +18,7 @@ final class SecurityApplier
         array $schemes,
         array &$headers,
         array &$query,
+        ?array &$providers = null,
     ): void {
         if ($requirements === []) {
             return;
@@ -46,10 +48,16 @@ final class SecurityApplier
 
             $securityHeaders = [];
             $securityQuery = [];
+            $usedProviders = [];
             foreach ($selected as [$name, $scheme, $credential]) {
-                if ($scheme['type'] === 'http' && $scheme['scheme'] === 'bearer') {
+                if (($scheme['type'] === 'http' && $scheme['scheme'] === 'bearer')
+                    || in_array($scheme['type'], ['oauth2', 'openIdConnect'], true)) {
+                    if ($credential instanceof TokenProviderInterface) {
+                        $usedProviders[] = $credential;
+                        $credential = $credential->accessToken();
+                    }
                     if (!is_string($credential) || $credential === '') {
-                        throw new \InvalidArgumentException("Bearer credential $name must be a nonempty string.");
+                        throw new \InvalidArgumentException("Bearer credential $name must be a nonempty string or a token provider.");
                     }
                     self::addHeader($securityHeaders, 'Authorization', 'Bearer ' . $credential);
                 } elseif ($scheme['type'] === 'http' && $scheme['scheme'] === 'basic') {
@@ -81,6 +89,7 @@ final class SecurityApplier
                     throw new \LogicException("Unsupported generated security scheme $name.");
                 }
             }
+            $providers = $usedProviders;
             $headers = \Dmorenof\SdkRuntime\CookieHeader::merge($headers, $securityHeaders);
             foreach ($securityQuery as $name => $value) {
                 $query[$name] = $value;

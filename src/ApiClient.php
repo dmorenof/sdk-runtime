@@ -371,36 +371,59 @@ abstract class ApiClient
             }
         }
 
-        $securityQuery = [];
-        SecurityApplier::apply($this->securityCredentials, $spec->security, static::SECURITY_SCHEMES, $headers, $securityQuery);
-        $formats = $spec->querySerialization;
-        foreach ($securityQuery as $name => $credential) {
-            $query[$name] = $credential;
-            unset($formats[$name]); // Security query keys keep their existing scalar precedence.
-        }
-        $allowReserved = array_values(array_diff($spec->queryAllowReserved, array_keys($securityQuery)));
-        $encodedQuery = QuerySerializer::encode($query, $formats, allowReserved: $allowReserved);
-        $baseUrl = $this->baseUrl;
-        if ($spec->serverUrl !== null) {
-            $declared = ServerUrl::normalize($spec->serverUrl);
-            $baseUrl = $this->serverOverrides[$declared] ?? $declared;
-        }
-        $url = rtrim($baseUrl, '/') . $path;
-        if ($encodedQuery !== '') {
-            $url .= '?' . $encodedQuery;
-        }
-        if ($this->transport instanceof Psr18Transport) {
-            $psrResponse = $this->transport->sendResponse($spec->method, $url, $headers, $bodyBytes);
-            if ($spec->succeeded($psrResponse->getStatusCode()) && ltrim(($spec->responseTypeFor($psrResponse->getStatusCode()) ?? ['type' => $spec->responseType])['type'] ?? '', '\\') === \Psr\Http\Message\ResponseInterface::class) {
-                return $psrResponse;
+        $baseHeaders = $headers;
+        $baseQuery = $query;
+        // A token provider may hold a revoked token; renew it and replay once when the server answers 401.
+        $replayable = !($bodyBytes instanceof \Psr\Http\Message\StreamInterface) || $bodyBytes->isSeekable();
+        for ($attempt = 0;; $attempt++) {
+            $headers = $baseHeaders;
+            $query = $baseQuery;
+            $securityQuery = [];
+            $providers = [];
+            SecurityApplier::apply($this->securityCredentials, $spec->security, static::SECURITY_SCHEMES, $headers, $securityQuery, $providers);
+            $formats = $spec->querySerialization;
+            foreach ($securityQuery as $name => $credential) {
+                $query[$name] = $credential;
+                unset($formats[$name]); // Security query keys keep their existing scalar precedence.
             }
-            $response = \Dmorenof\SdkRuntime\Transport\HttpResponse::fromPsr($psrResponse);
-        } else {
-            $response = $this->transport->send($spec->method, $url, $headers,
-                $bodyBytes instanceof \Psr\Http\Message\StreamInterface ? (string) $bodyBytes : $bodyBytes);
-            if ($spec->succeeded($response->status) && ltrim(($spec->responseTypeFor($response->status) ?? ['type' => $spec->responseType])['type'] ?? '', '\\') === \Psr\Http\Message\ResponseInterface::class) {
-                return new \GuzzleHttp\Psr7\Response($response->status, $response->headers, $response->body);
+            $allowReserved = array_values(array_diff($spec->queryAllowReserved, array_keys($securityQuery)));
+            $encodedQuery = QuerySerializer::encode($query, $formats, allowReserved: $allowReserved);
+            $baseUrl = $this->baseUrl;
+            if ($spec->serverUrl !== null) {
+                $declared = ServerUrl::normalize($spec->serverUrl);
+                $baseUrl = $this->serverOverrides[$declared] ?? $declared;
             }
+            $url = rtrim($baseUrl, '/') . $path;
+            if ($encodedQuery !== '') {
+                $url .= '?' . $encodedQuery;
+            }
+            $retry = $attempt === 0 && $providers !== [] && $replayable && !$spec->succeeded(401);
+            if ($this->transport instanceof Psr18Transport) {
+                $psrResponse = $this->transport->sendResponse($spec->method, $url, $headers, $bodyBytes);
+                if ($retry && $psrResponse->getStatusCode() === 401) {
+                    foreach ($providers as $provider) {
+                        $provider->invalidate();
+                    }
+                    continue;
+                }
+                if ($spec->succeeded($psrResponse->getStatusCode()) && ltrim(($spec->responseTypeFor($psrResponse->getStatusCode()) ?? ['type' => $spec->responseType])['type'] ?? '', '\\') === \Psr\Http\Message\ResponseInterface::class) {
+                    return $psrResponse;
+                }
+                $response = \Dmorenof\SdkRuntime\Transport\HttpResponse::fromPsr($psrResponse);
+            } else {
+                $response = $this->transport->send($spec->method, $url, $headers,
+                    $bodyBytes instanceof \Psr\Http\Message\StreamInterface ? (string) $bodyBytes : $bodyBytes);
+                if ($retry && $response->status === 401) {
+                    foreach ($providers as $provider) {
+                        $provider->invalidate();
+                    }
+                    continue;
+                }
+                if ($spec->succeeded($response->status) && ltrim(($spec->responseTypeFor($response->status) ?? ['type' => $spec->responseType])['type'] ?? '', '\\') === \Psr\Http\Message\ResponseInterface::class) {
+                    return new \GuzzleHttp\Psr7\Response($response->status, $response->headers, $response->body);
+                }
+            }
+            break;
         }
         if (!$spec->succeeded($response->status)) {
             throw ApiException::fromResponse($response, $spec->label, $spec->errorTypeFor($response->status), $spec->errorResponseFor($response->status));

@@ -27,6 +27,24 @@ $client = Client::connect(
 );
 ~~~
 
+## OAuth2 client credentials (unreleased)
+
+~~~php
+$oauth = new OAuth2ClientCredentials(
+    'https://auth.example.com/oauth/token',
+    $clientId,
+    $clientSecret,
+    new \GuzzleHttp\Client(),
+    scopes: ['read'],
+);
+$client = Client::connect(
+    'https://api.example.com',
+    securityCredentials: new SecurityCredentials(['OAuth' => $oauth]),
+);
+~~~
+
+The provider requests a token on first use, caches it in a `TokenStoreInterface` (in memory by default; implement it to share tokens between processes) and renews it before expiry. After a 401 the client invalidates the token and replays the request once. Pass `credentialsInBody: true` for servers that do not accept HTTP Basic client authentication. Interactive flows (authorization code, PKCE), OpenID Connect discovery and scope checking are not implemented yet.
+
 ## Development
 
 Use PHP 8.3+ and Composer 2:

@@ -1,5 +1,12 @@
 # Changelog
 
+## [Unreleased]
+
+- Add OAuth2 client credentials (RFC 6749 section 4.4): `OAuth2ClientCredentials` obtains, caches and renews tokens over any PSR-18 client, with HTTP Basic or body client authentication, scopes and refresh-token renewal that falls back to a new grant when the refresh token is rejected.
+- Add `TokenProviderInterface`, `TokenStoreInterface`, `InMemoryTokenStore` and `OAuth2Token`. `SecurityCredentials` accepts a provider wherever a bearer token string is accepted; `SecurityApplier` applies provider tokens to `http bearer`, `oauth2` and `openIdConnect` schemes. Existing string credentials behave as before.
+- `ApiClient` replays a request once with a renewed token after a 401 when a token provider was used and the body is replayable. Static tokens are never replayed. Secrets stay out of debug output and error messages.
+- Authorization-code/PKCE, OpenID Connect discovery, scope checking and mTLS remain pending (see pendientes.md).
+
 ## [0.31.0] — 2026-11-10
 
 - Preserve concrete declared MIME types for JSON, opaque text and binary request/success/error codecs. CSV/XML string schemas use raw strings; PNG/PDF and other bounded binary schemas reuse PSR streams. Vendor/problem +json retains JSON hydration with its actual Accept/Content-Type.

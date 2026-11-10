@@ -195,3 +195,9 @@ $formBlockCommand = implode(' ', array_map('escapeshellarg', [PHP_BINARY,
 passthru($formBlockCommand, $formBlockStatus);
 if ($formBlockStatus !== 0) { throw new RuntimeException('Installed runtime form block HTTP smoke failed.'); }
 echo "PUBLISHED_FORM_BLOCK_RUNTIME_OK", PHP_EOL;
+
+$schemaCommand = implode(' ', array_map('escapeshellarg', [PHP_BINARY,
+    $directory . '/vendor/dmorenof/sdk-runtime/tests/schema-rules-smoke.php', $directory . '/vendor/autoload.php']));
+passthru($schemaCommand, $schemaStatus);
+if ($schemaStatus !== 0) { throw new RuntimeException('Installed runtime schema rules HTTP smoke failed.'); }
+echo "PUBLISHED_SCHEMA_RULES_RUNTIME_OK", PHP_EOL;

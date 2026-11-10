@@ -321,7 +321,9 @@ abstract class ApiClient
         if ($responseType['type'] === null || ($declared === null && $spec->noContentAllowed && $response->body === '')) {
             return null;
         }
-        return JsonHydrator::decode($response->body, $responseType['type'], $responseType['schemaNullable']);
+        $result = JsonHydrator::decode($response->body, $responseType['type'], $responseType['schemaNullable']);
+        Constraints::validate($result, $responseType['rules'] ?? $spec->responseValidation, $spec->label . ' response', 'response');
+        return $result;
     }
 
     /** @param array<array-key,mixed> $content Unvalidated nested metadata at the execution boundary. */

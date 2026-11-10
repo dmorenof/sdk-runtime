@@ -384,3 +384,22 @@ filtering; arrays yield repeated JSON parts. Guzzle continues to own MIME and
 binary streams. JSON parts cannot carry file metadata or UploadedFileInterface.
 Part headers, explode-false multipart lists, root form maps and representation
 selection remain outside this block.
+
+### JSON Schema rules block — v0.26.0
+
+Constraints reuses opis/json-schema for exclusiveMinimum/exclusiveMaximum,
+multipleOf, uniqueItems, minProperties/maxProperties and const. Existing primitive
+validation stays compatible. Values are converted through the shared JSON
+serializer; numeric and object equality follow the validator rather than PHP
+strict identity. Fixed generated rule sets are compiled and reused.
+
+MODEL_VALIDATION, MAP_VALIDATION and COLLECTION_VALIDATION constants carry root
+constraints. Boundary validation catches mutations, while request/response
+property counts follow the serialized direction. TypedArray stringification
+validates and retains JSON array shape after removals.
+
+Operation appends responseValidation without moving constructor parameters;
+responseTypes entries optionally carry rules for their selected status. This
+also validates scalar/array JSON roots rather than relying on object DTOs.
+Only generated declarative keywords are passed to the validator; there is no
+remote schema loading or runtime interpretation of arbitrary API documents.

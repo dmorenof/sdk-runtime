@@ -15,6 +15,8 @@ class Map implements \ArrayAccess, \Countable, \IteratorAggregate, \JsonSerializ
     protected const bool VALUE_NULLABLE = false;
     /** @var array<string, mixed> Rules applied to every value (see Constraints). */
     protected const array VALUE_VALIDATION = [];
+    /** @var array<string,mixed> */
+    protected const array MAP_VALIDATION = [];
 
     /** @var array<string, mixed> */
     private array $values = [];
@@ -28,6 +30,7 @@ class Map implements \ArrayAccess, \Countable, \IteratorAggregate, \JsonSerializ
         foreach (is_object($values) ? get_object_vars($values) : $values as $key => $value) {
             $this->offsetSet($key, $value);
         }
+        $this->validate();
     }
 
     public function offsetExists(mixed $offset): bool
@@ -87,9 +90,10 @@ class Map implements \ArrayAccess, \Countable, \IteratorAggregate, \JsonSerializ
 
     private function validateForMode(string $mode): void
     {
+        Constraints::validate($this, static::MAP_VALIDATION, static::class, $mode);
         foreach ($this->values as $key => $value) {
             $where = static::class . '[' . $key . ']';
-            Constraints::validate($value, static::VALUE_VALIDATION, $where);
+            Constraints::validate($value, static::VALUE_VALIDATION, $where, $mode);
             DTO::validateNestedValue($value, $mode);
         }
     }

@@ -8,13 +8,31 @@ namespace Dmorenof\SdkRuntime;
  */
 final class Constraints
 {
+    private static ?\Opis\JsonSchema\Validator $jsonValidator = null;
+    /** @var array<string,\Opis\JsonSchema\Schema> */
+    private static array $jsonSchemas = [];
+
     /** @param array<string, mixed> $rules */
-    public static function validate(mixed $value, array $rules, string $where): void
+    public static function validate(mixed $value, array $rules, string $where, string $mode = 'neutral'): void
     {
         if ($value instanceof \BackedEnum) {
             $value = $value->value;
         }
-        foreach ($rules as $rule => $limit) {
+        $jsonRules = array_intersect_key($rules, array_flip(['exclusiveMinimum', 'exclusiveMaximum', 'multipleOf', 'uniqueItems', 'minProperties', 'maxProperties', 'const']));
+        if ($jsonRules !== []) {
+            $key = json_encode((object) $jsonRules, JSON_THROW_ON_ERROR | JSON_PRESERVE_ZERO_FRACTION);
+            $validator = self::$jsonValidator ??= new \Opis\JsonSchema\Validator();
+            $definition = json_decode($key, false, 512, JSON_THROW_ON_ERROR);
+            if (!$definition instanceof \stdClass) { throw new \LogicException('Schema rules must form an object.'); }
+            $schema = self::$jsonSchemas[$key] ??= $validator->loader()->loadObjectSchema($definition, draft: '2020-12');
+            try { $json = SchemaValidator::snapshot(Serializer::value($value, $mode)); }
+            catch (\JsonException $error) { throw new \UnexpectedValueException("Invalid JSON value at $where.", 0, $error); }
+            $result = $validator->validate($json, $schema);
+            if (!$result->isValid()) {
+                throw new \UnexpectedValueException('Validation ' . ($result->error()?->keyword() ?? 'schema') . " failed at $where.");
+            }
+        }
+        foreach (array_diff_key($rules, $jsonRules) as $rule => $limit) {
             self::assert($value, $rule, $limit, $where);
         }
     }

@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.26.0] — 2026-11-10
+
+- Reuse maintained opis/json-schema ^2.6.1 for exclusive numeric bounds, multipleOf, uniqueItems, property counts and const instead of adding a second JSON equality/arithmetic implementation. Compile fixed rule sets once; preserve JSON shapes and request/response direction.
+- Add declarative model/map/collection constraints and recheck them at hydration/serialization boundaries and after mutations. Nullable const values are validated; composition nullability no longer bypasses const.
+- Validate root JSON responses through appended responseValidation metadata or optional per-status rules. Keep old constructor/executor positions and shared collection behavior compatible; direct TypedArray stringification now preserves array shape and validates mutations.
+- Verify Unicode code-point length, numeric/object equality, both response metadata paths and actual HTTP in source and installed-package smoke. JSON number precision remains bounded by PHP numeric types.
+
 ## [0.25.0] — 2026-11-10
 
 - Complete a form-encoding block through existing QuerySerializer: URL-encoded ssv/tsv/pipes lists and flat object form/exploded/deepObject fields, retaining native form encoding, collision rejection and DTO validation.

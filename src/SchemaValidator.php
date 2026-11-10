@@ -31,6 +31,8 @@ final class SchemaValidator
             return self::matches($value, $definitions[$name], $definitions, $mode, $depth + 1);
         }
         if ($value === null && ($schema['nullable'] ?? false)) {
+            try { Constraints::validate(null, $schema['rules'] ?? [], 'composition', $mode); }
+            catch (\UnexpectedValueException) { return false; }
             return true;
         }
         if (in_array($kind, ['allOf', 'oneOf', 'anyOf'], true)) {

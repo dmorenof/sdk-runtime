@@ -13,6 +13,8 @@ class DTO implements \JsonSerializable, \Stringable
 {
     /** @var array<string, array<string, mixed>> Field => rules (see Constraints). */
     protected const array VALIDATION = [];
+    /** @var array<string,mixed> */
+    protected const array MODEL_VALIDATION = [];
     /** @var \WeakMap<self, array<string, mixed>>|null */
     private static ?\WeakMap $additionalPropertyValues = null;
     /** @var array<class-string, array<string, mixed>> */
@@ -215,6 +217,10 @@ class DTO implements \JsonSerializable, \Stringable
     {
         $this->assertRequiredFields($request, $response);
         $fields = $this->fields();
+        $mode = $request ? 'request' : ($response ? 'response' : 'neutral');
+        if (static::MODEL_VALIDATION !== []) {
+            Constraints::validate($this->serializeValidated($mode), static::MODEL_VALIDATION, static::class, $mode);
+        }
         if (defined(static::class . '::DISCRIMINATOR_BASE') && constant(static::class . '::DISCRIMINATOR_BASE') !== static::class) {
             /** @var string $property */
             $property = constant(static::class . '::DISCRIMINATOR_PROPERTY');
@@ -229,7 +235,7 @@ class DTO implements \JsonSerializable, \Stringable
         $additionalRules = $this->declaredRules('ADDITIONAL_PROPERTIES_VALIDATION');
         if ($additionalRules !== []) {
             foreach (self::additionalPropertiesFor($this) as $name => $value) {
-                Constraints::validate($value, $additionalRules, static::class . "::$name");
+                Constraints::validate($value, $additionalRules, static::class . "::$name", $mode);
             }
         }
         $skipped = $this->directionalFields($request, $response);
@@ -237,10 +243,10 @@ class DTO implements \JsonSerializable, \Stringable
             if (!property_exists($this, $field)) {
                 throw new \LogicException("Validation refers to an unknown field " . static::class . "::$field.");
             }
-            if (!array_key_exists($field, $fields) || $fields[$field] === null || in_array($field, $skipped, true)) {
+            if (!array_key_exists($field, $fields) || ($fields[$field] === null && !array_key_exists('const', $rules)) || in_array($field, $skipped, true)) {
                 continue;
             }
-            Constraints::validate($fields[$field], $rules, static::class . "::$field");
+            Constraints::validate($fields[$field], $rules, static::class . "::$field", $mode);
         }
         $mode = $request ? 'request' : ($response ? 'response' : 'neutral');
         foreach ($fields as $value) {
@@ -262,6 +268,7 @@ class DTO implements \JsonSerializable, \Stringable
         } elseif ($value instanceof AnyOf) {
             $value->validateForMode($mode);
         } elseif ($value instanceof TypedArray || is_array($value)) {
+            if ($value instanceof TypedArray) { $value->validateForMode($mode); }
             foreach ($value as $item) {
                 if (is_object($item) || is_array($item)) {
                     self::validateNestedValue($item, $mode);

@@ -25,7 +25,7 @@ class ServerRoutingClient extends ApiClient
 
     public function invalid(): void
     {
-        $this->executeOperation(['method' => 'GET', 'path' => '/items', 'serverUrl' => '/relative']);
+        $this->executeOperation(['method' => 'GET', 'path' => '/items', 'serverUrl' => 'https://{tenant}.example.test']);
     }
 }
 

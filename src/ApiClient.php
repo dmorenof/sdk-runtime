@@ -22,11 +22,23 @@ abstract class ApiClient
      */
     protected const array SECURITY_SCHEMES = [];
 
+    /**
+     * Root servers of the API, as declared by the SDK: `url` (absolute, or a template with variables), optional
+     * `name` and `variables`. Use serverUrl() to turn one into a base URL for connect().
+     * @var list<array{url:string,name?:string,variables?:array<string,array{default:string,enum?:list<string>}>}>
+     */
+    protected const array SERVERS = [];
+
     protected SecurityCredentials $securityCredentials;
 
     protected TransportInterface $transport;
 
     private ?\Dmorenof\SdkRuntime\Transport\ResponseInfo $lastResponse = null;
+
+    private int|string|null $serverSelection = null;
+
+    /** @var array<string,string> */
+    private array $serverVariables = [];
 
     /**
      * @param array<string, string> $headers
@@ -80,8 +92,93 @@ abstract class ApiClient
         if (!is_a($type, static::class, true)) {
             throw new \InvalidArgumentException('Resource must belong to this SDK: ' . $type);
         }
-        return new $type($this->baseUrl, securityCredentials: $this->securityCredentials,
+        $resource = new $type($this->baseUrl, securityCredentials: $this->securityCredentials,
             transport: $this->transport, serverOverrides: $this->serverOverrides);
+        $resource->serverSelection = $this->serverSelection;
+        $resource->serverVariables = $this->serverVariables;
+        return $resource;
+    }
+
+    /**
+     * Base URL for one of the root SERVERS declared by the SDK, with its variables filled in
+     * (declared defaults, or the given values checked against each variable's enum).
+     *
+     * @param int|string $server Index, or the declared `name`.
+     * @param array<string,string> $variables
+     */
+    public static function serverUrl(int|string $server = 0, array $variables = []): string
+    {
+        $declared = self::selectServer(static::SERVERS, $server, static::class);
+        $unknown = array_diff(array_keys($variables), array_keys($declared['variables'] ?? []));
+        if ($unknown !== []) {
+            throw new \InvalidArgumentException('Unknown server variable(s): ' . implode(', ', $unknown) . '.');
+        }
+        $url = ServerUrl::expand($declared, $variables);
+        if (preg_match('/^[a-z][a-z0-9+.\-]*:/i', $url) !== 1) {
+            throw new \InvalidArgumentException('A root server must be an absolute URL; relative servers resolve against a base URL.');
+        }
+        return ServerUrl::normalize($url);
+    }
+
+    /**
+     * Choose which declared server operations use (by index or `name`); null restores the first one.
+     * Applies to operations that declare `servers`; operations without them keep using the base URL.
+     * Resources created afterwards inherit the choice.
+     */
+    public function useServer(int|string|null $server): static
+    {
+        $this->serverSelection = $server;
+        return $this;
+    }
+
+    /**
+     * Values for server template variables, merged with earlier ones. A server ignores variables it does not
+     * declare, and each value is checked against the declared enum when the request is built.
+     *
+     * @param array<string,string> $values
+     */
+    public function withServerVariables(array $values): static
+    {
+        foreach ($values as $name => $value) {
+            if (!is_string($name) || $name === '' || !is_string($value)) {
+                throw new \InvalidArgumentException('Server variables map nonempty names to string values.');
+            }
+        }
+        $this->serverVariables = $values + $this->serverVariables;
+        return $this;
+    }
+
+    /**
+     * @param list<array{url:string,name?:string,variables?:array<string,array{default:string,enum?:list<string>}>}> $servers
+     * @return array{url:string,name?:string,variables?:array<string,array{default:string,enum?:list<string>}>}
+     */
+    private static function selectServer(array $servers, int|string|null $selection, string $where): array
+    {
+        $selection ??= 0;
+        if (is_int($selection)) {
+            return $servers[$selection] ?? throw new \InvalidArgumentException("$where declares no server #$selection.");
+        }
+        foreach ($servers as $server) {
+            if (($server['name'] ?? null) === $selection) {
+                return $server;
+            }
+        }
+        throw new \InvalidArgumentException("$where declares no server named '$selection'.");
+    }
+
+    private function baseUrlFor(Operation $spec): string
+    {
+        if ($spec->servers !== []) {
+            $declared = ServerUrl::resolve(
+                ServerUrl::expand(self::selectServer($spec->servers, $this->serverSelection, $spec->label), $this->serverVariables),
+                $this->baseUrl,
+            );
+        } elseif ($spec->serverUrl !== null) {
+            $declared = ServerUrl::resolve($spec->serverUrl, $this->baseUrl);
+        } else {
+            return $this->baseUrl;
+        }
+        return $this->serverOverrides[$declared] ?? $declared;
     }
 
     /** Attach an SDK-level interceptor when using the default PSR-18 adapter. */
@@ -423,11 +520,7 @@ abstract class ApiClient
             }
             $allowReserved = array_values(array_diff($spec->queryAllowReserved, array_keys($securityQuery)));
             $encodedQuery = QuerySerializer::encode($query, $formats, allowReserved: $allowReserved);
-            $baseUrl = $this->baseUrl;
-            if ($spec->serverUrl !== null) {
-                $declared = ServerUrl::normalize($spec->serverUrl);
-                $baseUrl = $this->serverOverrides[$declared] ?? $declared;
-            }
+            $baseUrl = $this->baseUrlFor($spec);
             $url = rtrim($baseUrl, '/') . $path;
             if ($encodedQuery !== '') {
                 $url .= '?' . $encodedQuery;

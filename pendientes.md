@@ -69,8 +69,8 @@ Durante las fases 1 y 2, el SDK de Casafari generado sigue pasando como prueba d
 
 ## 4. [P1] Servidores
 
-- [ ] Servidores relativos y resolución frente a la base URL.
-- [ ] Selección dinámica entre varios servidores y API de variables con nombre.
+- [x] **Sin publicar —** Servidores relativos resueltos frente a la base URL (como directorio, RFC 3986), con `serverOverrides` sobre la URL final.
+- [x] **Sin publicar —** Selección entre varios servidores (`servers`, `useServer()`) y variables con nombre (`withServerVariables()`, defaults y `enum`), más `SERVERS`/`serverUrl()` para los servidores raíz. Pendiente en el generador: emitir `servers` y `SERVERS` desde el contrato.
 
 ## 5. [P1] Validación JSON Schema
 

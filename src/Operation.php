@@ -36,6 +36,7 @@ namespace Dmorenof\SdkRuntime;
  *     parameterContent?: array<string,array<array-key,'application/json'|'text/plain'>>,
  *     queryAllowReserved?: list<string>,
  *     querySerialization?: array<array-key, 'multi'|'csv'|'ssv'|'tsv'|'pipes'|'deepObject'|'form-object'|'form-object-explode'>,
+ *     servers?: list<array{url:string,name?:string,variables?:array<string,array{default:string,enum?:list<string>}>}>,
  *     responseHeaders?: array<int|string,array<string,array{type:'string'|'integer'|'number'|'boolean'|'array',items?:'string'|'integer'|'number'|'boolean',required?:bool,rules?:array<string,mixed>}>>,
  * }
  */
@@ -66,6 +67,7 @@ final readonly class Operation
         'errorResponses' => [],
         'responseEncoding' => 'json',
         'responseHeaders' => [],
+        'servers' => [],
     ];
 
     /** "METHOD path", unless the operation names itself. */
@@ -88,6 +90,7 @@ final readonly class Operation
      * @param array<int|string,array{type:?string,schemaNullable:bool,rules?:array<string,mixed>,mediaType?:string,encoding?:'json'|'text'|'binary',alternatives?:list<array{type:?string,schemaNullable:bool,rules?:array<string,mixed>,mediaType:string,encoding?:'json'|'text'|'binary'}>}> $responseTypes Explicit status-specific JSON types; null type means no body.
      * @param array<array-key, 'multi'|'csv'|'ssv'|'tsv'|'pipes'|'deepObject'|'form-object'|'form-object-explode'> $querySerialization Query list name => normalized wire format.
      * @param array<int|string,array<string,array{type:'string'|'integer'|'number'|'boolean'|'array',items?:'string'|'integer'|'number'|'boolean',required?:bool,rules?:array<string,mixed>}>> $responseHeaders Declared response headers by status, range or default.
+     * @param list<array{url:string,name?:string,variables?:array<string,array{default:string,enum?:list<string>}>}> $servers Selectable servers for this operation (first is the default); URLs may be relative to the client base URL or templates. Mutually exclusive with $serverUrl.
      */
     public function __construct(
         public string $method,
@@ -116,7 +119,11 @@ final readonly class Operation
         public array $errorResponses = self::DEFAULTS['errorResponses'],
         public string $responseEncoding = self::DEFAULTS['responseEncoding'],
         public array $responseHeaders = self::DEFAULTS['responseHeaders'],
+        public array $servers = self::DEFAULTS['servers'],
     ) {
+        if ($servers !== [] && $serverUrl !== null) {
+            throw new \InvalidArgumentException('An operation declares either serverUrl or servers, not both.');
+        }
         $this->label = $label ?? $method . ' ' . $path;
     }
 

@@ -85,6 +85,29 @@ The request sends `Accept: application/json, text/csv, image/*`; the response `C
 
 From 1.0.0 the package follows Semantic Versioning. What is stable, what is internal and what counts as a breaking change is defined in [docs/PUBLIC_API.md](docs/PUBLIC_API.md).
 
+## Relative and dynamic servers (unreleased)
+
+An operation `serverUrl` may be relative: it is resolved against the client base URL, treated as a directory (`/v2` replaces the path, `v2` and `../v2` start from the base path, `//host/x` keeps the scheme).
+
+An operation may instead declare selectable `servers`, optionally templated with variables:
+
+~~~php
+'servers' => [
+    ['url' => 'https://{region}.api.example.com/{version}', 'name' => 'production', 'variables' => [
+        'region' => ['default' => 'eu', 'enum' => ['eu', 'us']],
+        'version' => ['default' => 'v1'],
+    ]],
+    ['url' => '/sandbox', 'name' => 'sandbox'],
+],
+~~~
+
+~~~php
+$client->withServerVariables(['region' => 'us']);   // checked against the enum when a request is built
+$client->useServer('sandbox');                      // by index or name; null restores the first server
+~~~
+
+The first server is the default. Variables a server does not declare are ignored, so one set of values serves operations with different servers; values that would change the URL structure (`/` in a host, `?`, `#`, `@`, spaces) are rejected. Choices are per client and are inherited by resources created afterwards. `serverOverrides` apply to the final expanded URL. An SDK can also declare root `SERVERS` and expose `Client::serverUrl('production', ['region' => 'us'])` to build the base URL passed to `connect()`.
+
 ## Development
 
 Use PHP 8.3+ and Composer 2:
@@ -136,10 +159,11 @@ server path prefix is preserved when adding the operation path.
 For other environments, pass `serverOverrides` to `Client::connect()` or the
 constructor, mapping a declared server URL to a replacement base URL. The map is
 copied to resources together with the transport and credentials; separate clients
-keep separate maps. Keys ignore trailing slashes. Relative/template server URLs,
-credentials, queries and fragments in operation server URLs remain unsupported
-and fail before transport. Existing operations without `serverUrl` keep their
-current routing.
+keep separate maps. Keys ignore trailing slashes. Credentials, queries and
+fragments in operation server URLs fail before transport, as do template
+variables in a plain `serverUrl` (declare `servers` for those, see
+"Relative and dynamic servers"). Existing operations without `serverUrl` keep
+their current routing.
 
 
 ## Query lists (v0.6.0)

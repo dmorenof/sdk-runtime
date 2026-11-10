@@ -11,6 +11,7 @@ class Dmorenof\SdkRuntime\AnyOf implements JsonSerializable
 
 abstract class Dmorenof\SdkRuntime\ApiClient
     const protected SECURITY_SCHEMES
+    const protected SERVERS
     method protected executeArguments(array $operation, Dmorenof\SdkRuntime\DTO|string|int|float|bool|null $identifier = NULL, ?string $identifierName = NULL, ?Dmorenof\SdkRuntime\DTO $payload = NULL, ?Dmorenof\SdkRuntime\DTO $body = NULL): mixed
     method protected executeBody(array $operation, mixed $body, bool $bodyPresent = true, Dmorenof\SdkRuntime\DTO|string|int|float|bool|null $identifier = NULL, ?string $identifierName = NULL, ?Dmorenof\SdkRuntime\DTO $payload = NULL): mixed
     method protected executeOperation(array $operation, array $pathParameters = array ( ), array $queryParameters = array ( ), array $headerParameters = array ( ), ?Dmorenof\SdkRuntime\DTO $body = NULL): mixed
@@ -18,9 +19,12 @@ abstract class Dmorenof\SdkRuntime\ApiClient
     method public lastResponse(): ?Dmorenof\SdkRuntime\Transport\ResponseInfo
     method public resource(string $type): Dmorenof\SdkRuntime\ApiClient
     method public static connect(string $baseUrl, ?Psr\Http\Client\ClientInterface $httpClient = NULL, array $headers = array ( ), ?Dmorenof\SdkRuntime\Security\SecurityCredentials $securityCredentials = NULL, ?Dmorenof\SdkRuntime\Transport\TransportInterface $transport = NULL, array $serverOverrides = array ( )): static
+    method public static serverUrl(string|int $server = 0, array $variables = array ( )): string
+    method public useServer(string|int|null $server): static
     method public withMiddleware(Dmorenof\SdkRuntime\Transport\HttpMiddlewareInterface $middleware): static
     method public withRedirectPolicy(?Dmorenof\SdkRuntime\Transport\RedirectPolicy $policy): static
     method public withRetryPolicy(?Dmorenof\SdkRuntime\Transport\RetryPolicy $policy): static
+    method public withServerVariables(array $values): static
     property protected Dmorenof\SdkRuntime\Security\SecurityCredentials $securityCredentials
     property protected Dmorenof\SdkRuntime\Transport\TransportInterface $transport
     property protected array $serverOverrides
@@ -80,7 +84,7 @@ class Dmorenof\SdkRuntime\OneOf extends Dmorenof\SdkRuntime\AnyOf
 
 final readonly class Dmorenof\SdkRuntime\Operation
     const public DEFAULTS
-    method public __construct(string $method, string $path, ?string $label = NULL, array $security = array ( ), array $success = array ( 0 => 200, ), array $errors = array ( ), ?string $responseType = NULL, bool $schemaNullable = false, bool $noContentAllowed = false, array $validation = array ( ), ?string $serverUrl = NULL, array $querySerialization = array ( ), string $requestMediaType = 'application/json', array $bodySerialization = array ( ), array $bodyParts = array ( ), array $responseTypes = array ( ), array $pathSerialization = array ( ), array $headerSerialization = array ( ), array $queryAllowReserved = array ( ), array $parameterContent = array ( ), array $responseValidation = array ( ), ?array $requestBody = NULL, string $responseMediaType = 'application/json', array $errorResponses = array ( ), string $responseEncoding = 'json', array $responseHeaders = array ( ))
+    method public __construct(string $method, string $path, ?string $label = NULL, array $security = array ( ), array $success = array ( 0 => 200, ), array $errors = array ( ), ?string $responseType = NULL, bool $schemaNullable = false, bool $noContentAllowed = false, array $validation = array ( ), ?string $serverUrl = NULL, array $querySerialization = array ( ), string $requestMediaType = 'application/json', array $bodySerialization = array ( ), array $bodyParts = array ( ), array $responseTypes = array ( ), array $pathSerialization = array ( ), array $headerSerialization = array ( ), array $queryAllowReserved = array ( ), array $parameterContent = array ( ), array $responseValidation = array ( ), ?array $requestBody = NULL, string $responseMediaType = 'application/json', array $errorResponses = array ( ), string $responseEncoding = 'json', array $responseHeaders = array ( ), array $servers = array ( ))
     method public errorResponseFor(int $status, ?string $contentType = NULL): ?array
     method public errorTypeFor(int $status): ?string
     method public responseHeadersFor(int $status): array
@@ -103,6 +107,7 @@ final readonly class Dmorenof\SdkRuntime\Operation
     property public readonly array $responseTypes
     property public readonly array $responseValidation
     property public readonly array $security
+    property public readonly array $servers
     property public readonly array $success
     property public readonly array $validation
     property public readonly bool $noContentAllowed

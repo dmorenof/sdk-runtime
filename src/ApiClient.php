@@ -91,6 +91,16 @@ abstract class ApiClient
         return $this;
     }
 
+    /** Opt in to retrying transient failures when using the default PSR-18 adapter. */
+    public function withRetryPolicy(?\Dmorenof\SdkRuntime\Transport\RetryPolicy $policy): static
+    {
+        if (!$this->transport instanceof Psr18Transport) {
+            throw new \LogicException('Retry policy requires the PSR-18 adapter.');
+        }
+        $this->transport->setRetryPolicy($policy);
+        return $this;
+    }
+
     /**
      * Transfer only initialized properties, preserving OpenAPI wire names.
      * Shared runtime DTO validation checks required and nested fields.

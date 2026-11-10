@@ -10,7 +10,7 @@ use Psr\Http\Message\UploadedFileInterface;
 final class MultipartSerializer
 {
     /**
-     * @param array<string,array{contentType:?string,filename?:string}> $parts Wire field metadata.
+     * @param array<string,array{contentType:?string,filename?:string,json?:bool}> $parts Wire field metadata.
      */
     public static function encode(DTO $body, array $parts): MultipartStream
     {
@@ -35,7 +35,12 @@ final class MultipartSerializer
                 if ($item instanceof \BackedEnum) {
                     $item = $item->value;
                 }
-                if ($item instanceof UploadedFileInterface) {
+                if ($part['json'] ?? false) {
+                    if ($item instanceof UploadedFileInterface) {
+                        throw new \UnexpectedValueException('Uploaded files cannot be encoded as JSON parts.');
+                    }
+                    $contents = json_encode($item, JSON_THROW_ON_ERROR);
+                } elseif ($item instanceof UploadedFileInterface) {
                     if (!isset($part['filename']) || $item->getError() !== UPLOAD_ERR_OK) {
                         throw new \UnexpectedValueException('Uploaded file requires a binary field and a successful upload.');
                     }
@@ -73,10 +78,12 @@ final class MultipartSerializer
         return new MultipartStream($elements);
     }
 
-    /** @param array{contentType:?string,filename?:string} $part */
+    /** @param array{contentType:?string,filename?:string,json?:mixed} $part */
     private static function assertPart(string $name, array $part): void
     {
-        if (!self::quotedName($name) || ($part['contentType'] === null && !isset($part['filename']))
+        if ((isset($part['json']) && (!is_bool($part['json']) || ($part['json'] && (isset($part['filename'])
+                || preg_match('~^application/(?:[a-zA-Z0-9!#$&^_.+\\-]+\\+)?json$~D', $part['contentType'] ?? '') !== 1))))
+            || !self::quotedName($name) || ($part['contentType'] === null && !isset($part['filename']))
             || ($part['contentType'] !== null && !preg_match('~^[a-zA-Z0-9!#$&^_.+\-]+/[a-zA-Z0-9!#$&^_.+\-]+$~D', $part['contentType']))
             || (isset($part['filename']) && (!self::quotedName($part['filename']) || $part['filename'] === '0'))) {
             throw new \InvalidArgumentException('Unsupported multipart name or content type.');

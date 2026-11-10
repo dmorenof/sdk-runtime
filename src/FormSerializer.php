@@ -6,7 +6,7 @@ namespace Dmorenof\SdkRuntime;
 /** Form fields share the query expansion rules, with HTML form percent-encoding. */
 final class FormSerializer
 {
-    /** @param array<string,'multi'|'csv'> $formats */
+    /** @param array<string,'multi'|'csv'|'ssv'|'tsv'|'pipes'|'form-object'|'form-object-explode'|'deepObject'> $formats */
     public static function encode(DTO $body, array $formats = []): string
     {
         foreach ($formats as $format) {
@@ -14,15 +14,16 @@ final class FormSerializer
         }
         $fields = [];
         foreach (get_object_vars($body->jsonSerializeForRequest()) as $name => $value) {
-            $fields[$name] = self::field($value);
+            $fields[$name] = $value instanceof \stdClass && in_array($formats[$name] ?? null, ['form-object', 'form-object-explode', 'deepObject'], true)
+                ? $value : self::field($value);
         }
         return QuerySerializer::encode($fields, $formats, PHP_QUERY_RFC1738);
     }
 
     private static function assertFormat(mixed $format): void
     {
-        if (!in_array($format, ['multi', 'csv'], true)) {
-            throw new \InvalidArgumentException('Only repeated-key and CSV form arrays are supported.');
+        if (!in_array($format, ['multi', 'csv', 'ssv', 'tsv', 'pipes', 'form-object', 'form-object-explode', 'deepObject'], true)) {
+            throw new \InvalidArgumentException('Unsupported form serialization metadata.');
         }
     }
 

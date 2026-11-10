@@ -189,3 +189,9 @@ $selectionCommand = implode(' ', array_map('escapeshellarg', [PHP_BINARY,
 passthru($selectionCommand, $selectionStatus);
 if ($selectionStatus !== 0) { throw new RuntimeException('Installed runtime response selection HTTP smoke failed.'); }
 echo "PUBLISHED_RESPONSE_SELECTION_RUNTIME_OK", PHP_EOL;
+
+$formBlockCommand = implode(' ', array_map('escapeshellarg', [PHP_BINARY,
+    $directory . '/vendor/dmorenof/sdk-runtime/tests/form-block-smoke.php', $directory . '/vendor/autoload.php']));
+passthru($formBlockCommand, $formBlockStatus);
+if ($formBlockStatus !== 0) { throw new RuntimeException('Installed runtime form block HTTP smoke failed.'); }
+echo "PUBLISHED_FORM_BLOCK_RUNTIME_OK", PHP_EOL;

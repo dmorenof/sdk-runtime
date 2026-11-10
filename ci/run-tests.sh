@@ -48,3 +48,5 @@ php tests/parameter-content-smoke.php "$PWD/vendor/autoload.php"
 php tests/delimited-parameters-smoke.php "$PWD/vendor/autoload.php"
 
 php tests/response-selection-smoke.php "$PWD/vendor/autoload.php"
+
+php tests/form-block-smoke.php "$PWD/vendor/autoload.php"

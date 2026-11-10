@@ -370,3 +370,17 @@ only when both are declared. The selected binary PSR response returns unchanged,
 without reading its stream; the legacy string transport retains its existing
 buffered behavior. This does not add MIME negotiation among schemas at one status,
 binary error decoding, redirect policy, HEAD/205 rules or scalar error models.
+
+### Form encoding block — v0.25.0
+
+FormSerializer reuses QuerySerializer for multi/csv/ssv/tsv/pipes lists and flat
+object form-object/form-object-explode/deepObject metadata, with RFC1738 encoding,
+delimiter checks and expanded-name collision detection. Existing form behavior
+and executor signatures stay compatible.
+
+Multipart bodyParts can declare json: true with application/json or application/*+json.
+The existing request serializer preserves JSON names, nested models and readOnly
+filtering; arrays yield repeated JSON parts. Guzzle continues to own MIME and
+binary streams. JSON parts cannot carry file metadata or UploadedFileInterface.
+Part headers, explode-false multipart lists, root form maps and representation
+selection remain outside this block.

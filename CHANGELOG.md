@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.25.0] — 2026-11-10
+
+- Complete a form-encoding block through existing QuerySerializer: URL-encoded ssv/tsv/pipes lists and flat object form/exploded/deepObject fields, retaining native form encoding, collision rejection and DTO validation.
+- Add JSON multipart part metadata using request-direction DTO/collection serialization and json_encode; Guzzle MultipartStream still builds MIME and preserves uploads/streams. Complex arrays emit repeated JSON parts; explicit JSON scalar parts retain JSON quoting.
+- Verify URL/query/header/body separation, Unicode, false/zero, readOnly filtering, nested models, repeated JSON parts and binary bytes with actual HTTP and installed-package smoke. No transport or executor API changes.
+
 ## [0.24.0] — 2026-11-10
 
 - Select responses by exact HTTP status, class range and default, in that order, using existing operation metadata. Explicit bodyless errors suppress fallback hydration. Default success applies only to HTTP 2xx.

@@ -110,7 +110,7 @@ final class FormSerializationTest extends TestCase
 
     public function testUnsupportedMediaAndJsonFormMetadataFailBeforeHttp(): void
     {
-        foreach ([['multipart/form-data', []], ['application/json', ['ids' => 'multi']], ['application/x-www-form-urlencoded', ['ids' => 'pipes']]] as [$media, $formats]) {
+        foreach ([['multipart/form-data', []], ['application/json', ['ids' => 'multi']], ['application/x-www-form-urlencoded', ['ids' => 'unknown']]] as [$media, $formats]) {
             $transport = new FakeTransport(new HttpResponse(204, ''));
             try {
                 FormProbeClient::connect('https://api.example.test', transport: $transport)->submit(new FormPayload((object) ['display-name' => 'Ada']), $formats, $media);

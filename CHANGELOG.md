@@ -1,6 +1,9 @@
 # Changelog
 
-## [Unreleased — implementation in progress, not validated]
+## [1.0.0] — 2026-11-11
+
+First stable release. From here the public API follows Semantic Versioning (see docs/PUBLIC_API.md; the frozen surface is tests/Fixtures/public-api.txt). It accumulates the former 0.2.0 development line: OAuth2 (client credentials, authorization code with PKCE), opt-in retries and redirects, typed response headers, representation selection, relative and dynamic servers, format validation, streaming and the cleanups listed below. Generated SDKs from sdk-generator 1.0.0 require `^1.0.0`.
+
 
 - Share schema compilation with the generator and accept JSON-encoded declarative guards without losing object/list identity. Disable implicit defaults and Opis execution extensions; format remains an annotation.
 - Evaluate model guards against original input JSON and retain validation on mutable values, explicit null bodies and composition direction.

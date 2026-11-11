@@ -27,7 +27,7 @@ $client = Client::connect(
 );
 ~~~
 
-## OAuth2 client credentials (unreleased)
+## OAuth2 client credentials
 
 ~~~php
 $oauth = new OAuth2ClientCredentials(
@@ -45,7 +45,7 @@ $client = Client::connect(
 
 The provider requests a token on first use, caches it in a `TokenStoreInterface` (in memory by default; implement it to share tokens between processes) and renews it before expiry. After a 401 the client invalidates the token and replays the request once. Pass `credentialsInBody: true` for servers that do not accept HTTP Basic client authentication. For a signed-in user, see "OAuth2 authorization code with PKCE" below; OpenID Connect discovery and scope checking are not implemented yet.
 
-## Response headers (unreleased)
+## Response headers
 
 ~~~php
 $items = $client->list();
@@ -56,7 +56,7 @@ $cookies = $info->headers->cookies();      // list<GuzzleHttp\Cookie\SetCookie>
 
 Generated SDKs declare `responseHeaders` per status in the operation metadata; undeclared headers are still readable as raw strings. Conversion happens when you call `get()`, so a malformed header throws there and never hides a successful body. `lastResponse()` is per client instance (a resource obtained with `resource()` keeps its own).
 
-## Redirects (unreleased)
+## Redirects
 
 ~~~php
 use Dmorenof\SdkRuntime\Transport\RedirectPolicy;
@@ -68,7 +68,7 @@ $client->withRedirectPolicy(null);                                // default: re
 
 By default redirects are **not** followed: the 3xx response is returned (and surfaces as an `ApiException` unless declared), exactly as before. With `new RedirectPolicy()` up to five are followed. A redirect to another origin drops every request header except a safe allowlist (`Accept`, `Accept-Encoding`, `Accept-Language`, `User-Agent`, `Content-Type`), so credentials never leak, even when a middleware adds them again, and https→http downgrades are refused with a `RedirectException`. Guzzle's PSR-18 `sendRequest()` never follows redirects, so the policy applies to Guzzle clients too; a custom PSR-18 client that follows them itself bypasses it.
 
-## Representation selection (unreleased)
+## Representation selection
 
 An operation may declare several representations for one status, for example JSON, CSV and any image:
 
@@ -86,7 +86,7 @@ The request sends `Accept: application/json, text/csv, image/*`; the response `C
 
 From 1.0.0 the package follows Semantic Versioning. What is stable, what is internal and what counts as a breaking change is defined in [docs/PUBLIC_API.md](docs/PUBLIC_API.md).
 
-## Relative and dynamic servers (unreleased)
+## Relative and dynamic servers
 
 An operation `serverUrl` may be relative: it is resolved against the client base URL, treated as a directory (`/v2` replaces the path, `v2` and `../v2` start from the base path, `//host/x` keeps the scheme).
 
@@ -109,11 +109,11 @@ $client->useServer('sandbox');                      // by index or name; null re
 
 The first server is the default. Variables a server does not declare are ignored, so one set of values serves operations with different servers; values that would change the URL structure (`/` in a host, `?`, `#`, `@`, spaces) are rejected. Choices are per client and are inherited by resources created afterwards. `serverOverrides` apply to the final expanded URL. An SDK can also declare root `SERVERS` and expose `Client::serverUrl('production', ['region' => 'us'])` to build the base URL passed to `connect()`.
 
-## Format validation (unreleased)
+## Format validation
 
 `format` is an annotation unless a rule asks for it: `'format' => 'date-time'` (also `date`, `time`, `duration`, `email`, `hostname`, `ipv4`, `ipv6`, `uri`, `uuid`, `json-pointer`, `regex`, `byte`, `int32`, `int64`, ...) asserts it, and unknown or inapplicable formats never fail. It checks text only and does not convert to PHP classes. See [docs/FORMATS.md](docs/FORMATS.md).
 
-## Streaming (unreleased)
+## Streaming
 
 **Request bodies.** A raw `text/plain` or `application/octet-stream` body may be any readable PSR-7 stream, including a non-seekable one (a pipe, a socket, a generator-backed stream). It is sent once: retries, redirects and token replays need to rewind the body, so they are skipped for non-seekable streams. Multipart file uploads still require seekable streams.
 
@@ -138,7 +138,7 @@ Items are read in chunks as the loop advances, validated with the declared type 
 
 For the transport, a Guzzle client is called with `stream => true` so it does not wait for the whole body; any other PSR-18 client decides for itself whether it buffers, so an endless `text/event-stream` needs a client that streams. Middleware must not consume a streaming body. Guzzle's read timeout (`default_socket_timeout`, 60 s) applies between chunks, so a quiet event stream needs it raised. Automatic reconnection with `Last-Event-ID` is not part of this runtime: use the `id`/`retry` of the events to reconnect yourself.
 
-## OAuth2 authorization code with PKCE (unreleased)
+## OAuth2 authorization code with PKCE
 
 For apps that act on behalf of a signed-in user. The runtime does the protocol; redirecting the browser is yours.
 

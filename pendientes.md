@@ -104,7 +104,7 @@ Durante las fases 1 y 2, el SDK de Casafari generado sigue pasando como prueba d
 - La línea de trabajo es `feature/p0-contract-fidelity` (runtime) coordinada con `release/0.2.0` (generador). Al terminarla, runtime y generador se publican como **v1.0.0**, runtime primero.
 - **Sin PR:** la entrega es una release (cambio de `VERSION` → tag inmutable y GitHub Release por el workflow existente). Si la protección de `main` exigiera un PR, se trata como trámite técnico (ver [AGENTS.md](AGENTS.md)).
 - Hasta entonces se acumula sin publicar; `VERSION`, tags y la línea base estable (v0.31.0) no se tocan.
-- **Antes de la 1.0.0** (obligatorio): ejecutar por primera vez PHPUnit, PHPStan máximo, matriz PHP 8.3–8.5, dependencias mínimas e instalación aislada sobre todo lo acumulado; congelar la API pública (apartado 6).
+- **Antes de la 1.0.0** (obligatorio): PHPUnit y los 19 smoke de HTTP real ya se han ejecutado por primera vez sobre todo lo acumulado (PHP 8.3.6, dependencias del `composer.lock`, orden aleatorio y modo estricto: 489 pruebas verdes). Falta: PHPStan nivel máximo, matriz PHP 8.4/8.5, dependencias mínimas e instalación aislada, que solo puede dar el CI de GitHub; congelar la API pública (apartado 6).
 
 ## Historial de seguimiento
 

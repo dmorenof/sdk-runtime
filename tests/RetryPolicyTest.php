@@ -50,7 +50,7 @@ final class RetryPolicyTest extends TestCase
     }
 
     /** @return array{Psr18Transport, list<int>} */
-    private function transport(ClientInterface $http, ?RetryPolicy $policy, array &$sleeps): array
+    private function transport(ClientInterface $http, ?RetryPolicy $policy, ?array &$sleeps = null): array
     {
         $sleeps = [];
         $transport = new Psr18Transport($http, [], $policy, static function (int $ms) use (&$sleeps): void {

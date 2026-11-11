@@ -24,6 +24,8 @@ final class TrickleStream implements StreamInterface
 {
     use StreamDecoratorTrait;
 
+    private StreamInterface $stream; // used by the trait, which does not declare it
+
     public int $reads = 0;
 
     public function read($length): string
@@ -37,6 +39,8 @@ final class TrickleStream implements StreamInterface
 final class StalledStream implements StreamInterface
 {
     use StreamDecoratorTrait;
+
+    private StreamInterface $stream; // used by the trait, which does not declare it
 
     public function read($length): string
     {

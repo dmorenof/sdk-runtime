@@ -58,8 +58,11 @@ final class UploadedFileTest extends TestCase
                 self::assertTrue(true);
             }
         }
+        // Scalars combined with stdClass or arrays are native unions; unions with other classes are still unsupported.
+        $supported = new class((object) ['value' => (object) ['a' => 1]]) extends DTO { public int|\stdClass $value; };
+        self::assertEquals((object) ['a' => 1], $supported->value);
         $this->expectException(\InvalidArgumentException::class);
-        new class((object) ['value' => 1]) extends DTO { public int|\stdClass $value; };
+        new class((object) ['value' => 1]) extends DTO { public int|\DateTime $value; };
     }
 
     public function testClientMetadataAndBinaryBytesUseGuzzleWithDirectionalFiltering(): void

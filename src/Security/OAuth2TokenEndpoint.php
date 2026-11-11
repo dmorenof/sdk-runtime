@@ -18,6 +18,7 @@ final class OAuth2TokenEndpoint
     /** Hosts that count as "this machine": TLS is not required toward them. */
     private const array LOOPBACK_HOSTS = ['localhost', '127.0.0.1', '[::1]'];
 
+    /** @var (\Closure(): int)|null */
     private readonly ?\Closure $clock;
 
     /**
@@ -59,7 +60,7 @@ final class OAuth2TokenEndpoint
     /**
      * Scope tokens are separated by spaces on the wire, so one may not contain whitespace, quotes or backslashes.
      *
-     * @param list<string> $scopes
+     * @param array<mixed> $scopes Checked at runtime: each scope must be a nonempty string without whitespace, quotes or backslashes.
      */
     public static function assertScopes(array $scopes): void
     {

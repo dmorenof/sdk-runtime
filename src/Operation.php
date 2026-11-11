@@ -186,7 +186,7 @@ final readonly class Operation
         if ($alternatives === []) {
             return $entry;
         }
-        $declared = array_values(array_map(static fn (array $alternative): string => $alternative['mediaType'], $alternatives));
+        $declared = array_map(static fn (array $alternative): string => $alternative['mediaType'], $alternatives);
         $chosen = MediaType::select($contentType, $declared);
         return $chosen === null ? null : $alternatives[array_search($chosen, $declared, true)];
     }

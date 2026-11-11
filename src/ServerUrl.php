@@ -66,6 +66,7 @@ final class ServerUrl
         return (string) preg_replace_callback('/\{([^{}]*)\}/', static function (array $match) use ($declared, $values, $authorityEnd, $template): string {
             [[$placeholder, $offset], [$name]] = $match;
             $variable = $declared[$name] ?? throw new \InvalidArgumentException("Server variable {$name} is used in $template but not declared.");
+            /** @var mixed $value */
             $value = $values[$name] ?? $variable['default'];
             if (!is_string($value) || $value === '' && !isset($variable['enum'])) {
                 throw new \InvalidArgumentException("Server variable {$name} needs a nonempty string.");

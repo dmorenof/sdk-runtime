@@ -24,8 +24,8 @@ final readonly class ResponseHeaders
     private array $declared;
 
     /**
-     * @param array<string, list<string>|string> $headers As returned by PSR-7 getHeaders(); strings are one value.
-     * @param array<string, HeaderSpec> $declared Header name => declared type, as generated for the selected status.
+     * @param array<string, array<string>|string> $headers As returned by PSR-7 getHeaders(); strings are one value.
+     * @param array<string, array<string, mixed>> $declared Header name => declared type, as generated for the selected status; validated here.
      */
     public function __construct(array $headers = [], array $declared = [])
     {
@@ -44,6 +44,7 @@ final readonly class ResponseHeaders
                 || ($spec['type'] === 'array' && !in_array($spec['items'] ?? 'string', ['string', 'integer', 'number', 'boolean'], true))) {
                 throw new \InvalidArgumentException("Invalid declared response header $name.");
             }
+            /** @var HeaderSpec $spec */
             $specs[strtolower((string) $name)] = $spec;
         }
         $this->values = $values;

@@ -226,10 +226,7 @@ final class StreamDecoder
     /** Next chunk; '' means the end. A stalled read is an error rather than a silent truncation. */
     private static function read(StreamInterface $stream): string
     {
-        if ($stream->eof()) {
-            return '';
-        }
-        $chunk = $stream->read(self::CHUNK);
+        $chunk = $stream->eof() ? '' : $stream->read(self::CHUNK);
         if ($chunk === '' && !$stream->eof()) {
             throw new \UnexpectedValueException('The response stream returned no data before ending (read timeout?).');
         }

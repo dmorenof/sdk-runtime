@@ -139,7 +139,7 @@ abstract class ApiClient
      * Values for server template variables, merged with earlier ones. A server ignores variables it does not
      * declare, and each value is checked against the declared enum when the request is built.
      *
-     * @param array<string,string> $values
+     * @param array<mixed> $values Checked at runtime: names must be nonempty strings and values strings.
      */
     public function withServerVariables(array $values): static
     {
@@ -573,6 +573,7 @@ abstract class ApiClient
         for ($attempt = 0;; $attempt++) {
             $attemptHeaders = $headers;
             $securityQuery = [];
+            /** @var list<\Dmorenof\SdkRuntime\Security\TokenProviderInterface> $providers */
             $providers = [];
             SecurityApplier::apply($this->securityCredentials, $spec->security, static::SECURITY_SCHEMES, $attemptHeaders, $securityQuery, $providers);
             $url = $this->requestUrl($spec, $path, $query, $securityQuery, $baseUrl);
@@ -604,15 +605,15 @@ abstract class ApiClient
                     return StreamDecoder::iterate($psr?->getBody() ?? Utils::streamFor((string) $buffered?->body), $entry, $spec->label . ' response');
                 }
                 if (ltrim((string) $entry['type'], '\\') === ResponseInterface::class) {
-                    return $psr ?? new PsrResponse($status, $buffered?->headers ?? [], (string) $buffered?->body);
+                    return $psr ?? new PsrResponse($status, $buffered->headers, $buffered->body);
                 }
             }
-            return $psr !== null ? HttpResponse::fromPsr($psr) : ($buffered ?? throw new \LogicException('The transport returned no response.'));
+            return $psr !== null ? HttpResponse::fromPsr($psr) : $buffered;
         }
     }
 
     /**
-     * @param array<string,mixed> $query
+     * @param array<string,scalar|list<scalar>|DTO|Map|TypedArray|\stdClass|null> $query
      * @param array<string,string> $securityQuery Credentials sent as query parameters.
      * @param string|null $baseUrl Resolved on first use and then kept for the replay.
      */
@@ -676,7 +677,7 @@ abstract class ApiClient
         return $result;
     }
 
-    /** @param array<string, list<string>|string> $headers */
+    /** @param array<string, array<string>|string> $headers */
     private function recordResponse(Operation $spec, int $status, array $headers): void
     {
         $this->lastResponse = new \Dmorenof\SdkRuntime\Transport\ResponseInfo(

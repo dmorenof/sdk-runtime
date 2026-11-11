@@ -84,7 +84,7 @@ final class OAuth2AuthorizationCode extends CachedTokenProvider
     /**
      * Starts a flow: a fresh state and PKCE verifier, and the URL to send the user to.
      *
-     * @param array<string, string> $extra Additional authorization parameters (audience, prompt, login_hint...).
+     * @param array<mixed> $extra Checked at runtime to be string pairs. Additional authorization parameters (audience, prompt, login_hint...).
      */
     public function start(array $extra = []): AuthorizationRequest
     {

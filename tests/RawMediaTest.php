@@ -47,7 +47,12 @@ final class RawMediaTest extends TestCase {
         $client->post('binary', null, params: $params);
         self::assertSame($stream, $http->calls[0]->getBody()); self::assertSame("\0\xffstream", (string) $http->calls[0]->getBody());
         self::assertStringEndsWith('?body=separate', (string) $http->calls[0]->getUri());
-        $params->body = new NoSeekStream(Utils::streamFor('cannot retry'));
+        // A non-seekable stream is accepted and sent once, as the same object.
+        $params->body = $oneShot = new NoSeekStream(Utils::streamFor('one shot'));
+        $client->post('binary', null, params: $params);
+        self::assertSame($oneShot, $http->calls[1]->getBody());
+        // Unreadable streams still fail before transport.
+        $closed = Utils::streamFor('x'); $closed->close(); $params->body = $closed;
         $this->expectException(\UnexpectedValueException::class); $client->post('binary', null, params: $params);
     }
     public function testTextJsonBinaryAndBodylessResponsesSelectTheirOwnCodec(): void {
@@ -59,8 +64,11 @@ final class RawMediaTest extends TestCase {
         $http->status = 202; $http->response = "\0\xff"; $result = $client->get();
         self::assertInstanceOf(\Psr\Http\Message\ResponseInterface::class, $result); self::assertSame("\0\xff", (string) $result->getBody());
     }
-    public function testStreamsCannotLeakIntoJsonAndNonSeekableInputsFail(): void {
-        try { Hydrator::hydrate(new NoSeekStream(Utils::streamFor('data')), 'stream', false, 'body'); self::fail('Non-seekable input accepted.'); } catch (\UnexpectedValueException) { self::assertTrue(true); }
+    public function testStreamsCannotLeakIntoJsonAndNonSeekableInputsAreAcceptedForOneShotSends(): void {
+        $stream = new NoSeekStream(Utils::streamFor('data'));
+        self::assertSame($stream, Hydrator::hydrate($stream, 'stream', false, 'body'));
+        $closed = Utils::streamFor('data'); $closed->close();
+        try { Hydrator::hydrate($closed, 'stream', false, 'body'); self::fail('Unreadable input accepted.'); } catch (\UnexpectedValueException) { self::assertTrue(true); }
         $this->expectException(\UnexpectedValueException::class); Serializer::value(Utils::streamFor('data'), 'request');
     }
 }

@@ -438,14 +438,18 @@ abstract class ApiClient
         }
         $query = array_filter($queryParameters, static fn ($value): bool => $value !== null);
         $accepted = [];
-        if ($spec->responseType !== null) {
+        if ($spec->responseType !== null || in_array($spec->responseEncoding, Operation::STREAMING_ENCODINGS, true)) {
             $legacyBinary = ltrim($spec->responseType, '\\') === \Psr\Http\Message\ResponseInterface::class;
             $accepted[] = $legacyBinary && !array_key_exists('responseMediaType', $operation) ? 'application/octet-stream' : $spec->responseMediaType;
         }
         foreach (array_merge($spec->responseTypes, $spec->errorResponses) as $entry) {
             foreach (($entry['alternatives'] ?? []) ?: [$entry] as $alternative) {
-                if ($alternative['type'] === null) { continue; }
-                $accepted[] = $alternative['mediaType'] ?? (ltrim($alternative['type'], '\\') === \Psr\Http\Message\ResponseInterface::class ? 'application/octet-stream' : 'application/json');
+                $streams = in_array($alternative['encoding'] ?? '', Operation::STREAMING_ENCODINGS, true);
+                if ($alternative['type'] === null && !$streams) { continue; }
+                $accepted[] = $alternative['mediaType'] ?? match ($alternative['encoding'] ?? '') {
+                    'jsonl' => 'application/jsonl', 'json-seq' => 'application/json-seq', 'sse' => 'text/event-stream',
+                    default => ltrim((string) $alternative['type'], '\\') === \Psr\Http\Message\ResponseInterface::class ? 'application/octet-stream' : 'application/json',
+                };
             }
         }
         $accepted = array_values(array_unique($accepted));
@@ -506,6 +510,7 @@ abstract class ApiClient
         $baseQuery = $query;
         // A token provider may hold a revoked token; renew it and replay once when the server answers 401.
         $replayable = !($bodyBytes instanceof \Psr\Http\Message\StreamInterface) || $bodyBytes->isSeekable();
+        $streaming = $spec->streamsResponse();
         for ($attempt = 0;; $attempt++) {
             $headers = $baseHeaders;
             $query = $baseQuery;
@@ -526,7 +531,7 @@ abstract class ApiClient
             }
             $retry = $attempt === 0 && $providers !== [] && $replayable && !$spec->succeeded(401);
             if ($this->transport instanceof Psr18Transport) {
-                $psrResponse = $this->transport->sendResponse($spec->method, $url, $headers, $bodyBytes);
+                $psrResponse = $this->transport->sendResponse($spec->method, $url, $headers, $bodyBytes, $streaming);
                 if ($retry && $psrResponse->getStatusCode() === 401) {
                     foreach ($providers as $provider) {
                         $provider->invalidate();
@@ -534,6 +539,10 @@ abstract class ApiClient
                     continue;
                 }
                 $this->recordResponse($spec, $psrResponse->getStatusCode(), $psrResponse->getHeaders());
+                $streamed = $this->streamedResponse($spec, $operation, $psrResponse->getStatusCode(), $psrResponse->getHeaderLine('Content-Type'), static fn () => $psrResponse->getBody());
+                if ($streamed !== null) {
+                    return $streamed;
+                }
                 if (Operation::allowsResponseBody($spec->method, $psrResponse->getStatusCode()) && $spec->succeeded($psrResponse->getStatusCode()) && ltrim(($spec->responseTypeFor($psrResponse->getStatusCode(), $psrResponse->getHeaderLine('Content-Type')) ?? ['type' => $spec->responseType])['type'] ?? '', '\\') === \Psr\Http\Message\ResponseInterface::class) {
                     return $psrResponse;
                 }
@@ -548,6 +557,10 @@ abstract class ApiClient
                     continue;
                 }
                 $this->recordResponse($spec, $response->status, $response->headers);
+                $streamed = $this->streamedResponse($spec, $operation, $response->status, $response->header('Content-Type'), static fn () => \GuzzleHttp\Psr7\Utils::streamFor($response->body));
+                if ($streamed !== null) {
+                    return $streamed;
+                }
                 if (Operation::allowsResponseBody($spec->method, $response->status) && $spec->succeeded($response->status) && ltrim(($spec->responseTypeFor($response->status, $response->header('Content-Type')) ?? ['type' => $spec->responseType])['type'] ?? '', '\\') === \Psr\Http\Message\ResponseInterface::class) {
                     return new \GuzzleHttp\Psr7\Response($response->status, $response->headers, $response->body);
                 }
@@ -576,6 +589,30 @@ abstract class ApiClient
     }
 
     /** @param array<array-key,mixed> $content Unvalidated nested metadata at the execution boundary. */
+    /**
+     * Lazy decoding for a successful response whose selected representation is jsonl, json-seq or sse.
+     * Returns null for every other response, which then follows the buffered paths.
+     *
+     * @param OperationSpec $operation
+     * @param \Closure(): \Psr\Http\Message\StreamInterface $stream
+     * @return \Generator<int, mixed>|null
+     */
+    private function streamedResponse(Operation $spec, array $operation, int $status, ?string $contentType, \Closure $stream): ?\Generator
+    {
+        if (!$spec->streamsResponse() || !Operation::allowsResponseBody($spec->method, $status) || !$spec->succeeded($status)) {
+            return null;
+        }
+        $entry = $spec->responseTypeFor($status, $contentType) ?? [
+            'type' => $spec->responseType,
+            'schemaNullable' => $spec->schemaNullable,
+            'encoding' => array_key_exists('responseEncoding', $operation) ? $spec->responseEncoding : 'json',
+        ];
+        if (!in_array($entry['encoding'] ?? 'json', Operation::STREAMING_ENCODINGS, true)) {
+            return null;
+        }
+        return \Dmorenof\SdkRuntime\Streaming\StreamDecoder::iterate($stream(), $entry, $spec->label . ' response');
+    }
+
     /** @param array<string, list<string>|string> $headers */
     private function recordResponse(Operation $spec, int $status, array $headers): void
     {

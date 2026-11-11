@@ -19,8 +19,9 @@ final class Hydrator
         if ($kind === 'stream') {
             if ($value === null && $nullable) { return null; }
             if (is_string($value)) { return $value; }
-            if ($value instanceof \Psr\Http\Message\StreamInterface && $value->isReadable() && $value->isSeekable()) { return $value; }
-            throw new \UnexpectedValueException("Expected binary string or readable seekable PSR stream at $where.");
+            // Non-seekable streams are sent once: retries, redirects and token replays need to rewind, so they skip them.
+            if ($value instanceof \Psr\Http\Message\StreamInterface && $value->isReadable()) { return $value; }
+            throw new \UnexpectedValueException("Expected binary string or readable PSR stream at $where.");
         }
         if (str_contains($kind, '|')) { return self::nativeUnion($value, explode('|', $kind), $nullable, $where); }
         $kind = match ($kind) {

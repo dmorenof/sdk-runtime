@@ -38,6 +38,10 @@ Application code and generated SDKs may rely on these classes: constructors, pub
 - `RetryPolicy`, `RedirectPolicy`, `RedirectException`.
 - `ResponseHeaders`, `ResponseInfo`.
 
+**Streaming**
+
+- `ServerSentEvent`: the value yielded by `text/event-stream` operations. `jsonl` and `json-seq` operations yield the declared item type.
+
 ### Operation metadata
 
 Generated SDKs describe each operation as an array that `Operation::fromArray()` turns into an `Operation`. This format is part of the contract between a generated SDK and the runtime:
@@ -58,7 +62,7 @@ Generated SDKs describe each operation as an array that `Operation::fromArray()`
 
 ## Tier 3: internal
 
-Everything tagged `@internal` is an implementation detail and may change or disappear in any release: `Hydrator`, `JsonHydrator`, `Serializer`, `SchemaValidator`, `QuerySerializer`, `FormSerializer`, `MultipartSerializer`, `Discriminator`, `MediaType`, `SecurityApplier`, plus individual members tagged `@internal` inside stable classes. Private members are never API.
+Everything tagged `@internal` is an implementation detail and may change or disappear in any release: `Hydrator`, `JsonHydrator`, `Serializer`, `SchemaValidator`, `QuerySerializer`, `FormSerializer`, `MultipartSerializer`, `Discriminator`, `MediaType`, `SecurityApplier`, `StreamDecoder`, `FormatValidator` (generator contract, see above), plus individual members tagged `@internal` inside stable classes. Private members are never API.
 
 ## What counts as a breaking change
 

@@ -84,12 +84,14 @@ class Dmorenof\SdkRuntime\OneOf extends Dmorenof\SdkRuntime\AnyOf
 
 final readonly class Dmorenof\SdkRuntime\Operation
     const public DEFAULTS
+    const public STREAMING_ENCODINGS
     method public __construct(string $method, string $path, ?string $label = NULL, array $security = array ( ), array $success = array ( 0 => 200, ), array $errors = array ( ), ?string $responseType = NULL, bool $schemaNullable = false, bool $noContentAllowed = false, array $validation = array ( ), ?string $serverUrl = NULL, array $querySerialization = array ( ), string $requestMediaType = 'application/json', array $bodySerialization = array ( ), array $bodyParts = array ( ), array $responseTypes = array ( ), array $pathSerialization = array ( ), array $headerSerialization = array ( ), array $queryAllowReserved = array ( ), array $parameterContent = array ( ), array $responseValidation = array ( ), ?array $requestBody = NULL, string $responseMediaType = 'application/json', array $errorResponses = array ( ), string $responseEncoding = 'json', array $responseHeaders = array ( ), array $servers = array ( ))
     method public errorResponseFor(int $status, ?string $contentType = NULL): ?array
     method public errorTypeFor(int $status): ?string
     method public responseHeadersFor(int $status): array
     method public responseTypeFor(int $status, ?string $contentType = NULL): ?array
     method public static fromArray(array $spec): self
+    method public streamsResponse(): bool
     method public succeeded(int $status): bool
     property public readonly ?array $requestBody
     property public readonly ?string $responseType
@@ -166,6 +168,14 @@ interface Dmorenof\SdkRuntime\Security\TokenStoreInterface
     method public get(string $key): ?Dmorenof\SdkRuntime\Security\OAuth2Token
     method public set(string $key, Dmorenof\SdkRuntime\Security\OAuth2Token $token): void
 
+final readonly class Dmorenof\SdkRuntime\Streaming\ServerSentEvent
+    method public __construct(string $event, string $data, ?string $id = NULL, ?int $retry = NULL, mixed $item = NULL)
+    property public readonly ?int $retry
+    property public readonly ?string $id
+    property public readonly mixed $item
+    property public readonly string $data
+    property public readonly string $event
+
 interface Dmorenof\SdkRuntime\Transport\HttpMiddlewareInterface
     method public afterResponse(Psr\Http\Message\RequestInterface $request, Psr\Http\Message\ResponseInterface $response): Psr\Http\Message\ResponseInterface
     method public beforeRequest(Psr\Http\Message\RequestInterface $request): Psr\Http\Message\RequestInterface
@@ -182,7 +192,7 @@ final class Dmorenof\SdkRuntime\Transport\Psr18Transport implements Dmorenof\Sdk
     method public __construct(Psr\Http\Client\ClientInterface $client, array $defaultHeaders = array ( ), ?Dmorenof\SdkRuntime\Transport\RetryPolicy $retryPolicy = NULL, ?Closure $sleeper = NULL, ?Dmorenof\SdkRuntime\Transport\RedirectPolicy $redirectPolicy = NULL)
     method public addMiddleware(Dmorenof\SdkRuntime\Transport\HttpMiddlewareInterface $middleware): void
     method public send(string $method, string $url, array $headers, Psr\Http\Message\StreamInterface|string|null $body): Dmorenof\SdkRuntime\Transport\HttpResponse
-    method public sendResponse(string $method, string $url, array $headers, Psr\Http\Message\StreamInterface|string|null $body): Psr\Http\Message\ResponseInterface
+    method public sendResponse(string $method, string $url, array $headers, Psr\Http\Message\StreamInterface|string|null $body, bool $stream = false): Psr\Http\Message\ResponseInterface
     method public setRedirectPolicy(?Dmorenof\SdkRuntime\Transport\RedirectPolicy $policy): void
     method public setRetryPolicy(?Dmorenof\SdkRuntime\Transport\RetryPolicy $policy): void
     property protected Psr\Http\Client\ClientInterface $client

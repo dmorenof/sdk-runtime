@@ -68,14 +68,19 @@ final class Psr18Transport implements TransportInterface
         return HttpResponse::fromPsr($this->sendResponse($method, $url, $headers, $body));
     }
 
-    /** @param array<string, string> $headers */
-    public function sendResponse(string $method, string $url, array $headers, string|StreamInterface|null $body): ResponseInterface
+    /**
+     * @param array<string, string> $headers
+     * @param bool $stream Do not buffer the response body: it is read incrementally from the returned stream.
+     *                     Honored by Guzzle clients (which then use their stream handler); other PSR-18 clients
+     *                     decide for themselves whether they buffer.
+     */
+    public function sendResponse(string $method, string $url, array $headers, string|StreamInterface|null $body, bool $stream = false): ResponseInterface
     {
         $request = new Request($method, $url, \Dmorenof\SdkRuntime\CookieHeader::merge($this->defaultHeaders, $headers), $body ?? '');
         $policy = $this->redirectPolicy ?? RedirectPolicy::none();
 
         for ($hop = 0;; $hop++) {
-            $response = $this->exchange($request);
+            $response = $this->exchange($request, $stream);
             $location = $response->getHeaderLine('Location');
             if (!$policy->follows($response->getStatusCode()) || $location === '') {
                 return $response;
@@ -93,7 +98,7 @@ final class Psr18Transport implements TransportInterface
     }
 
     /** One hop: middleware, send with retries, middleware. */
-    private function exchange(RequestInterface $request): ResponseInterface
+    private function exchange(RequestInterface $request, bool $stream): ResponseInterface
     {
         foreach ($this->middlewares as $middleware) {
             $request = $middleware->beforeRequest($request);
@@ -116,7 +121,7 @@ final class Psr18Transport implements TransportInterface
             try {
                 // PSR-18 returns non-2xx responses without throwing for status alone.
                 // Endpoint-specific code retains control of expected status checking.
-                $response = $this->client->sendRequest($request);
+                $response = $this->dispatch($request, $stream);
             } catch (NetworkExceptionInterface $e) {
                 if ($policy === null || !$canRetry || !$policy->retryNetworkErrors) {
                     throw $e;
@@ -142,6 +147,15 @@ final class Psr18Transport implements TransportInterface
             $response->getBody()->rewind();
         }
         return $response;
+    }
+
+    private function dispatch(RequestInterface $request, bool $stream): ResponseInterface
+    {
+        if ($stream && $this->client instanceof \GuzzleHttp\ClientInterface) {
+            // PSR-18 sendRequest() cannot carry options, and without "stream" Guzzle waits for the whole body.
+            return $this->client->send($request, ['stream' => true, 'http_errors' => false, 'allow_redirects' => false]);
+        }
+        return $this->client->sendRequest($request);
     }
 
     /**

@@ -64,7 +64,7 @@ Durante las fases 1 y 2, el SDK de Casafari generado sigue pasando como prueba d
 
 - [x] **Sin publicar —** Selección de representación de respuesta entre alternativas declaradas (`alternatives`, `MediaType`) con wildcards `type/*`, `*/*` y `application/*+json`; `Accept` generado desde todas las alternativas. Pendiente: elegir explícitamente el `Content-Type` de la **petición** entre alternativas, pesos q en `Accept` y emitir `alternatives` desde el generador.
 - [ ] Interfaz de códecs para modelos XML/CSV estructurados (hoy son strings opacos).
-- [ ] Entradas no seekables y garantías de streaming generales; errores binarios sin buffer completo.
+- [ ] **Parcial — Sin publicar:** cuerpos crudos no seekables (un solo envío) y respuestas en streaming con generadores perezosos. Faltan los errores binarios sin buffer completo, entradas multipart no seekables y la reconexión automática de SSE.
 - [ ] Transcodificación de charsets.
 
 ## 4. [P1] Servidores
@@ -85,7 +85,7 @@ Durante las fases 1 y 2, el SDK de Casafari generado sigue pasando como prueba d
 
 ## 5b. [P2] Funciones avanzadas
 
-- [ ] Streaming `text/event-stream` (SSE), `application/jsonl` y `application/json-seq`.
+- [x] **Sin publicar —** Streaming `text/event-stream` (SSE), `application/jsonl` y `application/json-seq` como `Generator` perezoso (`encoding` `sse`/`jsonl`/`json-seq`, `ServerSentEvent`). Pendiente en el generador: emitir esos `encoding` y el tipo de retorno `Generator`.
 - [ ] Método HTTP `QUERY` y métodos adicionales.
 - [ ] Multipart secuencial (`itemSchema`/`itemEncoding`).
 - [ ] Cookies estructuradas/JSON y arrays/objetos en cookies.

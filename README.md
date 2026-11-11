@@ -113,6 +113,31 @@ The first server is the default. Variables a server does not declare are ignored
 
 `format` is an annotation unless a rule asks for it: `'format' => 'date-time'` (also `date`, `time`, `duration`, `email`, `hostname`, `ipv4`, `ipv6`, `uri`, `uuid`, `json-pointer`, `regex`, `byte`, `int32`, `int64`, ...) asserts it, and unknown or inapplicable formats never fail. It checks text only and does not convert to PHP classes. See [docs/FORMATS.md](docs/FORMATS.md).
 
+## Streaming (unreleased)
+
+**Request bodies.** A raw `text/plain` or `application/octet-stream` body may be any readable PSR-7 stream, including a non-seekable one (a pipe, a socket, a generator-backed stream). It is sent once: retries, redirects and token replays need to rewind the body, so they are skipped for non-seekable streams. Multipart file uploads still require seekable streams.
+
+**Response bodies.** A success representation may declare a streaming `encoding`; the operation then returns a lazy `\Generator` instead of a decoded value:
+
+| `encoding` | Media types | Yields |
+| --- | --- | --- |
+| `jsonl` | `application/jsonl`, `application/x-ndjson` | one hydrated item per line (keys `0, 1, ...`) |
+| `json-seq` | `application/json-seq` (RFC 7464) | one hydrated item per record |
+| `sse` | `text/event-stream` | `ServerSentEvent` (`event`, `data`, `id`, `retry`, and `item` when a `type` is declared) |
+
+~~~php
+foreach ($client->users() as $user) {   // application/jsonl, one User per line
+    // handled as it arrives
+}
+foreach ($client->events() as $event) { // text/event-stream
+    echo $event->event, ': ', $event->data, "\n";
+}
+~~~
+
+Items are read in chunks as the loop advances, validated with the declared type and rules, and the response stream is closed when the generator finishes or is destroyed (break out of the loop to stop early). A single line or record may not exceed 1 MiB. Error statuses are never streamed: they are buffered and raise `ApiException` as usual. `Accept` is built from the declared media types.
+
+For the transport, a Guzzle client is called with `stream => true` so it does not wait for the whole body; any other PSR-18 client decides for itself whether it buffers, so an endless `text/event-stream` needs a client that streams. Middleware must not consume a streaming body. Guzzle's read timeout (`default_socket_timeout`, 60 s) applies between chunks, so a quiet event stream needs it raised. Automatic reconnection with `Last-Event-ID` is not part of this runtime: use the `id`/`retry` of the events to reconnect yourself.
+
 ## Development
 
 Use PHP 8.3+ and Composer 2:
@@ -308,7 +333,7 @@ published installation smoke also read two 32 MiB multipart requests in chunks
 under that limit. These measurements describe the tested upload path. String
 inputs are already in memory, legacy custom transports buffer, middleware or an
 injected HTTP client can buffer, and response bodies are still collected as
-strings. Non-seekable inputs and general streaming responses remain outside this feature;
+strings. Non-seekable multipart uploads remain outside this feature;
 binary lists are added in v0.14.0.
 
 
@@ -521,8 +546,9 @@ Native requestBody metadata may use `encoding: text` for text/plain or
 string constraints. Binary accepts strings or readable seekable PSR-7 streams
 without custom stream wrappers. PSR-18 preserves the stream and rewinds it;
 legacy custom transports retain their string fallback. The installed smoke
-uploads 32 MiB under a PHP 16 MiB memory limit. Binary constraints and
-non-seekable input remain explicitly unsupported.
+uploads 32 MiB under a PHP 16 MiB memory limit. Binary body constraints
+remain unsupported; non-seekable streams are accepted and sent once (see
+"Streaming").
 
 Single responses may set responseMediaType to text/plain; per-status entries may
 set mediaType. They hydrate raw strings rather than decoding JSON. JSON, text,

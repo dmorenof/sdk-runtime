@@ -14,7 +14,7 @@ use Psr\Http\Message\StreamInterface;
  *
  * @internal Implementation detail: not covered by the backward-compatibility promise (see docs/PUBLIC_API.md).
  *
- * @phpstan-import-type Representation from \Dmorenof\SdkRuntime\Operation
+ * @phpstan-type Entry array{type:?string,schemaNullable:bool,rules?:array<string,mixed>,mediaType?:string,encoding?:string}
  */
 final class StreamDecoder
 {
@@ -24,7 +24,7 @@ final class StreamDecoder
     private const int CHUNK = 8192;
 
     /**
-     * @param Representation $entry
+     * @param Entry $entry
      * @return \Generator<int, mixed>
      */
     public static function iterate(StreamInterface $stream, array $entry, string $where): \Generator
@@ -131,7 +131,7 @@ final class StreamDecoder
      * One hydrated item per non-blank record, keyed 0, 1, 2...
      *
      * @param iterable<string> $records
-     * @param Representation $entry
+     * @param Entry $entry
      * @return \Generator<int, mixed>
      */
     private static function items(iterable $records, array $entry, string $where): \Generator
@@ -150,7 +150,7 @@ final class StreamDecoder
      * HTML Living Standard "Server-sent events" parsing: comments are ignored, `data` lines are joined
      * with a newline, `id` persists until changed, and an event still incomplete at the end is discarded.
      *
-     * @param Representation $entry
+     * @param Entry $entry
      * @return \Generator<int, ServerSentEvent>
      */
     private static function sse(StreamInterface $stream, array $entry, string $where): \Generator
@@ -212,7 +212,7 @@ final class StreamDecoder
         }
     }
 
-    /** @param Representation $entry */
+    /** @param Entry $entry */
     private static function item(string $json, array $entry, string $where): mixed
     {
         if ($entry['type'] === null) {

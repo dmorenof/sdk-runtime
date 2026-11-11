@@ -560,7 +560,7 @@ abstract class ApiClient
      * its token is renewed and the request replayed once, when the body can be sent again.
      *
      * @param OperationSpec $operation
-     * @param array<string,mixed> $query
+     * @param array<string,scalar|list<scalar>|DTO|Map|TypedArray|\stdClass|null> $query
      * @param array<string,string> $headers
      * @return \Generator<int, mixed>|ResponseInterface|HttpResponse A lazy stream of items, a raw PSR-7 response
      *         the operation hands over as it is, or the buffered response that decodeResponse() turns into a value.
@@ -592,7 +592,7 @@ abstract class ApiClient
                 $contentType = $buffered->header('Content-Type');
             }
             if ($attempt === 0 && $providers !== [] && $replayable && $status === 401 && !$spec->succeeded(401)) {
-                foreach ($providers as $provider) {
+                foreach ($providers ?? [] as $provider) {
                     $provider->invalidate();
                 }
                 continue;
@@ -616,6 +616,7 @@ abstract class ApiClient
      * @param array<string,scalar|list<scalar>|DTO|Map|TypedArray|\stdClass|null> $query
      * @param array<string,string> $securityQuery Credentials sent as query parameters.
      * @param string|null $baseUrl Resolved on first use and then kept for the replay.
+     * @param-out string $baseUrl
      */
     private function requestUrl(Operation $spec, string $path, array $query, array $securityQuery, ?string &$baseUrl): string
     {
@@ -677,7 +678,7 @@ abstract class ApiClient
         return $result;
     }
 
-    /** @param array<string, array<string>|string> $headers */
+    /** @param array<array-key, array<string>|string> $headers */
     private function recordResponse(Operation $spec, int $status, array $headers): void
     {
         $this->lastResponse = new \Dmorenof\SdkRuntime\Transport\ResponseInfo(

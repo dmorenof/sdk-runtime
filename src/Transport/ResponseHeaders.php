@@ -24,7 +24,7 @@ final readonly class ResponseHeaders
     private array $declared;
 
     /**
-     * @param array<string, array<string>|string> $headers As returned by PSR-7 getHeaders(); strings are one value.
+     * @param array<array-key, array<string>|string> $headers As returned by PSR-7 getHeaders(); strings are one value.
      * @param array<string, array<string, mixed>> $declared Header name => declared type, as generated for the selected status; validated here.
      */
     public function __construct(array $headers = [], array $declared = [])

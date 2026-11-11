@@ -58,8 +58,9 @@ final class FormatValidator
      */
     public static function asserted(): array
     {
-        /** @var array<string, mixed> $strings */
-        $strings = self::resolver()->__serialize()['formats']['string'] ?? [];
+        /** @var array{formats?: array{string?: array<string, mixed>}} $state */
+        $state = self::resolver()->__serialize();
+        $strings = $state['formats']['string'] ?? [];
         $names = array_keys($strings);
         $names = array_merge($names, array_keys(self::INTEGER_RANGES), ['byte']);
         sort($names);

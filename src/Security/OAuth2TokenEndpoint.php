@@ -73,7 +73,7 @@ final class OAuth2TokenEndpoint
 
     public function now(): int
     {
-        return $this->clock !== null ? ($this->clock)() : time();
+        return $this->clock !== null ? (int) ($this->clock)() : time();
     }
 
     /**

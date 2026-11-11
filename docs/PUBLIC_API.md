@@ -31,6 +31,7 @@ Application code and generated SDKs may rely on these classes: constructors, pub
 
 - `SecurityCredentials`, `BasicAuthCredentials`.
 - `TokenProviderInterface`, `TokenStoreInterface`, `InMemoryTokenStore`, `OAuth2Token`, `OAuth2ClientCredentials`.
+- `OAuth2AuthorizationCode` (authorization code with PKCE), `AuthorizationRequest`, `OAuth2Exception`, `ReauthorizationRequiredException`.
 
 **Transport**
 
@@ -62,7 +63,7 @@ Generated SDKs describe each operation as an array that `Operation::fromArray()`
 
 ## Tier 3: internal
 
-Everything tagged `@internal` is an implementation detail and may change or disappear in any release: `Hydrator`, `JsonHydrator`, `Serializer`, `SchemaValidator`, `QuerySerializer`, `FormSerializer`, `MultipartSerializer`, `Discriminator`, `MediaType`, `SecurityApplier`, `StreamDecoder`, `FormatValidator` (generator contract, see above), plus individual members tagged `@internal` inside stable classes. Private members are never API.
+Everything tagged `@internal` is an implementation detail and may change or disappear in any release: `Hydrator`, `JsonHydrator`, `Serializer`, `SchemaValidator`, `QuerySerializer`, `FormSerializer`, `MultipartSerializer`, `Discriminator`, `MediaType`, `SecurityApplier`, `Pkce`, `OAuth2TokenEndpoint`, `StreamDecoder`, `FormatValidator` (generator contract, see above), plus individual members tagged `@internal` inside stable classes. Private members are never API.
 
 ## What counts as a breaking change
 

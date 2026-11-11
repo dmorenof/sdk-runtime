@@ -129,6 +129,14 @@ class Dmorenof\SdkRuntime\Response extends Dmorenof\SdkRuntime\DTO
     method public jsonSerialize(): object
     method public validate(): void
 
+final readonly class Dmorenof\SdkRuntime\Security\AuthorizationRequest
+    method public __construct(string $url, string $state, string $codeVerifier, int $expiresAt)
+    method public __debugInfo(): array
+    property public readonly int $expiresAt
+    property public readonly string $codeVerifier
+    property public readonly string $state
+    property public readonly string $url
+
 final readonly class Dmorenof\SdkRuntime\Security\BasicAuthCredentials
     method public __construct(string $username, string $password)
     method public __debugInfo(): array
@@ -140,11 +148,23 @@ final class Dmorenof\SdkRuntime\Security\InMemoryTokenStore implements Dmorenof\
     method public get(string $key): ?Dmorenof\SdkRuntime\Security\OAuth2Token
     method public set(string $key, Dmorenof\SdkRuntime\Security\OAuth2Token $token): void
 
+final class Dmorenof\SdkRuntime\Security\OAuth2AuthorizationCode implements Dmorenof\SdkRuntime\Security\TokenProviderInterface
+    method public __construct(string $authorizationUrl, string $tokenUrl, string $clientId, string $redirectUri, Psr\Http\Client\ClientInterface $http, ?string $clientSecret = NULL, array $scopes = array ( ), ?Dmorenof\SdkRuntime\Security\TokenStoreInterface $store = NULL, string $subject = '', ?string $issuer = NULL, bool $credentialsInBody = false, int $requestLifetime = 600, int $leeway = 30, ?Closure $clock = NULL)
+    method public __debugInfo(): array
+    method public accessToken(): string
+    method public complete(Dmorenof\SdkRuntime\Security\AuthorizationRequest $request, array $callback): Dmorenof\SdkRuntime\Security\OAuth2Token
+    method public forget(): void
+    method public invalidate(): void
+    method public isAuthorized(): bool
+    method public start(array $extra = array ( )): Dmorenof\SdkRuntime\Security\AuthorizationRequest
+
 final class Dmorenof\SdkRuntime\Security\OAuth2ClientCredentials implements Dmorenof\SdkRuntime\Security\TokenProviderInterface
     method public __construct(string $tokenUrl, string $clientId, string $clientSecret, Psr\Http\Client\ClientInterface $http, array $scopes = array ( ), ?Dmorenof\SdkRuntime\Security\TokenStoreInterface $store = NULL, bool $credentialsInBody = false, int $leeway = 30, ?Closure $clock = NULL)
     method public __debugInfo(): array
     method public accessToken(): string
     method public invalidate(): void
+
+class Dmorenof\SdkRuntime\Security\OAuth2Exception extends RuntimeException
 
 final readonly class Dmorenof\SdkRuntime\Security\OAuth2Token
     method public __construct(string $accessToken, ?int $expiresAt = NULL, ?string $refreshToken = NULL)
@@ -153,6 +173,8 @@ final readonly class Dmorenof\SdkRuntime\Security\OAuth2Token
     property public readonly ?int $expiresAt
     property public readonly ?string $refreshToken
     property public readonly string $accessToken
+
+final class Dmorenof\SdkRuntime\Security\ReauthorizationRequiredException extends Dmorenof\SdkRuntime\Security\OAuth2Exception
 
 final readonly class Dmorenof\SdkRuntime\Security\SecurityCredentials
     method public __construct(array $credentials = array ( ))

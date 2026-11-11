@@ -44,7 +44,7 @@ Durante las fases 1 y 2, el SDK de Casafari generado sigue pasando como prueba d
 - [x] **Sin publicar —** OAuth2 `clientCredentials` con obtención de token, Basic o body, scopes y caché (`OAuth2ClientCredentials`).
 - [x] **Sin publicar —** Interfaz de almacén de tokens inyectable (`TokenStoreInterface`, memoria por defecto) y expiración con margen.
 - [x] **Sin publicar —** Renovación con `refresh_token` y un único reintento tras 401. Pendiente: `refreshUrl` distinto del `tokenUrl`.
-- [ ] OAuth2 `authorizationCode` con PKCE (utilidades del flujo; la interacción con el usuario queda fuera).
+- [x] **Sin publicar —** OAuth2 `authorizationCode` con PKCE S256 (`OAuth2AuthorizationCode`): URL de autorización, `state`, errores, issuer (RFC 9207), intercambio del código, renovación con rotación y reautorización explícita. La redirección del navegador queda en la aplicación. Pendiente: DPoP, PAR y device authorization.
 - [ ] OAuth2 `password` e `implicit` solo por compatibilidad heredada.
 - [ ] OpenID Connect y descubrimiento de configuración.
 - [ ] Scopes: asociación y comprobación.

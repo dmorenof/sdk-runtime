@@ -138,6 +138,40 @@ Items are read in chunks as the loop advances, validated with the declared type 
 
 For the transport, a Guzzle client is called with `stream => true` so it does not wait for the whole body; any other PSR-18 client decides for itself whether it buffers, so an endless `text/event-stream` needs a client that streams. Middleware must not consume a streaming body. Guzzle's read timeout (`default_socket_timeout`, 60 s) applies between chunks, so a quiet event stream needs it raised. Automatic reconnection with `Last-Event-ID` is not part of this runtime: use the `id`/`retry` of the events to reconnect yourself.
 
+## OAuth2 authorization code with PKCE (unreleased)
+
+For apps that act on behalf of a signed-in user. The runtime does the protocol; redirecting the browser is yours.
+
+~~~php
+use Dmorenof\SdkRuntime\Security\OAuth2AuthorizationCode;
+
+$flow = new OAuth2AuthorizationCode(
+    authorizationUrl: 'https://auth.example.com/authorize',
+    tokenUrl: 'https://auth.example.com/token',
+    clientId: $clientId,
+    redirectUri: 'https://app.example.com/callback',
+    http: new \GuzzleHttp\Client(),
+    clientSecret: null,                // null for a public client; PKCE protects it
+    scopes: ['read'],
+    store: $tokenStore,                // TokenStoreInterface shared across requests
+    subject: (string) $user->id,       // tokens belong to one user
+);
+
+// 1. Start: keep the request in the session and send the browser to its URL.
+$request = $flow->start(['audience' => 'https://api.example.com']);
+$_SESSION['oauth'] = [$request->state, $request->codeVerifier, $request->expiresAt];
+header('Location: ' . $request->url);
+
+// 2. Callback (the redirect URI): verifies state, error and issuer, then exchanges the code.
+[$state, $verifier, $expiresAt] = $_SESSION['oauth'];
+$flow->complete(new AuthorizationRequest('', $state, $verifier, $expiresAt), $_GET);
+
+// 3. Use it like any bearer token; it renews itself and replays once after a 401.
+$client = Client::connect($baseUrl, securityCredentials: new SecurityCredentials(['OAuth' => $flow]));
+~~~
+
+`accessToken()` raises `ReauthorizationRequiredException` when there is no token or it cannot be renewed: send the user through step 1 again. Use `forget()` to sign out. The verifier is a secret (session only, never the URL or logs); the state is checked in constant time; an authorization server error surfaces as its error code only. Endpoint URLs must be https (http only for localhost); redirect URIs may also be a private-use scheme such as `com.example.app:/callback` for native apps. If the server supports RFC 9207, pass `issuer:` so a callback from another server is refused.
+
 ## Development
 
 Use PHP 8.3+ and Composer 2:

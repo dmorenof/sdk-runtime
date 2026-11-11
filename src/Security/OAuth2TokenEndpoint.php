@@ -24,6 +24,7 @@ final class OAuth2TokenEndpoint
     /**
      * @param ?string $clientSecret Null for a public client (id in the body, no secret).
      * @param bool $credentialsInBody Send client_id/client_secret in the form body instead of HTTP Basic.
+     * @param (\Closure(): int)|null $clock Current Unix time; tests inject a fixed one.
      */
     public function __construct(
         public readonly string $tokenUrl,
@@ -73,7 +74,7 @@ final class OAuth2TokenEndpoint
 
     public function now(): int
     {
-        return $this->clock !== null ? (int) ($this->clock)() : time();
+        return $this->clock !== null ? ($this->clock)() : time();
     }
 
     /**

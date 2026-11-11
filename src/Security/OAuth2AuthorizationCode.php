@@ -30,6 +30,7 @@ final class OAuth2AuthorizationCode extends CachedTokenProvider
      * @param ?string $issuer When set, the callback must carry a matching `iss` parameter (RFC 9207).
      * @param int $requestLifetime Seconds a started flow stays valid.
      * @param int $leeway Seconds before expiry at which a token is already considered stale.
+     * @param (\Closure(): int)|null $clock Current Unix time; tests inject a fixed one.
      */
     public function __construct(
         private readonly string $authorizationUrl,

@@ -16,6 +16,7 @@ final class OAuth2ClientCredentials extends CachedTokenProvider
      * @param list<string> $scopes
      * @param bool $credentialsInBody Send client_id/client_secret in the form body instead of HTTP Basic.
      * @param int $leeway Seconds before expiry at which a token is already considered stale.
+     * @param (\Closure(): int)|null $clock Current Unix time; tests inject a fixed one.
      */
     public function __construct(
         private readonly string $tokenUrl,

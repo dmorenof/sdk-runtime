@@ -4,7 +4,8 @@ declare(strict_types=1);
 namespace Dmorenof\SdkRuntime\Transport;
 
 /**
- * How the PSR-18 transport follows 3xx responses. Defaults mirror common client behavior
+ * How the PSR-18 transport follows 3xx responses when a policy is set; without one redirects are not followed.
+ * The defaults of this class mirror common client behavior
  * (up to 5 hops, 301/302/303 turn POST into GET, 307/308 keep method and body) with
  * safeguards: no https to http downgrade, and only a safe header allowlist crosses origins
  * so credentials never leak to another host.

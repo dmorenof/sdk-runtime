@@ -61,11 +61,12 @@ Generated SDKs declare `responseHeaders` per status in the operation metadata; u
 ~~~php
 use Dmorenof\SdkRuntime\Transport\RedirectPolicy;
 
-$client->withRedirectPolicy(RedirectPolicy::none());              // inspect the 3xx yourself
+$client->withRedirectPolicy(new RedirectPolicy());                 // follow up to 5 redirects
 $client->withRedirectPolicy(new RedirectPolicy(maxRedirects: 2, followCrossOrigin: false));
+$client->withRedirectPolicy(null);                                // default: return the 3xx
 ~~~
 
-By default up to five redirects are followed. A redirect to another origin drops every request header except a safe allowlist (`Accept`, `Accept-Encoding`, `Accept-Language`, `User-Agent`, `Content-Type`), so credentials never leak, and https→http downgrades are refused with a `RedirectException`. The policy applies when the PSR-18 client does not follow redirects itself; the default Guzzle client is built that way.
+By default redirects are **not** followed: the 3xx response is returned (and surfaces as an `ApiException` unless declared), exactly as before. With `new RedirectPolicy()` up to five are followed. A redirect to another origin drops every request header except a safe allowlist (`Accept`, `Accept-Encoding`, `Accept-Language`, `User-Agent`, `Content-Type`), so credentials never leak, and https→http downgrades are refused with a `RedirectException`. Guzzle's PSR-18 `sendRequest()` never follows redirects, so the policy applies to Guzzle clients too; a custom PSR-18 client that follows them itself bypasses it.
 
 ## Representation selection (unreleased)
 

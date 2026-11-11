@@ -31,7 +31,7 @@ final class Psr18Transport implements TransportInterface
     /**
      * @param array<string, string> $defaultHeaders
      * @param ?\Closure(int): void $sleeper Replaces the default millisecond sleep (useful in tests).
-     * @param ?RedirectPolicy $redirectPolicy Null follows up to 5 redirects with the safe defaults. The client must not follow redirects itself for the policy to apply.
+     * @param ?RedirectPolicy $redirectPolicy Null never follows redirects (the 3xx response is returned), as before this policy existed. Guzzle's PSR-18 sendRequest() never follows them either, so this policy decides.
      */
     public function __construct(
         protected ClientInterface $client,
@@ -72,7 +72,7 @@ final class Psr18Transport implements TransportInterface
     public function sendResponse(string $method, string $url, array $headers, string|StreamInterface|null $body): ResponseInterface
     {
         $request = new Request($method, $url, \Dmorenof\SdkRuntime\CookieHeader::merge($this->defaultHeaders, $headers), $body ?? '');
-        $policy = $this->redirectPolicy ?? new RedirectPolicy();
+        $policy = $this->redirectPolicy ?? RedirectPolicy::none();
 
         for ($hop = 0;; $hop++) {
             $response = $this->exchange($request);

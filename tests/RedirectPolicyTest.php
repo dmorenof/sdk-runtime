@@ -48,7 +48,7 @@ final class RedirectPolicyTest extends TestCase
 
     private function send(object $http, string $method, string $url, array $headers = [], mixed $body = null, ?RedirectPolicy $policy = null): ResponseInterface
     {
-        return (new Psr18Transport($http, [], redirectPolicy: $policy))->sendResponse($method, $url, $headers, $body);
+        return (new Psr18Transport($http, [], redirectPolicy: $policy ?? new RedirectPolicy()))->sendResponse($method, $url, $headers, $body);
     }
 
     public function testFollowsRelativeAndAbsoluteLocations(): void
@@ -242,7 +242,7 @@ final class RedirectPolicyTest extends TestCase
                 return $response;
             }
         };
-        $transport = new Psr18Transport($http);
+        $transport = new Psr18Transport($http, redirectPolicy: new RedirectPolicy());
         $transport->addMiddleware($middleware);
 
         $transport->sendResponse('GET', 'https://api.example.com/a', [], null);
@@ -256,21 +256,30 @@ final class RedirectPolicyTest extends TestCase
         new RedirectPolicy(maxRedirects: -1);
     }
 
-    public function testApiClientFollowsRedirectsByDefaultAndCanOptOut(): void
+    public function testRedirectsAreNotFollowedUnlessEnabled(): void
     {
-        $http = $this->http([self::redirect(302, '/pong'), new Response(200, [], '')]);
-        $client = TestClient::connect('https://api.example.com', httpClient: $http);
-        $client->ping();
-        self::assertCount(2, $http->requests);
-
         $http = $this->http([self::redirect(302, '/pong')]);
-        $client = TestClient::connect('https://api.example.com', httpClient: $http)->withRedirectPolicy(RedirectPolicy::none());
+        $client = TestClient::connect('https://api.example.com', httpClient: $http);
         try {
             $client->ping();
             self::fail('Expected ApiException.');
         } catch (ApiException) {
+            self::assertCount(1, $http->requests);
             self::assertSame(302, $client->lastResponse()?->status);
             self::assertSame('/pong', $client->lastResponse()->headers->first('Location'));
         }
+
+        $transport = new Psr18Transport($this->http([self::redirect(302, '/x')]));
+        self::assertSame(302, $transport->sendResponse('GET', 'https://api.example.com/a', [], null)->getStatusCode());
+    }
+
+    public function testApiClientFollowsRedirectsWhenOptedIn(): void
+    {
+        $http = $this->http([self::redirect(302, '/pong'), new Response(200, [], '')]);
+        $client = TestClient::connect('https://api.example.com', httpClient: $http)->withRedirectPolicy(new RedirectPolicy());
+
+        $client->ping();
+
+        self::assertCount(2, $http->requests);
     }
 }

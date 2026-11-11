@@ -54,7 +54,7 @@ Durante las fases 1 y 2, el SDK de Casafari generado sigue pasando como prueba d
 ## 2. [P0] Respuesta y transporte
 
 - [x] **Sin publicar —** Acceso tipado a cabeceras de respuesta declaradas (`ApiClient::lastResponse()`, `ResponseHeaders`, metadato `responseHeaders`) y `Set-Cookie`. Pendiente en el generador: emitir `responseHeaders` desde `responses[*].headers`.
-- [x] **Sin publicar —** Política configurable de redirecciones `3xx` (`RedirectPolicy`, `withRedirectPolicy()`): límites, cambio de método, reenvío de cuerpo, cabeceras seguras entre orígenes y rechazo de downgrade.
+- [x] **Sin publicar —** Política configurable de redirecciones `3xx`, opt-in y sin seguir por defecto como en 0.31 (`RedirectPolicy`, `withRedirectPolicy()`): límites, cambio de método, reenvío de cuerpo, cabeceras seguras entre orígenes y rechazo de downgrade.
 - [ ] Reintentos y backoff para 429/5xx y errores de red, con respeto de `Retry-After`; desactivados por defecto.
 - [ ] Timeouts y opciones de transporte documentados y configurables por cliente.
 - [ ] **Parcial — Respuestas sin contenido:** estados explícitos cubiertos; faltan políticas para HEAD/205 y combinaciones restantes.

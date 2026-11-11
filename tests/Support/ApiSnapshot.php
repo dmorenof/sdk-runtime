@@ -87,15 +87,15 @@ final class ApiSnapshot
             $lines[] = 'property ' . self::visibility($property)
                 . ($property->isStatic() ? ' static' : '')
                 . ($property->isReadOnly() ? ' readonly' : '')
-                . ($property->getType() !== null ? ' ' . $property->getType() : '')
+                . ($property->getType() !== null ? ' ' . self::type((string) $property->getType(), $class) : '')
                 . ' $' . $property->getName();
         }
         foreach ($class->getMethods() as $method) {
             if (!self::listed($class, $method) || self::internal($method->getDocComment())) {
                 continue;
             }
-            $params = array_map(static function (\ReflectionParameter $p): string {
-                $text = ($p->getType() !== null ? $p->getType() . ' ' : '') . ($p->isPassedByReference() ? '&' : '') . ($p->isVariadic() ? '...' : '') . '$' . $p->getName();
+            $params = array_map(static function (\ReflectionParameter $p) use ($class): string {
+                $text = ($p->getType() !== null ? self::type((string) $p->getType(), $class) . ' ' : '') . ($p->isPassedByReference() ? '&' : '') . ($p->isVariadic() ? '...' : '') . '$' . $p->getName();
                 if ($p->isDefaultValueAvailable()) {
                     $text .= ' = ' . ($p->isDefaultValueConstant() ? (string) $p->getDefaultValueConstantName()
                         : (string) preg_replace('/\s+/', ' ', var_export($p->getDefaultValue(), true)));
@@ -107,7 +107,7 @@ final class ApiSnapshot
                 . ($method->isFinal() ? ' final' : '')
                 . ($method->isAbstract() && !$class->isInterface() ? ' abstract' : '')
                 . ' ' . $method->getName() . '(' . implode(', ', $params) . ')'
-                . ($method->hasReturnType() ? ': ' . $method->getReturnType() : '');
+                . ($method->hasReturnType() ? ': ' . self::type((string) $method->getReturnType(), $class) : '');
         }
         sort($lines);
         return $lines;
@@ -119,6 +119,13 @@ final class ApiSnapshot
      *
      * @param \ReflectionClass<object> $class
      */
+    /** PHP 8.5 reflects `self` as the class name; render both the same so the snapshot does not depend on the PHP version. */
+    private static function type(string $type, \ReflectionClass $class): string
+    {
+        $name = preg_quote($class->getName(), '/');
+        return (string) preg_replace('/(?<![\\w\\\\])' . $name . '(?![\\w\\\\])/', 'self', $type);
+    }
+
     private static function listed(\ReflectionClass $class, \ReflectionClassConstant|\ReflectionProperty|\ReflectionMethod $member): bool
     {
         if ($member->isPrivate() || ($member->isProtected() && $class->isFinal())) {

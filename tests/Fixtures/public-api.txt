@@ -17,7 +17,7 @@ abstract class Dmorenof\SdkRuntime\ApiClient
     method protected executeOperation(array $operation, array $pathParameters = array ( ), array $queryParameters = array ( ), array $headerParameters = array ( ), ?Dmorenof\SdkRuntime\DTO $body = NULL): mixed
     method public final __construct(string $baseUrl, ?Psr\Http\Client\ClientInterface $httpClient = NULL, array $headers = array ( ), ?Dmorenof\SdkRuntime\Security\SecurityCredentials $securityCredentials = NULL, ?Dmorenof\SdkRuntime\Transport\TransportInterface $transport = NULL, array $serverOverrides = array ( ))
     method public lastResponse(): ?Dmorenof\SdkRuntime\Transport\ResponseInfo
-    method public resource(string $type): Dmorenof\SdkRuntime\ApiClient
+    method public resource(string $type): self
     method public static connect(string $baseUrl, ?Psr\Http\Client\ClientInterface $httpClient = NULL, array $headers = array ( ), ?Dmorenof\SdkRuntime\Security\SecurityCredentials $securityCredentials = NULL, ?Dmorenof\SdkRuntime\Transport\TransportInterface $transport = NULL, array $serverOverrides = array ( )): static
     method public static serverUrl(string|int $server = 0, array $variables = array ( )): string
     method public useServer(string|int|null $server): static

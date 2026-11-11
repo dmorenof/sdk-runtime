@@ -148,6 +148,7 @@ abstract class ApiClient
                 throw new \InvalidArgumentException('Server variables map nonempty names to string values.');
             }
         }
+        /** @var array<string,string> $values */
         $this->serverVariables = $values + $this->serverVariables;
         return $this;
     }
@@ -578,18 +579,18 @@ abstract class ApiClient
             SecurityApplier::apply($this->securityCredentials, $spec->security, static::SECURITY_SCHEMES, $attemptHeaders, $securityQuery, $providers);
             $url = $this->requestUrl($spec, $path, $query, $securityQuery, $baseUrl);
 
-            $psr = $buffered = null; // exactly one is set: the PSR-18 adapter answers with PSR-7, legacy transports with HttpResponse
+            // The PSR-18 adapter answers with PSR-7; legacy transports answer with a buffered HttpResponse.
             if ($this->transport instanceof Psr18Transport) {
-                $psr = $this->transport->sendResponse($spec->method, $url, $attemptHeaders, $bodyBytes, $streaming);
-                $status = $psr->getStatusCode();
-                $wireHeaders = $psr->getHeaders();
-                $contentType = $psr->getHeaderLine('Content-Type');
+                $raw = $this->transport->sendResponse($spec->method, $url, $attemptHeaders, $bodyBytes, $streaming);
+                $status = $raw->getStatusCode();
+                $wireHeaders = $raw->getHeaders();
+                $contentType = $raw->getHeaderLine('Content-Type');
             } else {
-                $buffered = $this->transport->send($spec->method, $url, $attemptHeaders,
+                $raw = $this->transport->send($spec->method, $url, $attemptHeaders,
                     $bodyBytes instanceof \Psr\Http\Message\StreamInterface ? (string) $bodyBytes : $bodyBytes);
-                $status = $buffered->status;
-                $wireHeaders = $buffered->headers;
-                $contentType = $buffered->header('Content-Type');
+                $status = $raw->status;
+                $wireHeaders = $raw->headers;
+                $contentType = $raw->header('Content-Type');
             }
             if ($attempt === 0 && $providers !== [] && $replayable && $status === 401 && !$spec->succeeded(401)) {
                 foreach ($providers ?? [] as $provider) {
@@ -602,13 +603,13 @@ abstract class ApiClient
             if (Operation::allowsResponseBody($spec->method, $status) && $spec->succeeded($status)) {
                 $entry = $spec->responseTypeFor($status, $contentType) ?? self::legacyResponse($spec, $operation);
                 if ($streaming && Operation::isStreamingEncoding($entry['encoding'] ?? 'json')) {
-                    return StreamDecoder::iterate($psr?->getBody() ?? Utils::streamFor((string) $buffered?->body), $entry, $spec->label . ' response');
+                    return StreamDecoder::iterate($raw instanceof ResponseInterface ? $raw->getBody() : Utils::streamFor($raw->body), $entry, $spec->label . ' response');
                 }
                 if (ltrim((string) $entry['type'], '\\') === ResponseInterface::class) {
-                    return $psr ?? new PsrResponse($status, $buffered->headers, $buffered->body);
+                    return $raw instanceof ResponseInterface ? $raw : new PsrResponse($status, $raw->headers, $raw->body);
                 }
             }
-            return $psr !== null ? HttpResponse::fromPsr($psr) : $buffered;
+            return $raw instanceof ResponseInterface ? HttpResponse::fromPsr($raw) : $raw;
         }
     }
 

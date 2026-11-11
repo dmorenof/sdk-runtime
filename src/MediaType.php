@@ -13,7 +13,7 @@ namespace Dmorenof\SdkRuntime;
  */
 final class MediaType
 {
-    private const string TOKEN = "[!#$%&'*+.^_`|~a-z0-9-]+";
+    private const string TOKEN = "[!#$%&'*+.^_`|\~a-z0-9-]+"; // the ~ is escaped: patterns here use it as delimiter
 
     /** Lower-cased `type/subtype` without parameters, or null when it is not a media type. */
     public static function normalize(?string $value): ?string
@@ -78,6 +78,40 @@ final class MediaType
             }
         }
         return $best;
+    }
+
+    /** `application/json` and structured-suffix types such as `application/problem+json` (parameters ignored). */
+    public static function isJson(string $mediaType): bool
+    {
+        $base = self::normalize($mediaType);
+        return $base !== null && preg_match('~^application/(?:[a-z0-9!#$&^_.+\-]+\+)?json$~D', $base) === 1;
+    }
+
+    /**
+     * Where a type sits in an Accept header: JSON first, then text, then bytes, then anything else, and
+     * ranges last. Equal preferences keep their declaration order.
+     */
+    public static function preference(string $mediaType): int
+    {
+        if (self::isRange($mediaType)) {
+            return 4;
+        }
+        return self::isJson($mediaType) ? 0 : match ($mediaType) {
+            'text/plain' => 1,
+            'application/octet-stream' => 2,
+            default => 3,
+        };
+    }
+
+    /** Media type implied by a representation that does not name one. */
+    public static function defaultFor(?string $type, ?string $encoding): string
+    {
+        return match ($encoding) {
+            'jsonl' => 'application/jsonl',
+            'json-seq' => 'application/json-seq',
+            'sse' => 'text/event-stream',
+            default => ltrim((string) $type, '\\') === \Psr\Http\Message\ResponseInterface::class ? 'application/octet-stream' : 'application/json',
+        };
     }
 
     public static function isRange(string $declared): bool

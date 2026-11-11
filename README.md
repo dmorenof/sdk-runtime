@@ -43,7 +43,7 @@ $client = Client::connect(
 );
 ~~~
 
-The provider requests a token on first use, caches it in a `TokenStoreInterface` (in memory by default; implement it to share tokens between processes) and renews it before expiry. After a 401 the client invalidates the token and replays the request once. Pass `credentialsInBody: true` for servers that do not accept HTTP Basic client authentication. Interactive flows (authorization code, PKCE), OpenID Connect discovery and scope checking are not implemented yet.
+The provider requests a token on first use, caches it in a `TokenStoreInterface` (in memory by default; implement it to share tokens between processes) and renews it before expiry. After a 401 the client invalidates the token and replays the request once. Pass `credentialsInBody: true` for servers that do not accept HTTP Basic client authentication. For a signed-in user, see "OAuth2 authorization code with PKCE" below; OpenID Connect discovery and scope checking are not implemented yet.
 
 ## Response headers (unreleased)
 
@@ -66,7 +66,7 @@ $client->withRedirectPolicy(new RedirectPolicy(maxRedirects: 2, followCrossOrigi
 $client->withRedirectPolicy(null);                                // default: return the 3xx
 ~~~
 
-By default redirects are **not** followed: the 3xx response is returned (and surfaces as an `ApiException` unless declared), exactly as before. With `new RedirectPolicy()` up to five are followed. A redirect to another origin drops every request header except a safe allowlist (`Accept`, `Accept-Encoding`, `Accept-Language`, `User-Agent`, `Content-Type`), so credentials never leak, and https→http downgrades are refused with a `RedirectException`. Guzzle's PSR-18 `sendRequest()` never follows redirects, so the policy applies to Guzzle clients too; a custom PSR-18 client that follows them itself bypasses it.
+By default redirects are **not** followed: the 3xx response is returned (and surfaces as an `ApiException` unless declared), exactly as before. With `new RedirectPolicy()` up to five are followed. A redirect to another origin drops every request header except a safe allowlist (`Accept`, `Accept-Encoding`, `Accept-Language`, `User-Agent`, `Content-Type`), so credentials never leak, even when a middleware adds them again, and https→http downgrades are refused with a `RedirectException`. Guzzle's PSR-18 `sendRequest()` never follows redirects, so the policy applies to Guzzle clients too; a custom PSR-18 client that follows them itself bypasses it.
 
 ## Representation selection (unreleased)
 
@@ -143,7 +143,9 @@ For the transport, a Guzzle client is called with `stream => true` so it does no
 For apps that act on behalf of a signed-in user. The runtime does the protocol; redirecting the browser is yours.
 
 ~~~php
+use Dmorenof\SdkRuntime\Security\AuthorizationRequest;
 use Dmorenof\SdkRuntime\Security\OAuth2AuthorizationCode;
+use Dmorenof\SdkRuntime\Security\SecurityCredentials;
 
 $flow = new OAuth2AuthorizationCode(
     authorizationUrl: 'https://auth.example.com/authorize',
@@ -153,24 +155,23 @@ $flow = new OAuth2AuthorizationCode(
     http: new \GuzzleHttp\Client(),
     clientSecret: null,                // null for a public client; PKCE protects it
     scopes: ['read'],
-    store: $tokenStore,                // TokenStoreInterface shared across requests
+    store: $tokenStore,                // a TokenStoreInterface that outlives the request
     subject: (string) $user->id,       // tokens belong to one user
 );
 
-// 1. Start: keep the request in the session and send the browser to its URL.
+// 1. Start: keep the request server-side and send the browser to its URL.
 $request = $flow->start(['audience' => 'https://api.example.com']);
-$_SESSION['oauth'] = [$request->state, $request->codeVerifier, $request->expiresAt];
+$_SESSION['oauth'] = $request->toArray();        // state, PKCE verifier and expiry
 header('Location: ' . $request->url);
 
 // 2. Callback (the redirect URI): verifies state, error and issuer, then exchanges the code.
-[$state, $verifier, $expiresAt] = $_SESSION['oauth'];
-$flow->complete(new AuthorizationRequest('', $state, $verifier, $expiresAt), $_GET);
+$flow->complete(AuthorizationRequest::fromArray($_SESSION['oauth']), $_GET);
 
 // 3. Use it like any bearer token; it renews itself and replays once after a 401.
 $client = Client::connect($baseUrl, securityCredentials: new SecurityCredentials(['OAuth' => $flow]));
 ~~~
 
-`accessToken()` raises `ReauthorizationRequiredException` when there is no token or it cannot be renewed: send the user through step 1 again. Use `forget()` to sign out. The verifier is a secret (session only, never the URL or logs); the state is checked in constant time; an authorization server error surfaces as its error code only. Endpoint URLs must be https (http only for localhost); redirect URIs may also be a private-use scheme such as `com.example.app:/callback` for native apps. If the server supports RFC 9207, pass `issuer:` so a callback from another server is refused.
+`accessToken()` raises `ReauthorizationRequiredException` when there is no token or the server rejected its refresh token: send the user through step 1 again. A transient failure while renewing (a 5xx, a network error) is not a reason to ask the user: the stored token is kept and the error reaches the caller, so the next call can try again. Use `forget()` to sign out. The verifier is a secret (session only, never the URL or logs); the state is checked in constant time; an authorization server error surfaces as its error code only. Endpoint URLs must be https (http only for localhost); redirect URIs may also be a private-use scheme such as `com.example.app:/callback` for native apps. If the server supports RFC 9207, pass `issuer:` so a callback from another server is refused.
 
 ## Development
 

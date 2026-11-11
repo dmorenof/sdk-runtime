@@ -39,7 +39,7 @@ final class PublicApiTest extends TestCase
     {
         $snapshot = (string) file_get_contents(__DIR__ . '/Fixtures/public-api.txt');
 
-        foreach (['Hydrator', 'JsonHydrator', 'Serializer', 'SchemaValidator', 'QuerySerializer', 'FormSerializer', 'MultipartSerializer', 'Discriminator', 'MediaType', 'SecurityApplier', 'ServerUrl', 'CookieHeader', 'Constraints'] as $internal) {
+        foreach (['Hydrator', 'JsonHydrator', 'Serializer', 'SchemaValidator', 'QuerySerializer', 'FormSerializer', 'MultipartSerializer', 'Discriminator', 'MediaType', 'SecurityApplier', 'ServerUrl', 'CookieHeader', 'Constraints', 'FormatValidator', 'StreamDecoder', 'CachedTokenProvider', 'OAuth2TokenEndpoint', 'Pkce'] as $internal) {
             self::assertDoesNotMatchRegularExpression('/^(?:\w+ )*class .*\\\\' . $internal . '\b/m', $snapshot, "$internal must be tagged @internal");
         }
     }

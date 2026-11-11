@@ -34,6 +34,9 @@ final class Constraints
             self::validate($value, ['schema' => $guard], $where, $mode);
             unset($rules['jsonSchema']);
         }
+        if (is_string($value)) {
+            self::assertPlainStringRules($value, $rules, $where);
+        }
         $jsonRules = array_intersect_key($rules, array_flip(['exclusiveMinimum', 'exclusiveMaximum', 'multipleOf', 'uniqueItems', 'minProperties', 'maxProperties', 'const', 'enum']));
         $hasSchema = array_key_exists('schema', $rules);
         if ($jsonRules !== [] || $hasSchema) {
@@ -53,6 +56,32 @@ final class Constraints
         }
         foreach (array_diff_key($rules, $jsonRules, ['schema' => true]) as $rule => $limit) {
             self::assert($value, $rule, $limit, $where);
+        }
+    }
+
+    /**
+     * `enum` and `const` on a string value need no schema: JSON equality of two strings is string equality, and
+     * these are by far the most common rules, so they skip the serialize-and-validate round trip. The rule handled
+     * here is removed from $rules; everything else still goes through the schema validator.
+     *
+     * @param array<string, mixed> $rules
+     */
+    private static function assertPlainStringRules(string $value, array &$rules, string $where): void
+    {
+        if (isset($rules['enum'], $rules['const'])) {
+            return; // together they can contradict each other, which only the schema validator reports properly
+        }
+        if (isset($rules['enum']) && is_array($rules['enum'])) {
+            if (!in_array($value, $rules['enum'], true)) {
+                throw new \UnexpectedValueException("Validation enum failed at $where.");
+            }
+            unset($rules['enum']);
+        }
+        if (isset($rules['const']) && is_string($rules['const'])) {
+            if ($value !== $rules['const']) {
+                throw new \UnexpectedValueException("Validation const failed at $where.");
+            }
+            unset($rules['const']);
         }
     }
 

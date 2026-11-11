@@ -132,6 +132,8 @@ class Dmorenof\SdkRuntime\Response extends Dmorenof\SdkRuntime\DTO
 final readonly class Dmorenof\SdkRuntime\Security\AuthorizationRequest
     method public __construct(string $url, string $state, string $codeVerifier, int $expiresAt)
     method public __debugInfo(): array
+    method public static fromArray(array $data): self
+    method public toArray(): array
     property public readonly int $expiresAt
     property public readonly string $codeVerifier
     property public readonly string $state
@@ -151,20 +153,23 @@ final class Dmorenof\SdkRuntime\Security\InMemoryTokenStore implements Dmorenof\
 final class Dmorenof\SdkRuntime\Security\OAuth2AuthorizationCode implements Dmorenof\SdkRuntime\Security\TokenProviderInterface
     method public __construct(string $authorizationUrl, string $tokenUrl, string $clientId, string $redirectUri, Psr\Http\Client\ClientInterface $http, ?string $clientSecret = NULL, array $scopes = array ( ), ?Dmorenof\SdkRuntime\Security\TokenStoreInterface $store = NULL, string $subject = '', ?string $issuer = NULL, bool $credentialsInBody = false, int $requestLifetime = 600, int $leeway = 30, ?Closure $clock = NULL)
     method public __debugInfo(): array
-    method public accessToken(): string
     method public complete(Dmorenof\SdkRuntime\Security\AuthorizationRequest $request, array $callback): Dmorenof\SdkRuntime\Security\OAuth2Token
-    method public forget(): void
-    method public invalidate(): void
+    method public final accessToken(): string
+    method public final forget(): void
+    method public final invalidate(): void
     method public isAuthorized(): bool
     method public start(array $extra = array ( )): Dmorenof\SdkRuntime\Security\AuthorizationRequest
 
 final class Dmorenof\SdkRuntime\Security\OAuth2ClientCredentials implements Dmorenof\SdkRuntime\Security\TokenProviderInterface
     method public __construct(string $tokenUrl, string $clientId, string $clientSecret, Psr\Http\Client\ClientInterface $http, array $scopes = array ( ), ?Dmorenof\SdkRuntime\Security\TokenStoreInterface $store = NULL, bool $credentialsInBody = false, int $leeway = 30, ?Closure $clock = NULL)
     method public __debugInfo(): array
-    method public accessToken(): string
-    method public invalidate(): void
+    method public final accessToken(): string
+    method public final forget(): void
+    method public final invalidate(): void
 
 class Dmorenof\SdkRuntime\Security\OAuth2Exception extends RuntimeException
+    method public __construct(string $message, int $status = 0, ?Throwable $previous = NULL)
+    method public isRejection(): bool
 
 final readonly class Dmorenof\SdkRuntime\Security\OAuth2Token
     method public __construct(string $accessToken, ?int $expiresAt = NULL, ?string $refreshToken = NULL)
@@ -217,7 +222,6 @@ final class Dmorenof\SdkRuntime\Transport\Psr18Transport implements Dmorenof\Sdk
     method public sendResponse(string $method, string $url, array $headers, Psr\Http\Message\StreamInterface|string|null $body, bool $stream = false): Psr\Http\Message\ResponseInterface
     method public setRedirectPolicy(?Dmorenof\SdkRuntime\Transport\RedirectPolicy $policy): void
     method public setRetryPolicy(?Dmorenof\SdkRuntime\Transport\RetryPolicy $policy): void
-    property protected Psr\Http\Client\ClientInterface $client
 
 final class Dmorenof\SdkRuntime\Transport\RedirectException extends RuntimeException
     method public __construct(string $message, Psr\Http\Message\ResponseInterface $response)
@@ -227,7 +231,9 @@ final readonly class Dmorenof\SdkRuntime\Transport\RedirectPolicy
     method public __construct(int $maxRedirects = 5, array $statuses = array ( 0 => 301, 1 => 302, 2 => 303, 3 => 307, 4 => 308, ), bool $allowDowngrade = false, bool $followCrossOrigin = true, array $crossOriginHeaders = array ( 0 => 'Accept', 1 => 'Accept-Encoding', 2 => 'Accept-Language', 3 => 'User-Agent', 4 => 'Content-Type', ))
     method public follows(int $status): bool
     method public forwardsAcrossOrigins(string $header): bool
+    method public methodAfter(string $method, int $status): string
     method public static none(): self
+    method public withoutCredentials(Psr\Http\Message\RequestInterface $request): Psr\Http\Message\RequestInterface
     property public readonly array $crossOriginHeaders
     property public readonly array $statuses
     property public readonly bool $allowDowngrade

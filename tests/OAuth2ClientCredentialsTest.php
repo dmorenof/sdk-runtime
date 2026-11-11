@@ -276,4 +276,45 @@ final class OAuth2ClientCredentialsTest extends TestCase
             self::assertSame(1, $transport->calls);
         }
     }
+
+    public function testForgetDropsTheStoredToken(): void
+    {
+        $http = $this->http([self::token('t1'), self::token('t2')]);
+        $oauth = new OAuth2ClientCredentials(self::TOKEN_URL, 'id', 'secret', $http);
+
+        self::assertSame('t1', $oauth->accessToken());
+        $oauth->forget();
+
+        self::assertSame('t2', $oauth->accessToken());
+    }
+
+    public function testAnyRenewalFailureFallsBackToANewGrant(): void
+    {
+        // Unlike a user's token, a client can always authenticate again, so even a server error is not final.
+        $now = 0;
+        $http = $this->http([self::token('t1', 10, 'r1'), new Response(503, [], 'down'), self::token('t3', 10)]);
+        $oauth = new OAuth2ClientCredentials(self::TOKEN_URL, 'id', 'secret', $http, leeway: 0, clock: function () use (&$now): int {
+            return $now;
+        });
+
+        self::assertSame('t1', $oauth->accessToken());
+        $now = 100;
+
+        self::assertSame('t3', $oauth->accessToken());
+        parse_str((string) $http->requests[2]->getBody(), $form);
+        self::assertSame('client_credentials', $form['grant_type']);
+    }
+
+    public function testFailuresAreOAuth2ExceptionsCarryingTheHttpStatus(): void
+    {
+        $oauth = new OAuth2ClientCredentials(self::TOKEN_URL, 'id', 'secret', $this->http([new Response(401, [], '{"error":"invalid_client"}')]));
+
+        try {
+            $oauth->accessToken();
+            self::fail('Expected OAuth2Exception.');
+        } catch (\Dmorenof\SdkRuntime\Security\OAuth2Exception $e) {
+            self::assertSame(401, $e->getCode());
+            self::assertTrue($e->isRejection());
+        }
+    }
 }

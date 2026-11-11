@@ -15,6 +15,7 @@ use PHPUnit\Framework\TestCase;
 use Psr\Http\Client\ClientInterface;
 use Psr\Http\Message\RequestInterface;
 use Psr\Http\Message\ResponseInterface;
+use Psr\Http\Message\ResponseInterface as PsrResponseInterface;
 
 final class RepresentationProbe extends ApiClient
 {
@@ -185,5 +186,54 @@ final class RepresentationSelectionTest extends TestCase
 
         self::assertInstanceOf(ResponseInterface::class, $result);
         self::assertSame('RIFF', (string) $result->getBody());
+    }
+
+    public function testNormalizeAcceptsEveryTokenCharacterIncludingTheTilde(): void
+    {
+        // Regression: the tilde in the token class used to cut the pattern short, so nothing normalized.
+        self::assertSame('application/vnd.a~b+json', MediaType::normalize('Application/VND.a~b+JSON; charset=utf-8'));
+        self::assertSame('text/plain', MediaType::normalize(' text/plain '));
+        self::assertNull(MediaType::normalize('not a media type'));
+        self::assertNull(MediaType::normalize('application/'));
+        self::assertNull(MediaType::normalize(null));
+    }
+
+    /** @return iterable<string, array{string, bool}> */
+    public static function jsonTypes(): iterable
+    {
+        yield 'plain' => ['application/json', true];
+        yield 'with parameters' => ['application/problem+json; charset=utf-8', true];
+        yield 'mixed case' => ['Application/Vnd.Api+JSON', true];
+        yield 'text json' => ['text/json', false];
+        yield 'longer subtype' => ['application/jsonx', false];
+        yield 'xml' => ['application/xml', false];
+        yield 'suffix range' => ['application/*+json', false];
+        yield 'garbage' => ['json', false];
+    }
+
+    #[DataProvider('jsonTypes')]
+    public function testIsJson(string $mediaType, bool $expected): void
+    {
+        self::assertSame($expected, MediaType::isJson($mediaType));
+    }
+
+    public function testPreferenceOrdersAcceptHeaderEntries(): void
+    {
+        $order = ['application/json', 'application/problem+json; charset=utf-8', 'text/plain', 'application/octet-stream', 'text/csv', 'image/*', '*/*', 'application/*+json'];
+
+        self::assertSame([0, 0, 1, 2, 3, 4, 4, 4], array_map([MediaType::class, 'preference'], $order));
+        // Established behaviour for previously emitted SDKs: only the bare text/plain counts as plain text.
+        self::assertSame(3, MediaType::preference('text/plain; charset=utf-8'));
+    }
+
+    public function testDefaultMediaTypeOfARepresentationWithoutOne(): void
+    {
+        self::assertSame('text/event-stream', MediaType::defaultFor(null, 'sse'));
+        self::assertSame('application/jsonl', MediaType::defaultFor('x', 'jsonl'));
+        self::assertSame('application/json-seq', MediaType::defaultFor(null, 'json-seq'));
+        self::assertSame('application/json', MediaType::defaultFor('App\\Model', 'json'));
+        self::assertSame('application/json', MediaType::defaultFor(null, null));
+        self::assertSame('application/octet-stream', MediaType::defaultFor('\\' . PsrResponseInterface::class, null));
+        self::assertSame('application/octet-stream', MediaType::defaultFor(PsrResponseInterface::class, 'binary'));
     }
 }

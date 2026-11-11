@@ -289,4 +289,33 @@ final class DynamicServersTest extends TestCase
         $this->expectException(\InvalidArgumentException::class);
         $client->withServerVariables(['region' => 1]);
     }
+
+    /** @return iterable<string, array{string, bool}> */
+    public static function schemes(): iterable
+    {
+        yield 'https' => ['https://api.example.com', true];
+        yield 'upper case' => ['HTTPS://API.EXAMPLE.COM', true];
+        yield 'mailto' => ['mailto:x@example.com', true];
+        yield 'path absolute' => ['/v2', false];
+        yield 'path relative' => ['v2/x', false];
+        yield 'parent' => ['../v2', false];
+        yield 'scheme relative' => ['//host/x', false];
+        yield 'digit first' => ['1http://x', false];
+        yield 'empty' => ['', false];
+    }
+
+    #[DataProvider('schemes')]
+    public function testIsAbsoluteTellsASchemeFromARelativeUrl(string $url, bool $expected): void
+    {
+        self::assertSame($expected, ServerUrl::isAbsolute($url));
+    }
+
+    public function testAVariableThatRepeatsInTheHostAndThePathIsCheckedPerPosition(): void
+    {
+        $server = ['url' => 'https://{p}.example.com/{p}', 'variables' => ['p' => ['default' => 'one']]];
+        self::assertSame('https://one.example.com/one', ServerUrl::expand($server));
+
+        $this->expectException(\InvalidArgumentException::class);
+        ServerUrl::expand($server, ['p' => 'a/b']); // fine in the path, never in the host
+    }
 }

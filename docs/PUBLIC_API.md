@@ -63,7 +63,7 @@ Generated SDKs describe each operation as an array that `Operation::fromArray()`
 
 ## Tier 3: internal
 
-Everything tagged `@internal` is an implementation detail and may change or disappear in any release: `Hydrator`, `JsonHydrator`, `Serializer`, `SchemaValidator`, `QuerySerializer`, `FormSerializer`, `MultipartSerializer`, `Discriminator`, `MediaType`, `SecurityApplier`, `Pkce`, `OAuth2TokenEndpoint`, `StreamDecoder`, `FormatValidator` (generator contract, see above), plus individual members tagged `@internal` inside stable classes. Private members are never API.
+Everything tagged `@internal` is an implementation detail and may change or disappear in any release: `Hydrator`, `JsonHydrator`, `Serializer`, `SchemaValidator`, `QuerySerializer`, `FormSerializer`, `MultipartSerializer`, `Discriminator`, `MediaType`, `SecurityApplier`, `Pkce`, `OAuth2TokenEndpoint`, `CachedTokenProvider`, `StreamDecoder`, `FormatValidator` (generator contract, see above), plus individual members tagged `@internal` inside stable classes. Private members are never API.
 
 ## What counts as a breaking change
 
@@ -92,4 +92,4 @@ A feature is deprecated with a `@deprecated` tag naming the version and the repl
 ## Checking the API
 
 - `tests/PublicApiTest.php` compares the code with `tests/Fixtures/public-api.txt` and checks that every stable class is named in this document.
-- After an intentional change, regenerate the snapshot with `php ci/api-snapshot.php > tests/Fixtures/public-api.txt`, review the diff, and record the change in the CHANGELOG. A removed or incompatible line means a major version.
+- The snapshot lists members declared in a stable class or inherited from an `@internal` base (such as `CachedTokenProvider`, whose public methods belong to the providers that extend it); protected members of final classes are not listed because nobody can reach them. After an intentional change, regenerate the snapshot with `php ci/api-snapshot.php > tests/Fixtures/public-api.txt`, review the diff, and record the change in the CHANGELOG. A removed or incompatible line means a major version.

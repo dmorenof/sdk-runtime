@@ -53,13 +53,13 @@ final class ApiSnapshot
             . ($class->isFinal() ? 'final ' : '')
             . ($class->isReadOnly() ? 'readonly ' : '');
         $line = $modifiers . $kind . ' ' . $class->getName();
-        if ($class->getParentClass() !== false) {
-            $line .= ' extends ' . $class->getParentClass()->getName();
+        $parent = $class->getParentClass();
+        // An @internal parent is an implementation detail: its members are listed under the class that inherits them.
+        $stableParent = $parent !== false && !self::internal($parent->getDocComment()) ? $parent : null;
+        if ($stableParent !== null) {
+            $line .= ' extends ' . $stableParent->getName();
         }
-        $interfaces = array_diff($class->getInterfaceNames(), $class->getParentClass() !== false ? $class->getParentClass()->getInterfaceNames() : []);
-        if ($class->isInterface()) {
-            $interfaces = [];
-        }
+        $interfaces = $class->isInterface() ? [] : array_diff($class->getInterfaceNames(), $stableParent?->getInterfaceNames() ?? []);
         if ($interfaces !== []) {
             sort($interfaces);
             $line .= ' implements ' . implode(', ', $interfaces);
@@ -75,13 +75,13 @@ final class ApiSnapshot
     {
         $lines = [];
         foreach ($class->getReflectionConstants() as $constant) {
-            if ($constant->isPrivate() || $constant->getDeclaringClass()->getName() !== $class->getName() || self::internal($constant->getDocComment())) {
+            if (!self::listed($class, $constant) || self::internal($constant->getDocComment())) {
                 continue;
             }
             $lines[] = 'const ' . self::visibility($constant) . ' ' . $constant->getName();
         }
         foreach ($class->getProperties() as $property) {
-            if ($property->isPrivate() || $property->getDeclaringClass()->getName() !== $class->getName() || self::internal($property->getDocComment())) {
+            if (!self::listed($class, $property) || self::internal($property->getDocComment())) {
                 continue;
             }
             $lines[] = 'property ' . self::visibility($property)
@@ -91,7 +91,7 @@ final class ApiSnapshot
                 . ' $' . $property->getName();
         }
         foreach ($class->getMethods() as $method) {
-            if ($method->isPrivate() || $method->getDeclaringClass()->getName() !== $class->getName() || self::internal($method->getDocComment())) {
+            if (!self::listed($class, $method) || self::internal($method->getDocComment())) {
                 continue;
             }
             $params = array_map(static function (\ReflectionParameter $p): string {
@@ -111,6 +111,21 @@ final class ApiSnapshot
         }
         sort($lines);
         return $lines;
+    }
+
+    /**
+     * Whether a member belongs in the snapshot of this class: it is reachable (not private, and not protected
+     * in a final class) and is declared here or in an @internal ancestor, which is never listed on its own.
+     *
+     * @param \ReflectionClass<object> $class
+     */
+    private static function listed(\ReflectionClass $class, \ReflectionClassConstant|\ReflectionProperty|\ReflectionMethod $member): bool
+    {
+        if ($member->isPrivate() || ($member->isProtected() && $class->isFinal())) {
+            return false;
+        }
+        $declaring = $member->getDeclaringClass();
+        return $declaring->getName() === $class->getName() || self::internal($declaring->getDocComment());
     }
 
     private static function visibility(\ReflectionClassConstant|\ReflectionProperty|\ReflectionMethod $member): string

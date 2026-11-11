@@ -6,15 +6,20 @@ namespace Dmorenof\SdkRuntime\Transport;
 use GuzzleHttp\Psr7\Request;
 use GuzzleHttp\Psr7\Uri;
 use GuzzleHttp\Psr7\UriResolver;
+use GuzzleHttp\Psr7\Utils;
 use Psr\Http\Client\ClientInterface;
 use Psr\Http\Client\NetworkExceptionInterface;
 use Psr\Http\Message\RequestInterface;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\StreamInterface;
+use Psr\Http\Message\UriInterface;
 
 /**
  * Common PSR-18/Guzzle adapter. Body bytes are already serialized according to the operation media type.
  * Interceptors run in registration order and may replace PSR-7 messages.
+ *
+ * Each call follows the same layers: redirects (RedirectPolicy) wrap one exchange per hop; an exchange runs the
+ * middleware around a send with retries (RetryPolicy); a send hands the request to the PSR-18 client.
  */
 final class Psr18Transport implements TransportInterface
 {
@@ -31,7 +36,7 @@ final class Psr18Transport implements TransportInterface
     /**
      * @param array<string, string> $defaultHeaders
      * @param ?\Closure(int): void $sleeper Replaces the default millisecond sleep (useful in tests).
-     * @param ?RedirectPolicy $redirectPolicy Null never follows redirects (the 3xx response is returned), as before this policy existed. Guzzle's PSR-18 sendRequest() never follows them either, so this policy decides.
+     * @param ?RedirectPolicy $redirectPolicy Null never follows redirects: the 3xx response is returned. Guzzle's PSR-18 sendRequest() never follows them either, so this policy decides.
      */
     public function __construct(
         protected ClientInterface $client,
@@ -78,9 +83,10 @@ final class Psr18Transport implements TransportInterface
     {
         $request = new Request($method, $url, \Dmorenof\SdkRuntime\CookieHeader::merge($this->defaultHeaders, $headers), $body ?? '');
         $policy = $this->redirectPolicy ?? RedirectPolicy::none();
+        $origin = $request->getUri();
 
         for ($hop = 0;; $hop++) {
-            $response = $this->exchange($request, $stream);
+            $response = $this->exchange($request, $stream, $origin, $policy);
             $location = $response->getHeaderLine('Location');
             if (!$policy->follows($response->getStatusCode()) || $location === '') {
                 return $response;
@@ -97,18 +103,35 @@ final class Psr18Transport implements TransportInterface
         }
     }
 
-    /** One hop: middleware, send with retries, middleware. */
-    private function exchange(RequestInterface $request, bool $stream): ResponseInterface
+    /**
+     * One hop: middleware, a send with retries, middleware. A request that has left the origin of the original
+     * call is stripped of credentials after the middleware ran, so a middleware cannot add them back.
+     */
+    private function exchange(RequestInterface $request, bool $stream, UriInterface $origin, RedirectPolicy $redirects): ResponseInterface
     {
         foreach ($this->middlewares as $middleware) {
             $request = $middleware->beforeRequest($request);
         }
+        if (!self::sameOrigin($origin, $request->getUri())) {
+            $request = $redirects->withoutCredentials($request);
+        }
 
-        // Only replay when the policy allows the method and the body can be re-read from its start.
-        $policy = $this->retryPolicy;
-        $retryable = $policy !== null
-            && $policy->allows($request->getMethod())
-            && ($request->getBody()->isSeekable() || $request->getBody()->getSize() === 0);
+        $response = $this->sendWithRetries($request, $stream);
+
+        foreach ($this->middlewares as $middleware) {
+            $response = $middleware->afterResponse($request, $response);
+        }
+        if ($response->getBody()->isSeekable()) {
+            $response->getBody()->rewind();
+        }
+        return $response;
+    }
+
+    /** Sends once, or again after a transient failure when the policy allows the method and the body can be resent. */
+    private function sendWithRetries(RequestInterface $request, bool $stream): ResponseInterface
+    {
+        $policy = $this->retryPolicy ?? new RetryPolicy(maxAttempts: 1);
+        $maxAttempts = $policy->allows($request->getMethod()) && self::replayable($request) ? $policy->maxAttempts : 1;
 
         for ($attempt = 1;; $attempt++) {
             // Middleware may inspect or replace a body. Send seekable bodies from their start,
@@ -116,37 +139,25 @@ final class Psr18Transport implements TransportInterface
             if ($request->getBody()->isSeekable()) {
                 $request->getBody()->rewind();
             }
-
-            $canRetry = $policy !== null && $retryable && $attempt < $policy->maxAttempts;
+            $canRetry = $attempt < $maxAttempts;
             try {
                 // PSR-18 returns non-2xx responses without throwing for status alone.
                 // Endpoint-specific code retains control of expected status checking.
                 $response = $this->dispatch($request, $stream);
             } catch (NetworkExceptionInterface $e) {
-                if ($policy === null || !$canRetry || !$policy->retryNetworkErrors) {
+                if (!$canRetry || !$policy->retryNetworkErrors) {
                     throw $e;
                 }
                 ($this->sleeper)($policy->delayMs($attempt));
                 continue;
             }
-
-            if ($policy !== null && $canRetry && $policy->retriesStatus($response->getStatusCode())) {
-                $delay = $policy->delayMs($attempt, $response);
-                $response->getBody()->close();
-                ($this->sleeper)($delay);
-                continue;
+            if (!$canRetry || !$policy->retriesStatus($response->getStatusCode())) {
+                return $response;
             }
-            break;
+            $delay = $policy->delayMs($attempt, $response);
+            $response->getBody()->close();
+            ($this->sleeper)($delay);
         }
-
-        foreach ($this->middlewares as $middleware) {
-            $response = $middleware->afterResponse($request, $response);
-        }
-
-        if ($response->getBody()->isSeekable()) {
-            $response->getBody()->rewind();
-        }
-        return $response;
     }
 
     private function dispatch(RequestInterface $request, bool $stream): ResponseInterface
@@ -164,8 +175,33 @@ final class Psr18Transport implements TransportInterface
      */
     private function redirectRequest(RequestInterface $request, ResponseInterface $response, string $location, RedirectPolicy $policy): ?RequestInterface
     {
+        $target = self::redirectTarget($request->getUri(), $response, $location, $policy);
+        if (!$policy->followCrossOrigin && !self::sameOrigin($request->getUri(), $target)) {
+            return null;
+        }
+
+        $method = $request->getMethod();
+        $nextMethod = $policy->methodAfter($method, $response->getStatusCode());
+        $changesMethod = $nextMethod !== $method;
+        if (!$changesMethod && !in_array(strtoupper($method), ['GET', 'HEAD'], true) && !self::replayable($request)) {
+            return null; // the body cannot be resent
+        }
+
+        $redirected = $request;
+        if ($changesMethod) {
+            foreach (['Content-Type', 'Content-Length', 'Transfer-Encoding'] as $header) {
+                $redirected = $redirected->withoutHeader($header);
+            }
+            $redirected = $redirected->withMethod($nextMethod)->withBody(Utils::streamFor(''));
+        }
+        return $redirected->withUri($target);
+    }
+
+    /** Resolves a Location against the current URI and rejects targets a client must never follow. */
+    private static function redirectTarget(UriInterface $from, ResponseInterface $response, string $location, RedirectPolicy $policy): UriInterface
+    {
         try {
-            $target = UriResolver::resolve($request->getUri(), new Uri($location));
+            $target = UriResolver::resolve($from, new Uri($location));
         } catch (\InvalidArgumentException) {
             throw new RedirectException('Redirect Location is not a valid URI.', $response);
         }
@@ -175,44 +211,22 @@ final class Psr18Transport implements TransportInterface
         if ($target->getUserInfo() !== '') {
             throw new RedirectException('Redirect target must not embed credentials.', $response);
         }
-        $from = $request->getUri();
         if ($from->getScheme() === 'https' && $target->getScheme() === 'http' && !$policy->allowDowngrade) {
             throw new RedirectException('Refusing to redirect from https to http.', $response);
         }
-        $crossOrigin = !self::sameOrigin($from, $target);
-        if ($crossOrigin && !$policy->followCrossOrigin) {
-            return null;
-        }
-
-        $status = $response->getStatusCode();
-        $method = strtoupper($request->getMethod());
-        $keepsMethod = in_array($status, [307, 308], true);
-        $toGet = !$keepsMethod && $method !== 'GET' && $method !== 'HEAD'
-            && ($status === 303 || ($method === 'POST' && in_array($status, [301, 302], true)));
-        if (!$toGet && $method !== 'GET' && $method !== 'HEAD'
-            && !$request->getBody()->isSeekable() && $request->getBody()->getSize() !== 0) {
-            return null; // the body cannot be resent
-        }
-
-        $next = $request;
-        foreach (array_keys($request->getHeaders()) as $name) {
-            if (strcasecmp((string) $name, 'Host') === 0) {
-                continue;
-            }
-            if (($crossOrigin && !$policy->forwardsAcrossOrigins((string) $name))
-                || ($toGet && in_array(strtolower((string) $name), ['content-type', 'content-length', 'transfer-encoding'], true))) {
-                $next = $next->withoutHeader((string) $name);
-            }
-        }
-        if ($toGet) {
-            $next = $next->withMethod('GET')->withBody(\GuzzleHttp\Psr7\Utils::streamFor(''));
-        }
-        return $next->withUri($target);
+        return $target;
     }
 
-    private static function sameOrigin(\Psr\Http\Message\UriInterface $a, \Psr\Http\Message\UriInterface $b): bool
+    /** The body can be read again from its start (or is empty), so the request can be sent a second time. */
+    private static function replayable(RequestInterface $request): bool
     {
-        $port = static fn (\Psr\Http\Message\UriInterface $u): int => $u->getPort() ?? ($u->getScheme() === 'https' ? 443 : 80);
-        return $a->getScheme() === $b->getScheme() && strtolower($a->getHost()) === strtolower($b->getHost()) && $port($a) === $port($b);
+        $body = $request->getBody();
+        return $body->isSeekable() || $body->getSize() === 0;
+    }
+
+    /** Same scheme, host and port; psr7 already leaves out a scheme's default port. */
+    private static function sameOrigin(UriInterface $a, UriInterface $b): bool
+    {
+        return $a->getScheme() === $b->getScheme() && strtolower($a->getHost()) === strtolower($b->getHost()) && $a->getPort() === $b->getPort();
     }
 }

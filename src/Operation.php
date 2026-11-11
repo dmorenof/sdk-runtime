@@ -10,6 +10,9 @@ namespace Dmorenof\SdkRuntime;
  * Generated code declares operations as arrays holding only what differs from DEFAULTS;
  * fromArray() turns that into this typed object and rejects keys it does not know.
  *
+ * @phpstan-type Encoding 'json'|'text'|'binary'|'jsonl'|'json-seq'|'sse'
+ * @phpstan-type Representation array{type:?string,schemaNullable:bool,rules?:array<string,mixed>,mediaType?:string,encoding?:Encoding}
+ * @phpstan-type ResponseEntry array{type:?string,schemaNullable:bool,rules?:array<string,mixed>,mediaType?:string,encoding?:Encoding,alternatives?:list<array{type:?string,schemaNullable:bool,rules?:array<string,mixed>,mediaType:string,encoding?:Encoding}>}
  * @phpstan-type OperationSpec array{
  *     method: string,
  *     path: string,
@@ -18,14 +21,14 @@ namespace Dmorenof\SdkRuntime;
  *     success?: list<int|string>,
  *     errors?: array<int|string, ?string>,
  *     responseType?: string|null,
- *     responseTypes?: array<int|string,array{type:?string,schemaNullable:bool,rules?:array<string,mixed>,mediaType?:string,encoding?:'json'|'text'|'binary'|'jsonl'|'json-seq'|'sse',alternatives?:list<array{type:?string,schemaNullable:bool,rules?:array<string,mixed>,mediaType:string,encoding?:'json'|'text'|'binary'|'jsonl'|'json-seq'|'sse'}>}>,
+ *     responseTypes?: array<int|string,ResponseEntry>,
  *     pathSerialization?: array<array-key,'csv'|'ssv'|'tsv'|'pipes'|'object'|'object-explode'|'label'|'label-list'|'label-list-explode'|'label-object'|'label-object-explode'|'matrix'|'matrix-list'|'matrix-list-explode'|'matrix-object'|'matrix-object-explode'>,
  *     headerSerialization?: array<array-key,'csv'|'ssv'|'tsv'|'pipes'|'object'|'object-explode'>,
  *     responseValidation?: array<string,mixed>,
  *     responseMediaType?: string,
  *     responseEncoding?: string,
- *     errorResponses?: array<int|string,array{type:?string,schemaNullable:bool,rules?:array<string,mixed>,mediaType?:string,encoding?:'json'|'text'|'binary'|'jsonl'|'json-seq'|'sse',alternatives?:list<array{type:?string,schemaNullable:bool,rules?:array<string,mixed>,mediaType:string,encoding?:'json'|'text'|'binary'|'jsonl'|'json-seq'|'sse'}>}>,
- *     requestBody?: array{type:string,nullable:bool,required:bool,rules?:array<string,mixed>,encoding?:'json'|'text'|'binary'|'jsonl'|'json-seq'|'sse'}|null,
+ *     errorResponses?: array<int|string,ResponseEntry>,
+ *     requestBody?: array{type:string,nullable:bool,required:bool,rules?:array<string,mixed>,encoding?:'json'|'text'|'binary'}|null,
  *     schemaNullable?: bool,
  *     noContentAllowed?: bool,
  *     validation?: array<array-key, array<string, mixed>>,
@@ -70,6 +73,9 @@ final readonly class Operation
         'servers' => [],
     ];
 
+    /** Response encodings delivered lazily as a generator instead of a decoded value. */
+    public const array STREAMING_ENCODINGS = ['jsonl', 'json-seq', 'sse'];
+
     /** "METHOD path", unless the operation names itself. */
     public string $label;
 
@@ -77,9 +83,9 @@ final readonly class Operation
      * @param list<array<string, list<string>>> $security Alternatives are OR; schemes within one entry are AND.
      * @param array<string,array<array-key,'application/json'|'text/plain'>> $parameterContent Parameter media types grouped by location.
      * @param array<string,mixed> $responseValidation Rules for a legacy/single JSON response.
-     * @param array{type:string,nullable:bool,required:bool,rules?:array<string,mixed>,encoding?:'json'|'text'|'binary'|'jsonl'|'json-seq'|'sse'}|null $requestBody Native JSON body contract.
+     * @param array{type:string,nullable:bool,required:bool,rules?:array<string,mixed>,encoding?:'json'|'text'|'binary'}|null $requestBody Native JSON body contract.
      * @param list<string> $queryAllowReserved Query names whose data uses reserved expansion.
-     * @param array<int|string,array{type:?string,schemaNullable:bool,rules?:array<string,mixed>,mediaType?:string,encoding?:'json'|'text'|'binary'|'jsonl'|'json-seq'|'sse',alternatives?:list<array{type:?string,schemaNullable:bool,rules?:array<string,mixed>,mediaType:string,encoding?:'json'|'text'|'binary'|'jsonl'|'json-seq'|'sse'}>}> $errorResponses Declared general error payloads.
+     * @param array<int|string,ResponseEntry> $errorResponses Declared general error payloads.
      * @param list<int|string> $success Statuses that are not errors.
      * @param array<int|string, ?string> $errors Status (or 'default') => error model class.
      * @param array<array-key, array<string, mixed>> $validation Parameter name => rules.
@@ -87,7 +93,7 @@ final readonly class Operation
      * @param array<string,array{contentType:?string,filename?:string,json?:bool}> $bodyParts Multipart metadata; null MIME accepts the uploaded file's type or octet-stream.
      * @param array<array-key,'csv'|'ssv'|'tsv'|'pipes'|'object'|'object-explode'|'label'|'label-list'|'label-list-explode'|'label-object'|'label-object-explode'|'matrix'|'matrix-list'|'matrix-list-explode'|'matrix-object'|'matrix-object-explode'> $pathSerialization Path list name => simple CSV expansion.
      * @param array<array-key,'csv'|'ssv'|'tsv'|'pipes'|'object'|'object-explode'> $headerSerialization Header list name => raw simple CSV expansion.
-     * @param array<int|string,array{type:?string,schemaNullable:bool,rules?:array<string,mixed>,mediaType?:string,encoding?:'json'|'text'|'binary'|'jsonl'|'json-seq'|'sse',alternatives?:list<array{type:?string,schemaNullable:bool,rules?:array<string,mixed>,mediaType:string,encoding?:'json'|'text'|'binary'|'jsonl'|'json-seq'|'sse'}>}> $responseTypes Explicit status-specific JSON types; null type means no body.
+     * @param array<int|string,ResponseEntry> $responseTypes Explicit status-specific JSON types; null type means no body.
      * @param array<array-key, 'multi'|'csv'|'ssv'|'tsv'|'pipes'|'deepObject'|'form-object'|'form-object-explode'> $querySerialization Query list name => normalized wire format.
      * @param array<int|string,array<string,array{type:'string'|'integer'|'number'|'boolean'|'array',items?:'string'|'integer'|'number'|'boolean',required?:bool,rules?:array<string,mixed>}>> $responseHeaders Declared response headers by status, range or default.
      * @param list<array{url:string,name?:string,variables?:array<string,array{default:string,enum?:list<string>}>}> $servers Selectable servers for this operation (first is the default); URLs may be relative to the client base URL or templates. Mutually exclusive with $serverUrl.
@@ -143,7 +149,7 @@ final readonly class Operation
      * Declared error response for a status. With `alternatives`, the one matching the received
      * Content-Type; when none matches the payload is left undecoded (type null) so the HTTP failure survives.
      *
-     * @return array{type:?string,schemaNullable:bool,rules?:array<string,mixed>,mediaType?:string,encoding?:'json'|'text'|'binary'|'jsonl'|'json-seq'|'sse'}|null
+     * @return Representation|null
      */
     public function errorResponseFor(int $status, ?string $contentType = null): ?array
     {
@@ -155,7 +161,7 @@ final readonly class Operation
      * Declared success response for a status. With `alternatives`, the one matching the received
      * Content-Type (the first when the response names none).
      *
-     * @return array{type:?string,schemaNullable:bool,rules?:array<string,mixed>,mediaType?:string,encoding?:'json'|'text'|'binary'|'jsonl'|'json-seq'|'sse'}|null
+     * @return Representation|null
      * @throws \UnexpectedValueException When the response media type is not among the declared alternatives.
      */
     public function responseTypeFor(int $status, ?string $contentType = null): ?array
@@ -171,8 +177,8 @@ final readonly class Operation
     }
 
     /**
-     * @param array{type:?string,schemaNullable:bool,rules?:array<string,mixed>,mediaType?:string,encoding?:'json'|'text'|'binary'|'jsonl'|'json-seq'|'sse',alternatives?:list<array{type:?string,schemaNullable:bool,rules?:array<string,mixed>,mediaType:string,encoding?:'json'|'text'|'binary'|'jsonl'|'json-seq'|'sse'}>} $entry
-     * @return array{type:?string,schemaNullable:bool,rules?:array<string,mixed>,mediaType?:string,encoding?:'json'|'text'|'binary'|'jsonl'|'json-seq'|'sse'}|null Null when alternatives exist and none matches.
+     * @param ResponseEntry $entry
+     * @return Representation|null Null when alternatives exist and none matches.
      */
     private static function alternative(array $entry, ?string $contentType): ?array
     {
@@ -185,18 +191,33 @@ final readonly class Operation
         return $chosen === null ? null : $alternatives[array_search($chosen, $declared, true)];
     }
 
-    /** Response encodings delivered lazily as a generator instead of a decoded value. */
-    public const array STREAMING_ENCODINGS = ['jsonl', 'json-seq', 'sse'];
+    /** @internal Used by the runtime itself; not covered by the backward-compatibility promise. */
+    public static function isStreamingEncoding(?string $encoding): bool
+    {
+        return in_array($encoding, self::STREAMING_ENCODINGS, true);
+    }
+
+    /**
+     * The representations a response entry offers: its alternatives, or the entry itself when it has none.
+     *
+     * @internal Used by the runtime itself; not covered by the backward-compatibility promise.
+     * @param ResponseEntry $entry
+     * @return list<Representation>
+     */
+    public static function representations(array $entry): array
+    {
+        return ($entry['alternatives'] ?? []) ?: [$entry];
+    }
 
     /** Whether any declared success representation streams, so the transport must not buffer the body. */
     public function streamsResponse(): bool
     {
-        if (in_array($this->responseEncoding, self::STREAMING_ENCODINGS, true)) {
+        if (self::isStreamingEncoding($this->responseEncoding)) {
             return true;
         }
         foreach ($this->responseTypes as $entry) {
-            foreach (($entry['alternatives'] ?? []) ?: [$entry] as $representation) {
-                if (in_array($representation['encoding'] ?? '', self::STREAMING_ENCODINGS, true)) {
+            foreach (self::representations($entry) as $representation) {
+                if (self::isStreamingEncoding($representation['encoding'] ?? null)) {
                     return true;
                 }
             }

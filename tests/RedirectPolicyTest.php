@@ -16,6 +16,8 @@ use PHPUnit\Framework\TestCase;
 use Psr\Http\Client\ClientInterface;
 use Psr\Http\Message\RequestInterface;
 use Psr\Http\Message\ResponseInterface;
+use GuzzleHttp\Psr7\Request as PsrRequest;
+use PHPUnit\Framework\Attributes\DataProvider;
 
 final class RedirectPolicyTest extends TestCase
 {
@@ -281,5 +283,85 @@ final class RedirectPolicyTest extends TestCase
         $client->ping();
 
         self::assertCount(2, $http->requests);
+    }
+
+    /** @return iterable<string, array{string, int, string}> */
+    public static function methodChanges(): iterable
+    {
+        yield 'post 301' => ['POST', 301, 'GET'];
+        yield 'post 302' => ['POST', 302, 'GET'];
+        yield 'post 303' => ['POST', 303, 'GET'];
+        yield 'lower case post' => ['post', 302, 'GET'];
+        yield 'put 303' => ['PUT', 303, 'GET'];
+        yield 'delete 303' => ['DELETE', 303, 'GET'];
+        yield 'put 301 keeps' => ['PUT', 301, 'PUT'];
+        yield 'delete 302 keeps' => ['DELETE', 302, 'DELETE'];
+        yield 'post 307 keeps' => ['POST', 307, 'POST'];
+        yield 'post 308 keeps' => ['POST', 308, 'POST'];
+        yield 'head 303 keeps' => ['HEAD', 303, 'HEAD'];
+        yield 'get 302 keeps' => ['GET', 302, 'GET'];
+    }
+
+    #[DataProvider('methodChanges')]
+    public function testPolicyDecidesTheMethodOfTheFollowUp(string $method, int $status, string $expected): void
+    {
+        self::assertSame($expected, (new RedirectPolicy())->methodAfter($method, $status));
+    }
+
+    public function testWithoutCredentialsKeepsOnlyHostAndTheAllowlist(): void
+    {
+        $request = new PsrRequest('GET', 'https://a.test/x', [
+            'Authorization' => 'Bearer t', 'Cookie' => 'a=1', 'X-Api-Key' => 'k', 'Accept' => 'application/json', 'USER-AGENT' => 'ua',
+        ]);
+
+        $clean = (new RedirectPolicy())->withoutCredentials($request);
+
+        self::assertSame(['Host', 'Accept', 'USER-AGENT'], array_keys($clean->getHeaders()));
+        self::assertSame(['Host'], array_keys((new RedirectPolicy(crossOriginHeaders: []))->withoutCredentials($request)->getHeaders()));
+    }
+
+    public function testAMiddlewareCannotAddCredentialsBackAfterTheyLeftTheOrigin(): void
+    {
+        $addsAuthorization = new class implements HttpMiddlewareInterface {
+            public function beforeRequest(RequestInterface $request): RequestInterface
+            {
+                return $request->withHeader('Authorization', 'Bearer from-middleware');
+            }
+
+            public function afterResponse(RequestInterface $request, ResponseInterface $response): ResponseInterface
+            {
+                return $response;
+            }
+        };
+        $http = $this->http([self::redirect(302, 'https://cdn.other.test/f'), new Response(200)]);
+        $transport = new Psr18Transport($http, redirectPolicy: new RedirectPolicy());
+        $transport->addMiddleware($addsAuthorization);
+
+        $transport->sendResponse('GET', 'https://api.example.com/a', [], null);
+
+        self::assertSame('Bearer from-middleware', $http->requests[0]->getHeaderLine('Authorization'), 'the original origin gets it');
+        self::assertFalse($http->requests[1]->hasHeader('Authorization'), 'another origin never does');
+    }
+
+    public function testAMiddlewareCredentialSurvivesRedirectsWithinTheOrigin(): void
+    {
+        $addsAuthorization = new class implements HttpMiddlewareInterface {
+            public function beforeRequest(RequestInterface $request): RequestInterface
+            {
+                return $request->withHeader('Authorization', 'Bearer from-middleware');
+            }
+
+            public function afterResponse(RequestInterface $request, ResponseInterface $response): ResponseInterface
+            {
+                return $response;
+            }
+        };
+        $http = $this->http([self::redirect(302, '/next'), new Response(200)]);
+        $transport = new Psr18Transport($http, redirectPolicy: new RedirectPolicy());
+        $transport->addMiddleware($addsAuthorization);
+
+        $transport->sendResponse('GET', 'https://api.example.com/a', [], null);
+
+        self::assertSame('Bearer from-middleware', $http->requests[1]->getHeaderLine('Authorization'));
     }
 }

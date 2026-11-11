@@ -89,6 +89,13 @@ final class StreamingProbe extends ApiClient
         ]]);
     }
 
+    /** Legacy single-response keys with no item type at all. */
+    public function legacyEvents(): mixed
+    {
+        return $this->executeOperation(['method' => 'GET', 'path' => '/legacy-events',
+            'responseMediaType' => 'text/event-stream', 'responseEncoding' => 'sse']);
+    }
+
     public function plain(): mixed
     {
         return $this->executeOperation(['method' => 'GET', 'path' => '/plain', 'responseType' => User::class]);
@@ -384,5 +391,14 @@ final class StreamingResponseTest extends TestCase
         self::assertSame('Ada', $client->plain()->name);
         self::assertSame(1, $guzzle->psrCalls);
         self::assertSame([], $guzzle->options);
+    }
+
+    public function testLegacyKeysCanDeclareAStreamWithoutAnItemType(): void
+    {
+        // Regression: a null response type used to reach ltrim() and fail with a TypeError.
+        $result = $this->legacy("data: hi\n\n", 'text/event-stream', 200, $transport)->legacyEvents();
+
+        self::assertSame('hi', $result->current()->data);
+        self::assertSame('text/event-stream', $transport->sent[0]['headers']['Accept']);
     }
 }

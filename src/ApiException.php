@@ -8,6 +8,8 @@ use Dmorenof\SdkRuntime\Transport\HttpResponse;
 /**
  * Typed HTTP API error that preserves the raw response even when error DTO
  * decoding fails. Connection/transport exceptions retain their original type.
+ *
+ * @phpstan-import-type Representation from Operation
  */
 class ApiException extends \RuntimeException
 {
@@ -29,7 +31,7 @@ class ApiException extends \RuntimeException
     }
 
     /** @param string|null $errorType Legacy DTO error class.
-     * @param array{type:?string,schemaNullable:bool,rules?:array<string,mixed>,mediaType?:string,encoding?:'json'|'text'|'binary'|'jsonl'|'json-seq'|'sse',alternatives?:list<array{type:?string,schemaNullable:bool,rules?:array<string,mixed>,mediaType:string,encoding?:'json'|'text'|'binary'|'jsonl'|'json-seq'|'sse'}>}|null $errorResponse Declared general error response.
+     * @param Representation|null $errorResponse Declared general error response.
      *
      * @internal Used by the runtime itself; not covered by the backward-compatibility promise.
      */

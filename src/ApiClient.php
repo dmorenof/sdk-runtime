@@ -3,7 +3,12 @@ declare(strict_types=1);
 
 namespace Dmorenof\SdkRuntime;
 
+use Dmorenof\SdkRuntime\Streaming\StreamDecoder;
+use Dmorenof\SdkRuntime\Transport\HttpResponse;
 use Dmorenof\SdkRuntime\Transport\TransportInterface;
+use GuzzleHttp\Psr7\Response as PsrResponse;
+use GuzzleHttp\Psr7\Utils;
+use Psr\Http\Message\ResponseInterface;
 use Dmorenof\SdkRuntime\Transport\Psr18Transport;
 use Dmorenof\SdkRuntime\Transport\HttpMiddlewareInterface;
 use Dmorenof\SdkRuntime\Security\SecurityApplier;
@@ -113,7 +118,7 @@ abstract class ApiClient
             throw new \InvalidArgumentException('Unknown server variable(s): ' . implode(', ', $unknown) . '.');
         }
         $url = ServerUrl::expand($declared, $variables);
-        if (preg_match('/^[a-z][a-z0-9+.\-]*:/i', $url) !== 1) {
+        if (!ServerUrl::isAbsolute($url)) {
             throw new \InvalidArgumentException('A root server must be an absolute URL; relative servers resolve against a base URL.');
         }
         return ServerUrl::normalize($url);
@@ -329,27 +334,7 @@ abstract class ApiClient
             $query = $fields['query'];
             $headers = $fields['header'];
             if ($fields['cookie'] !== []) {
-                $cookieHeaders = [];
-                foreach ($headers as $name => $value) {
-                    if (strcasecmp((string) $name, 'Cookie') === 0) {
-                        if ($value !== null) {
-                            if (!is_scalar($value)) { throw new \UnexpectedValueException('Cookie header must be scalar.'); }
-                            $cookieHeaders[$name] = self::stringify($value);
-                        }
-                        unset($headers[$name]);
-                    }
-                }
-                $cookies = $fields['cookie'];
-                $rawCookies = [];
-                foreach ($operation['parameterContent']['cookie'] ?? [] as $name => $media) {
-                    if ($media !== 'text/plain') { throw new \InvalidArgumentException('Cookie content supports only text/plain.'); }
-                    if (array_key_exists($name, $cookies) && $cookies[$name] !== null) {
-                        $rawCookies[] = CookieHeader::pair((string) $name, QuerySerializer::content($cookies[$name], $media));
-                    }
-                    unset($cookies[$name]);
-                }
-                $headers += CookieHeader::merge($cookieHeaders, ['Cookie' => implode('; ', $rawCookies)],
-                    ['Cookie' => str_replace('&', '; ', QuerySerializer::encode($cookies))]);
+                $headers = self::withCookies($headers, $fields['cookie'], $operation['parameterContent']['cookie'] ?? []);
             }
             $body = $fields['body'];
             $bodyPresent = $fields['bodyPresent'];
@@ -404,21 +389,44 @@ abstract class ApiClient
     ): mixed {
         $spec = Operation::fromArray($operation);
         if (strtoupper($spec->method) === 'TRACE' && $bodyPresent) { throw new \InvalidArgumentException('HTTP TRACE must not contain a request body.'); }
-        $parameters = $pathParameters + $queryParameters + $headerParameters;
+        self::validateParameters($spec, $pathParameters + $queryParameters + $headerParameters);
+
+        self::assertParameterContent($spec->parameterContent, $spec);
+        $pathParameters = self::contentParameters($pathParameters, $spec->parameterContent['path'] ?? []);
+        $queryParameters = self::contentParameters($queryParameters, $spec->parameterContent['query'] ?? []);
+        $headerParameters = self::contentParameters($headerParameters, $spec->parameterContent['header'] ?? [], true);
+        self::assertSimpleFormats($spec->pathSerialization, path: true);
+        self::assertSimpleFormats($spec->headerSerialization);
+
+        $path = self::expandPath($spec, $pathParameters);
+        $query = array_filter($queryParameters, static fn ($value): bool => $value !== null);
+        $headers = ['Accept' => self::acceptHeader($spec, $operation)] + self::stringifyAll($headerParameters, $spec->headerSerialization);
+
+        $kind = self::bodyKind($spec);
+        $body = self::checkedBody($spec, $kind, $body, $bodyPresent);
+        $bodyBytes = null;
+        if ($bodyPresent) {
+            [$bodyBytes, $headers['Content-Type']] = self::serializeBody($spec, $kind, $body);
+        }
+
+        $outcome = $this->sendWithAuthRetry($spec, $operation, $path, $query, $headers, $bodyBytes);
+        return $outcome instanceof HttpResponse ? self::decodeResponse($spec, $operation, $outcome) : $outcome;
+    }
+
+    /** @param array<string,mixed> $parameters Path, query and header values by name. */
+    private static function validateParameters(Operation $spec, array $parameters): void
+    {
         foreach ($spec->validation as $name => $rules) {
             $value = $parameters[$name] ?? null;
             if ($value !== null) {
                 Constraints::validate($value, $rules, $spec->label . '.' . $name);
             }
         }
+    }
 
-        self::assertParameterContent($spec->parameterContent, $spec);
-        $pathParameters = self::contentParameters($pathParameters, $spec->parameterContent['path'] ?? []);
-        $queryParameters = self::contentParameters($queryParameters, $spec->parameterContent['query'] ?? []);
-        $headerParameters = self::contentParameters($headerParameters, $spec->parameterContent['header'] ?? [], true);
-
-        self::assertSimpleFormats($spec->pathSerialization, path: true);
-        self::assertSimpleFormats($spec->headerSerialization);
+    /** @param array<string,scalar|list<scalar>|DTO|Map|TypedArray|\stdClass|null> $pathParameters */
+    private static function expandPath(Operation $spec, array $pathParameters): string
+    {
         $path = $spec->path;
         foreach ($pathParameters as $name => $value) {
             if ($value === null) {
@@ -436,146 +444,226 @@ abstract class ApiClient
         if (preg_match('/\{[^{}]+\}/', $path) === 1) {
             throw new \UnexpectedValueException('Missing path parameter for ' . $spec->label);
         }
-        $query = array_filter($queryParameters, static fn ($value): bool => $value !== null);
+        return $path;
+    }
+
+    /**
+     * The Accept header: every declared success and error representation, most preferred first.
+     *
+     * @param OperationSpec $operation
+     */
+    private static function acceptHeader(Operation $spec, array $operation): string
+    {
         $accepted = [];
-        if ($spec->responseType !== null || in_array($spec->responseEncoding, Operation::STREAMING_ENCODINGS, true)) {
-            $legacyBinary = ltrim($spec->responseType, '\\') === \Psr\Http\Message\ResponseInterface::class;
+        if ($spec->responseType !== null || Operation::isStreamingEncoding($spec->responseEncoding)) {
+            $legacyBinary = $spec->responseType !== null && ltrim($spec->responseType, '\\') === \Psr\Http\Message\ResponseInterface::class;
             $accepted[] = $legacyBinary && !array_key_exists('responseMediaType', $operation) ? 'application/octet-stream' : $spec->responseMediaType;
         }
         foreach (array_merge($spec->responseTypes, $spec->errorResponses) as $entry) {
-            foreach (($entry['alternatives'] ?? []) ?: [$entry] as $alternative) {
-                $streams = in_array($alternative['encoding'] ?? '', Operation::STREAMING_ENCODINGS, true);
-                if ($alternative['type'] === null && !$streams) { continue; }
-                $accepted[] = $alternative['mediaType'] ?? match ($alternative['encoding'] ?? '') {
-                    'jsonl' => 'application/jsonl', 'json-seq' => 'application/json-seq', 'sse' => 'text/event-stream',
-                    default => ltrim((string) $alternative['type'], '\\') === \Psr\Http\Message\ResponseInterface::class ? 'application/octet-stream' : 'application/json',
-                };
+            foreach (Operation::representations($entry) as $representation) {
+                if ($representation['type'] === null && !Operation::isStreamingEncoding($representation['encoding'] ?? null)) {
+                    continue;
+                }
+                $accepted[] = $representation['mediaType'] ?? MediaType::defaultFor($representation['type'], $representation['encoding'] ?? null);
             }
         }
         $accepted = array_values(array_unique($accepted));
-        // Preserve the established order for previously emitted SDKs.
-        $rank = static fn (string $media): int => MediaType::isRange($media) ? 4 : (preg_match('~^application/(?:[a-z0-9!#$&^_.+\-]+\+)?json(?:\s*;|$)~i', $media) === 1 ? 0 : match ($media) { 'text/plain' => 1, 'application/octet-stream' => 2, default => 3 });
-        usort($accepted, static fn (string $left, string $right): int => $rank($left) <=> $rank($right));
-        $accept = implode(', ', $accepted === [] ? ['application/json'] : $accepted);
-        $headers = ['Accept' => $accept]
-            + self::stringifyAll($headerParameters, $spec->headerSerialization);
-        $jsonBody = preg_match('~^application/(?:[a-z0-9!#$&^_.+-]+\+)?json(?:\s*;.*)?$~iD', $spec->requestMediaType) === 1;
+        // usort is stable, so equally preferred types keep the order of previously emitted SDKs.
+        usort($accepted, static fn (string $left, string $right): int => MediaType::preference($left) <=> MediaType::preference($right));
+        return implode(', ', $accepted === [] ? ['application/json'] : $accepted);
+    }
+
+    /**
+     * How the request body is carried, decided from the declared media type and body encoding.
+     *
+     * @return 'json'|'text'|'binary'|'form'|'multipart'
+     */
+    private static function bodyKind(Operation $spec): string
+    {
+        $media = $spec->requestMediaType;
+        $json = MediaType::isJson($media);
+        $baseMedia = strtolower(trim(explode(';', $media, 2)[0]));
+        $rawMedia = !$json && !str_contains($baseMedia, '*') && !in_array($baseMedia, ['application/x-www-form-urlencoded', 'multipart/form-data'], true)
+            && preg_match("@^[!#$%&'*+.^_`|~a-z0-9-]+/[!#$%&'*+.^_`|~a-z0-9-]+(?:\\s*;[^\\r\\n]*)?$@iD", $media) === 1;
         $encoding = $spec->requestBody['encoding'] ?? 'json';
-        $baseMedia = strtolower(trim(explode(';', $spec->requestMediaType, 2)[0]));
-        $rawMedia = !$jsonBody && !str_contains($baseMedia, '*') && !in_array($baseMedia, ['application/x-www-form-urlencoded', 'multipart/form-data'], true)
-            && preg_match("@^[!#$%&'*+.^_`|~a-z0-9-]+/[!#$%&'*+.^_`|~a-z0-9-]+(?:\\s*;[^\\r\\n]*)?$@iD", $spec->requestMediaType) === 1;
-        $rawText = $encoding === 'text' && $rawMedia;
-        $rawBinary = $encoding === 'binary' && $rawMedia;
-        if ((!$jsonBody && !$rawText && !$rawBinary && !in_array($spec->requestMediaType, ['application/x-www-form-urlencoded', 'multipart/form-data'], true))
-            || ($spec->requestMediaType !== 'application/x-www-form-urlencoded' && $spec->bodySerialization !== [])
-            || ($spec->requestMediaType !== 'multipart/form-data' && $spec->bodyParts !== [])) {
+        $kind = match (true) {
+            $json => 'json',
+            $encoding === 'text' && $rawMedia => 'text',
+            $encoding === 'binary' && $rawMedia => 'binary',
+            $media === 'application/x-www-form-urlencoded' => 'form',
+            $media === 'multipart/form-data' => 'multipart',
+            default => null,
+        };
+        if ($kind === null
+            || ($media !== 'application/x-www-form-urlencoded' && $spec->bodySerialization !== [])
+            || ($media !== 'multipart/form-data' && $spec->bodyParts !== [])) {
             throw new \InvalidArgumentException('Unsupported request body media type or serialization metadata.');
         }
-        $bodyBytes = null;
-        if ($spec->requestBody !== null) {
-            if ((!$jsonBody && !$rawText && !$rawBinary) || ($jsonBody && $encoding !== 'json')) { throw new \InvalidArgumentException('Request body encoding does not match its media type.'); }
-            if ($rawBinary && ($spec->requestBody['rules'] ?? []) !== []) { throw new \InvalidArgumentException('Binary body constraints are unsupported.'); }
-            if (!$bodyPresent && $spec->requestBody['required']) { throw new \UnexpectedValueException($spec->label . ' requires a request body.'); }
-            if ($bodyPresent) {
-                $bodyRules = $spec->requestBody['rules'] ?? [];
-                if ($body !== null || array_key_exists('schema', $bodyRules) || array_key_exists('const', $bodyRules) || array_key_exists('enum', $bodyRules) || array_key_exists('jsonSchema', $bodyRules)) {
-                    Constraints::validate($body, $bodyRules, $spec->label . ' body', 'request');
-                }
-                $body = Hydrator::hydrate($body, $spec->requestBody['type'], $spec->requestBody['nullable'], $spec->label . ' body');
-            }
-        } elseif ($bodyPresent && !$body instanceof DTO) {
-            throw new \UnexpectedValueException('Legacy operation body must be a DTO.');
-        }
-        if ($bodyPresent) {
-            $headers['Content-Type'] = $spec->requestMediaType;
-            if ($rawText || $rawBinary) {
-                if (!is_string($body) && !$body instanceof \Psr\Http\Message\StreamInterface) { throw new \UnexpectedValueException('Raw body must contain bytes.'); }
-                $bodyBytes = $body;
-            } elseif ($jsonBody) {
-                DTO::validateNestedValue($body, 'request');
-                $bodyBytes = json_encode(Serializer::value($body, 'request'), JSON_THROW_ON_ERROR);
-            } else {
-                if (!$body instanceof DTO) { throw new \UnexpectedValueException('Form body must be a DTO.'); }
-                if ($spec->requestMediaType === 'multipart/form-data') {
-                    $multipart = MultipartSerializer::encode($body, $spec->bodyParts);
-                    $headers['Content-Type'] .= '; boundary=' . $multipart->getBoundary();
-                    $bodyBytes = $multipart;
-                } else {
-                    $bodyBytes = FormSerializer::encode($body, $spec->bodySerialization);
-                }
-            }
-        }
+        return $kind;
+    }
 
-        $baseHeaders = $headers;
-        $baseQuery = $query;
-        // A token provider may hold a revoked token; renew it and replay once when the server answers 401.
+    /** Validates the body against its declared contract and hydrates it into its declared type. */
+    private static function checkedBody(Operation $spec, string $kind, mixed $body, bool $bodyPresent): mixed
+    {
+        if ($spec->requestBody === null) {
+            if ($bodyPresent && !$body instanceof DTO) {
+                throw new \UnexpectedValueException('Legacy operation body must be a DTO.');
+            }
+            return $body;
+        }
+        $encoding = $spec->requestBody['encoding'] ?? 'json';
+        if (!in_array($kind, ['json', 'text', 'binary'], true) || ($kind === 'json' && $encoding !== 'json')) {
+            throw new \InvalidArgumentException('Request body encoding does not match its media type.');
+        }
+        if ($kind === 'binary' && ($spec->requestBody['rules'] ?? []) !== []) {
+            throw new \InvalidArgumentException('Binary body constraints are unsupported.');
+        }
+        if (!$bodyPresent) {
+            if ($spec->requestBody['required']) {
+                throw new \UnexpectedValueException($spec->label . ' requires a request body.');
+            }
+            return $body;
+        }
+        $bodyRules = $spec->requestBody['rules'] ?? [];
+        if ($body !== null || array_key_exists('schema', $bodyRules) || array_key_exists('const', $bodyRules) || array_key_exists('enum', $bodyRules) || array_key_exists('jsonSchema', $bodyRules)) {
+            Constraints::validate($body, $bodyRules, $spec->label . ' body', 'request');
+        }
+        return Hydrator::hydrate($body, $spec->requestBody['type'], $spec->requestBody['nullable'], $spec->label . ' body');
+    }
+
+    /**
+     * Wire bytes of a present body and the Content-Type header that goes with them.
+     *
+     * @return array{string|\Psr\Http\Message\StreamInterface, string}
+     */
+    private static function serializeBody(Operation $spec, string $kind, mixed $body): array
+    {
+        $contentType = $spec->requestMediaType;
+        if ($kind === 'text' || $kind === 'binary') {
+            if (!is_string($body) && !$body instanceof \Psr\Http\Message\StreamInterface) { throw new \UnexpectedValueException('Raw body must contain bytes.'); }
+            return [$body, $contentType];
+        }
+        if ($kind === 'json') {
+            DTO::validateNestedValue($body, 'request');
+            return [json_encode(Serializer::value($body, 'request'), JSON_THROW_ON_ERROR), $contentType];
+        }
+        if (!$body instanceof DTO) { throw new \UnexpectedValueException('Form body must be a DTO.'); }
+        if ($kind === 'multipart') {
+            $multipart = MultipartSerializer::encode($body, $spec->bodyParts);
+            return [$multipart, $contentType . '; boundary=' . $multipart->getBoundary()];
+        }
+        return [FormSerializer::encode($body, $spec->bodySerialization), $contentType];
+    }
+
+    /**
+     * Sends the request and classifies the answer. A token provider may hold a revoked token: after a 401
+     * its token is renewed and the request replayed once, when the body can be sent again.
+     *
+     * @param OperationSpec $operation
+     * @param array<string,mixed> $query
+     * @param array<string,string> $headers
+     * @return \Generator<int, mixed>|ResponseInterface|HttpResponse A lazy stream of items, a raw PSR-7 response
+     *         the operation hands over as it is, or the buffered response that decodeResponse() turns into a value.
+     */
+    private function sendWithAuthRetry(Operation $spec, array $operation, string $path, array $query, array $headers, string|\Psr\Http\Message\StreamInterface|null $bodyBytes): \Generator|ResponseInterface|HttpResponse
+    {
         $replayable = !($bodyBytes instanceof \Psr\Http\Message\StreamInterface) || $bodyBytes->isSeekable();
         $streaming = $spec->streamsResponse();
+        $baseUrl = null;
         for ($attempt = 0;; $attempt++) {
-            $headers = $baseHeaders;
-            $query = $baseQuery;
+            $attemptHeaders = $headers;
             $securityQuery = [];
             $providers = [];
-            SecurityApplier::apply($this->securityCredentials, $spec->security, static::SECURITY_SCHEMES, $headers, $securityQuery, $providers);
-            $formats = $spec->querySerialization;
-            foreach ($securityQuery as $name => $credential) {
-                $query[$name] = $credential;
-                unset($formats[$name]); // Security query keys keep their existing scalar precedence.
-            }
-            $allowReserved = array_values(array_diff($spec->queryAllowReserved, array_keys($securityQuery)));
-            $encodedQuery = QuerySerializer::encode($query, $formats, allowReserved: $allowReserved);
-            $baseUrl = $this->baseUrlFor($spec);
-            $url = rtrim($baseUrl, '/') . $path;
-            if ($encodedQuery !== '') {
-                $url .= '?' . $encodedQuery;
-            }
-            $retry = $attempt === 0 && $providers !== [] && $replayable && !$spec->succeeded(401);
+            SecurityApplier::apply($this->securityCredentials, $spec->security, static::SECURITY_SCHEMES, $attemptHeaders, $securityQuery, $providers);
+            $url = $this->requestUrl($spec, $path, $query, $securityQuery, $baseUrl);
+
+            $psr = $buffered = null; // exactly one is set: the PSR-18 adapter answers with PSR-7, legacy transports with HttpResponse
             if ($this->transport instanceof Psr18Transport) {
-                $psrResponse = $this->transport->sendResponse($spec->method, $url, $headers, $bodyBytes, $streaming);
-                if ($retry && $psrResponse->getStatusCode() === 401) {
-                    foreach ($providers as $provider) {
-                        $provider->invalidate();
-                    }
-                    continue;
-                }
-                $this->recordResponse($spec, $psrResponse->getStatusCode(), $psrResponse->getHeaders());
-                $streamed = $this->streamedResponse($spec, $operation, $psrResponse->getStatusCode(), $psrResponse->getHeaderLine('Content-Type'), static fn () => $psrResponse->getBody());
-                if ($streamed !== null) {
-                    return $streamed;
-                }
-                if (Operation::allowsResponseBody($spec->method, $psrResponse->getStatusCode()) && $spec->succeeded($psrResponse->getStatusCode()) && ltrim(($spec->responseTypeFor($psrResponse->getStatusCode(), $psrResponse->getHeaderLine('Content-Type')) ?? ['type' => $spec->responseType])['type'] ?? '', '\\') === \Psr\Http\Message\ResponseInterface::class) {
-                    return $psrResponse;
-                }
-                $response = \Dmorenof\SdkRuntime\Transport\HttpResponse::fromPsr($psrResponse);
+                $psr = $this->transport->sendResponse($spec->method, $url, $attemptHeaders, $bodyBytes, $streaming);
+                $status = $psr->getStatusCode();
+                $wireHeaders = $psr->getHeaders();
+                $contentType = $psr->getHeaderLine('Content-Type');
             } else {
-                $response = $this->transport->send($spec->method, $url, $headers,
+                $buffered = $this->transport->send($spec->method, $url, $attemptHeaders,
                     $bodyBytes instanceof \Psr\Http\Message\StreamInterface ? (string) $bodyBytes : $bodyBytes);
-                if ($retry && $response->status === 401) {
-                    foreach ($providers as $provider) {
-                        $provider->invalidate();
-                    }
-                    continue;
+                $status = $buffered->status;
+                $wireHeaders = $buffered->headers;
+                $contentType = $buffered->header('Content-Type');
+            }
+            if ($attempt === 0 && $providers !== [] && $replayable && $status === 401 && !$spec->succeeded(401)) {
+                foreach ($providers as $provider) {
+                    $provider->invalidate();
                 }
-                $this->recordResponse($spec, $response->status, $response->headers);
-                $streamed = $this->streamedResponse($spec, $operation, $response->status, $response->header('Content-Type'), static fn () => \GuzzleHttp\Psr7\Utils::streamFor($response->body));
-                if ($streamed !== null) {
-                    return $streamed;
+                continue;
+            }
+            $this->recordResponse($spec, $status, $wireHeaders);
+
+            if (Operation::allowsResponseBody($spec->method, $status) && $spec->succeeded($status)) {
+                $entry = $spec->responseTypeFor($status, $contentType) ?? self::legacyResponse($spec, $operation);
+                if ($streaming && Operation::isStreamingEncoding($entry['encoding'] ?? 'json')) {
+                    return StreamDecoder::iterate($psr?->getBody() ?? Utils::streamFor((string) $buffered?->body), $entry, $spec->label . ' response');
                 }
-                if (Operation::allowsResponseBody($spec->method, $response->status) && $spec->succeeded($response->status) && ltrim(($spec->responseTypeFor($response->status, $response->header('Content-Type')) ?? ['type' => $spec->responseType])['type'] ?? '', '\\') === \Psr\Http\Message\ResponseInterface::class) {
-                    return new \GuzzleHttp\Psr7\Response($response->status, $response->headers, $response->body);
+                if (ltrim((string) $entry['type'], '\\') === ResponseInterface::class) {
+                    return $psr ?? new PsrResponse($status, $buffered?->headers ?? [], (string) $buffered?->body);
                 }
             }
-            break;
+            return $psr !== null ? HttpResponse::fromPsr($psr) : ($buffered ?? throw new \LogicException('The transport returned no response.'));
         }
+    }
+
+    /**
+     * @param array<string,mixed> $query
+     * @param array<string,string> $securityQuery Credentials sent as query parameters.
+     * @param string|null $baseUrl Resolved on first use and then kept for the replay.
+     */
+    private function requestUrl(Operation $spec, string $path, array $query, array $securityQuery, ?string &$baseUrl): string
+    {
+        $formats = $spec->querySerialization;
+        foreach ($securityQuery as $name => $credential) {
+            $query[$name] = $credential;
+            unset($formats[$name]); // Security query keys keep their existing scalar precedence.
+        }
+        $allowReserved = array_values(array_diff($spec->queryAllowReserved, array_keys($securityQuery)));
+        $encodedQuery = QuerySerializer::encode($query, $formats, allowReserved: $allowReserved);
+        $baseUrl ??= $this->baseUrlFor($spec);
+        $url = rtrim($baseUrl, '/') . $path;
+        return $encodedQuery === '' ? $url : $url . '?' . $encodedQuery;
+    }
+
+    /**
+     * The response description of an operation declared with the single-response keys instead of per-status entries.
+     *
+     * @param OperationSpec $operation
+     * @return array{type:?string,schemaNullable:bool,mediaType:string,encoding:string}
+     */
+    private static function legacyResponse(Operation $spec, array $operation): array
+    {
+        return [
+            'type' => $spec->responseType,
+            'schemaNullable' => $spec->schemaNullable,
+            'mediaType' => $spec->responseMediaType,
+            'encoding' => array_key_exists('responseEncoding', $operation) ? $spec->responseEncoding : ($spec->responseMediaType === 'text/plain' ? 'text' : 'json'),
+        ];
+    }
+
+    /**
+     * Turns a buffered response into the operation's value: null for bodyless answers, the decoded and
+     * validated payload for a success, or an ApiException for any other status.
+     *
+     * @param OperationSpec $operation
+     */
+    private static function decodeResponse(Operation $spec, array $operation, HttpResponse $response): mixed
+    {
         if (!Operation::allowsResponseBody($spec->method, $response->status)) {
             if (!$spec->succeeded($response->status)) { throw new ApiException($response, null, $spec->label); }
             return null;
         }
+        $contentType = $response->header('Content-Type');
         if (!$spec->succeeded($response->status)) {
-            throw ApiException::fromResponse($response, $spec->label, $spec->errorTypeFor($response->status), $spec->errorResponseFor($response->status, $response->header('Content-Type')));
+            throw ApiException::fromResponse($response, $spec->label, $spec->errorTypeFor($response->status), $spec->errorResponseFor($response->status, $contentType));
         }
-        $declared = $spec->responseTypeFor($response->status, $response->header('Content-Type'));
-        $responseType = $declared ?? ['type' => $spec->responseType, 'schemaNullable' => $spec->schemaNullable, 'mediaType' => $spec->responseMediaType, 'encoding' => array_key_exists('responseEncoding', $operation) ? $spec->responseEncoding : ($spec->responseMediaType === 'text/plain' ? 'text' : 'json')];
+        $declared = $spec->responseTypeFor($response->status, $contentType);
+        $responseType = $declared ?? self::legacyResponse($spec, $operation);
         if ($responseType['type'] === null || ($declared === null && $spec->noContentAllowed && $response->body === '')) {
             return null;
         }
@@ -588,31 +676,6 @@ abstract class ApiClient
         return $result;
     }
 
-    /** @param array<array-key,mixed> $content Unvalidated nested metadata at the execution boundary. */
-    /**
-     * Lazy decoding for a successful response whose selected representation is jsonl, json-seq or sse.
-     * Returns null for every other response, which then follows the buffered paths.
-     *
-     * @param OperationSpec $operation
-     * @param \Closure(): \Psr\Http\Message\StreamInterface $stream
-     * @return \Generator<int, mixed>|null
-     */
-    private function streamedResponse(Operation $spec, array $operation, int $status, ?string $contentType, \Closure $stream): ?\Generator
-    {
-        if (!$spec->streamsResponse() || !Operation::allowsResponseBody($spec->method, $status) || !$spec->succeeded($status)) {
-            return null;
-        }
-        $entry = $spec->responseTypeFor($status, $contentType) ?? [
-            'type' => $spec->responseType,
-            'schemaNullable' => $spec->schemaNullable,
-            'encoding' => array_key_exists('responseEncoding', $operation) ? $spec->responseEncoding : 'json',
-        ];
-        if (!in_array($entry['encoding'] ?? 'json', Operation::STREAMING_ENCODINGS, true)) {
-            return null;
-        }
-        return \Dmorenof\SdkRuntime\Streaming\StreamDecoder::iterate($stream(), $entry, $spec->label . ' response');
-    }
-
     /** @param array<string, list<string>|string> $headers */
     private function recordResponse(Operation $spec, int $status, array $headers): void
     {
@@ -623,6 +686,7 @@ abstract class ApiClient
         );
     }
 
+    /** @param array<array-key,mixed> $content Unvalidated nested metadata at the execution boundary. */
     private static function assertParameterContent(array $content, Operation $spec): void
     {
         foreach ($content as $location => $formats) {
@@ -689,6 +753,38 @@ abstract class ApiClient
                 throw new \InvalidArgumentException('Unsupported simple path/header parameter metadata.');
             }
         }
+    }
+
+    /**
+     * Folds cookie parameters into the Cookie header, next to any Cookie header the caller already set.
+     *
+     * @param array<string,bool|float|int|string|list<bool|float|int|string>|DTO|Map|TypedArray|null> $headers
+     * @param array<string,bool|float|int|string|list<bool|float|int|string>|DTO|Map|TypedArray|null> $cookies
+     * @param array<array-key,mixed> $content Cookie names declared as raw text content.
+     * @return array<string,bool|float|int|string|list<bool|float|int|string>|DTO|Map|TypedArray|null>
+     */
+    private static function withCookies(array $headers, array $cookies, array $content): array
+    {
+        $cookieHeaders = [];
+        foreach ($headers as $name => $value) {
+            if (strcasecmp((string) $name, 'Cookie') === 0) {
+                if ($value !== null) {
+                    if (!is_scalar($value)) { throw new \UnexpectedValueException('Cookie header must be scalar.'); }
+                    $cookieHeaders[$name] = self::stringify($value);
+                }
+                unset($headers[$name]);
+            }
+        }
+        $rawCookies = [];
+        foreach ($content as $name => $media) {
+            if ($media !== 'text/plain') { throw new \InvalidArgumentException('Cookie content supports only text/plain.'); }
+            if (array_key_exists($name, $cookies) && $cookies[$name] !== null) {
+                $rawCookies[] = CookieHeader::pair((string) $name, QuerySerializer::content($cookies[$name], $media));
+            }
+            unset($cookies[$name]);
+        }
+        return $headers + CookieHeader::merge($cookieHeaders, ['Cookie' => implode('; ', $rawCookies)],
+            ['Cookie' => str_replace('&', '; ', QuerySerializer::encode($cookies))]);
     }
 
     private static function stringify(string|int|float|bool|null $value): string

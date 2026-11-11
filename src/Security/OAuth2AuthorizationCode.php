@@ -19,13 +19,9 @@ use Psr\Http\Client\ClientInterface;
  *     $flow->complete($request, $_GET);           // on the redirect URI, once
  *     new SecurityCredentials(['OAuth' => $flow]) // then use it like any bearer token
  */
-final class OAuth2AuthorizationCode implements TokenProviderInterface
+final class OAuth2AuthorizationCode extends CachedTokenProvider
 {
     private const array RESERVED = ['response_type', 'client_id', 'redirect_uri', 'scope', 'state', 'code_challenge', 'code_challenge_method'];
-
-    private readonly OAuth2TokenEndpoint $endpoint;
-    private readonly TokenStoreInterface $store;
-    private readonly string $storeKey;
 
     /**
      * @param ?string $clientSecret Null for a public client (native or single-page apps); PKCE protects it.
@@ -48,22 +44,21 @@ final class OAuth2AuthorizationCode implements TokenProviderInterface
         private readonly ?string $issuer = null,
         bool $credentialsInBody = false,
         private readonly int $requestLifetime = 600,
-        private readonly int $leeway = 30,
+        int $leeway = 30,
         ?\Closure $clock = null,
     ) {
         OAuth2TokenEndpoint::assertUrl($authorizationUrl, 'authorization URL');
         self::assertRedirectUri($redirectUri);
-        foreach ($scopes as $scope) {
-            if (!is_string($scope) || $scope === '' || preg_match('/[\s"\\\\]/', $scope) === 1) {
-                throw new \InvalidArgumentException('Invalid OAuth2 scope.');
-            }
-        }
+        OAuth2TokenEndpoint::assertScopes($scopes);
         if ($requestLifetime < 1) {
             throw new \InvalidArgumentException('requestLifetime must be positive.');
         }
-        $this->endpoint = new OAuth2TokenEndpoint($tokenUrl, $clientId, $clientSecret, $http, $credentialsInBody, $clock);
-        $this->store = $store ?? new InMemoryTokenStore();
-        $this->storeKey = hash('sha256', implode("\0", [$tokenUrl, $clientId, implode(' ', $scopes), $subject]));
+        parent::__construct(
+            new OAuth2TokenEndpoint($tokenUrl, $clientId, $clientSecret, $http, $credentialsInBody, $clock),
+            $store,
+            self::storeKey($tokenUrl, $clientId, implode(' ', $scopes), $subject),
+            $leeway,
+        );
     }
 
     /**
@@ -78,7 +73,7 @@ final class OAuth2AuthorizationCode implements TokenProviderInterface
         $valid = $parts !== false && $scheme !== '' && !isset($parts['fragment']) && !isset($parts['user']) && !isset($parts['pass'])
             && match (true) {
                 $scheme === 'https' => $host !== '',
-                $scheme === 'http' => in_array($host, ['localhost', '127.0.0.1', '[::1]'], true),
+                $scheme === 'http' => OAuth2TokenEndpoint::isLoopback($host),
                 default => str_contains($scheme, '.'),
             };
         if (!$valid) {
@@ -157,53 +152,37 @@ final class OAuth2AuthorizationCode implements TokenProviderInterface
             'redirect_uri' => $this->redirectUri,
             'code_verifier' => $request->codeVerifier,
         ]);
-        $this->store->set($this->storeKey, $token);
+        $this->save($token);
         return $token;
     }
 
     /** True when a token (possibly stale but renewable) is stored for this user. */
     public function isAuthorized(): bool
     {
-        return $this->store->get($this->storeKey) !== null;
+        return $this->stored() !== null;
     }
 
-    /** @throws ReauthorizationRequiredException When the user has to authorize again. */
-    public function accessToken(): string
+    /** @throws ReauthorizationRequiredException No token, or one that can no longer be renewed: authorize again. */
+    protected function obtain(?OAuth2Token $stale): OAuth2Token
     {
-        $token = $this->store->get($this->storeKey)
-            ?? throw new ReauthorizationRequiredException('No OAuth2 token for this user: complete the authorization flow first.');
-        if ($token->isValid($this->endpoint->now(), $this->leeway)) {
-            return $token->accessToken;
+        if ($stale === null) {
+            throw new ReauthorizationRequiredException('No OAuth2 token for this user: complete the authorization flow first.');
         }
-        if ($token->refreshToken === null) {
-            $this->store->delete($this->storeKey);
-            throw new ReauthorizationRequiredException('The OAuth2 token has expired and cannot be renewed: authorize again.');
-        }
-        try {
-            $renewed = $this->endpoint->request(['grant_type' => 'refresh_token', 'refresh_token' => $token->refreshToken], $token->refreshToken);
-        } catch (OAuth2Exception) {
-            $this->store->delete($this->storeKey);
-            throw new ReauthorizationRequiredException('The OAuth2 refresh token was rejected: authorize again.');
-        }
-        $this->store->set($this->storeKey, $renewed);
-        return $renewed->accessToken;
+        $this->discard();
+        throw new ReauthorizationRequiredException('The OAuth2 token has expired and cannot be renewed: authorize again.');
     }
 
-    public function invalidate(): void
+    /**
+     * A refresh token the server rejects is gone for good, so the user must authorize again. Any other failure
+     * (a server error, a malformed answer) may pass: the stored token is kept and the error reaches the caller.
+     */
+    protected function refreshFailed(OAuth2Exception $failure): void
     {
-        $token = $this->store->get($this->storeKey);
-        if ($token?->refreshToken !== null) {
-            // Keep the refresh token but force renewal on the next call.
-            $this->store->set($this->storeKey, new OAuth2Token($token->accessToken, 0, $token->refreshToken));
-            return;
+        if (!$failure->isRejection()) {
+            throw $failure;
         }
-        $this->store->delete($this->storeKey);
-    }
-
-    /** Forgets the stored token (sign out). */
-    public function forget(): void
-    {
-        $this->store->delete($this->storeKey);
+        $this->discard();
+        throw new ReauthorizationRequiredException('The OAuth2 refresh token was rejected: authorize again.', $failure->getCode(), $failure);
     }
 
     /** @return array<string, string> Secrets are never exposed. */

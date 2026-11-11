@@ -111,3 +111,4 @@ Durante las fases 1 y 2, el SDK de Casafari generado sigue pasando como prueba d
 | Fecha | Cambio | Referencia |
 | --- | --- | --- |
 | 2026-11-10 | Se crea esta hoja de ruta con la leyenda común y el orden global runtime → generador → Casafari. | Conversación de planificación |
+| 2026-11-11 | Revisión de limpieza de lo acumulado (reutilización, responsabilidad única, eficiencia) con comparación lado a lado del código anterior y el nuevo; corrige `MediaType::normalize()`, un `TypeError` con SSE sin tipo, la fuga de credenciales con middleware entre orígenes y la renovación OAuth ante errores transitorios. | Ver CHANGELOG |

@@ -448,4 +448,82 @@ final class OAuth2AuthorizationCodeTest extends TestCase
         self::assertSame('Ada', $client->getUser(1)->name);
         self::assertSame(['Bearer old', 'Bearer new'], $transport->authorization);
     }
+
+    public function testATransientRenewalFailureKeepsTheTokenAndSurfacesTheError(): void
+    {
+        $now = 0;
+        [$flow, $http] = $this->flow(
+            [self::token('a1', 10, 'r1'), new Response(503, [], 'maintenance'), self::token('a2', 3600, 'r1')],
+            ['leeway' => 0, 'clock' => function () use (&$now): int {
+                return $now;
+            }],
+        );
+        $request = $flow->start();
+        $flow->complete($request, ['code' => 'c', 'state' => $request->state]);
+        $now = 100;
+
+        try {
+            $flow->accessToken();
+            self::fail('Expected OAuth2Exception.');
+        } catch (OAuth2Exception $e) {
+            self::assertNotInstanceOf(ReauthorizationRequiredException::class, $e, 'a server error is not a reason to ask the user again');
+            self::assertFalse($e->isRejection());
+            self::assertTrue($flow->isAuthorized(), 'the refresh token is still there');
+        }
+
+        self::assertSame('a2', $flow->accessToken(), 'and the next attempt can renew it');
+        self::assertCount(3, $http->requests);
+    }
+
+    /** @return iterable<string, array{int, bool}> */
+    public static function statuses(): iterable
+    {
+        yield '400' => [400, true];
+        yield '401' => [401, true];
+        yield '403' => [403, false];
+        yield '429' => [429, false];
+        yield '500' => [500, false];
+        yield '503' => [503, false];
+        yield 'no status' => [0, false];
+    }
+
+    #[DataProvider('statuses')]
+    public function testOnlyAnEndpointRejectionIsFinal(int $status, bool $rejection): void
+    {
+        $e = new OAuth2Exception('x', $status);
+
+        self::assertSame($rejection, $e->isRejection());
+        self::assertSame($status, $e->getCode());
+    }
+
+    public function testAnAuthorizationRequestSurvivesTheSession(): void
+    {
+        [$flow, $http] = $this->flow([self::token('a1')]);
+        $started = $flow->start();
+
+        $stored = json_decode(json_encode($started->toArray(), JSON_THROW_ON_ERROR), true, 512, JSON_THROW_ON_ERROR);
+        $flow->complete(AuthorizationRequest::fromArray($stored), ['code' => 'c', 'state' => $started->state]);
+
+        self::assertSame(['state', 'codeVerifier', 'expiresAt'], array_keys($started->toArray()));
+        self::assertSame($started->codeVerifier, self::form($http->requests[0])['code_verifier']);
+    }
+
+    /** @return iterable<string, array{array<mixed>}> */
+    public static function incompleteRequests(): iterable
+    {
+        yield 'empty' => [[]];
+        yield 'no state' => [['codeVerifier' => 'v', 'expiresAt' => 1]];
+        yield 'empty state' => [['state' => '', 'codeVerifier' => 'v', 'expiresAt' => 1]];
+        yield 'no verifier' => [['state' => 's', 'expiresAt' => 1]];
+        yield 'text expiry' => [['state' => 's', 'codeVerifier' => 'v', 'expiresAt' => '1']];
+        yield 'array state' => [['state' => ['s'], 'codeVerifier' => 'v', 'expiresAt' => 1]];
+    }
+
+    /** @param array<mixed> $data */
+    #[DataProvider('incompleteRequests')]
+    public function testIncompleteStoredRequestsAreRejected(array $data): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        AuthorizationRequest::fromArray($data);
+    }
 }

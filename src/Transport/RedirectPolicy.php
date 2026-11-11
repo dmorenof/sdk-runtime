@@ -3,6 +3,8 @@ declare(strict_types=1);
 
 namespace Dmorenof\SdkRuntime\Transport;
 
+use Psr\Http\Message\RequestInterface;
+
 /**
  * How the PSR-18 transport follows 3xx responses when a policy is set; without one redirects are not followed.
  * The defaults of this class mirror common client behavior
@@ -40,6 +42,30 @@ final readonly class RedirectPolicy
     public function follows(int $status): bool
     {
         return $this->maxRedirects > 0 && in_array($status, $this->statuses, true);
+    }
+
+    /**
+     * Method of the follow-up request: 307/308 keep it, 301/302 turn POST into GET and 303 turns anything
+     * but GET/HEAD into GET.
+     */
+    public function methodAfter(string $method, int $status): string
+    {
+        $upper = strtoupper($method);
+        if ($upper === 'GET' || $upper === 'HEAD' || in_array($status, [307, 308], true)) {
+            return $method;
+        }
+        return $status === 303 || ($upper === 'POST' && in_array($status, [301, 302], true)) ? 'GET' : $method;
+    }
+
+    /** The request without any header that must not reach another origin (everything but Host and the allowlist). */
+    public function withoutCredentials(RequestInterface $request): RequestInterface
+    {
+        foreach (array_keys($request->getHeaders()) as $name) {
+            if (strcasecmp((string) $name, 'Host') !== 0 && !$this->forwardsAcrossOrigins((string) $name)) {
+                $request = $request->withoutHeader((string) $name);
+            }
+        }
+        return $request;
     }
 
     public function forwardsAcrossOrigins(string $header): bool

@@ -15,6 +15,9 @@ use Psr\Http\Client\ClientInterface;
  */
 final class OAuth2TokenEndpoint
 {
+    /** Hosts that count as "this machine": TLS is not required toward them. */
+    private const array LOOPBACK_HOSTS = ['localhost', '127.0.0.1', '[::1]'];
+
     private readonly ?\Closure $clock;
 
     /**
@@ -41,10 +44,29 @@ final class OAuth2TokenEndpoint
     {
         $parts = parse_url($url);
         $host = strtolower($parts['host'] ?? '');
-        $loopback = in_array($host, ['localhost', '127.0.0.1', '[::1]'], true);
         if ($parts === false || $host === '' || isset($parts['user']) || isset($parts['pass']) || isset($parts['fragment'])
-            || !(($parts['scheme'] ?? '') === 'https' || (($parts['scheme'] ?? '') === 'http' && $loopback))) {
+            || !(($parts['scheme'] ?? '') === 'https' || (($parts['scheme'] ?? '') === 'http' && self::isLoopback($host)))) {
             throw new \InvalidArgumentException("OAuth2 $what must be an absolute https URL (http only for localhost) without credentials or fragment.");
+        }
+    }
+
+    /** Whether a host (as parse_url reports it) is the local machine. */
+    public static function isLoopback(string $host): bool
+    {
+        return in_array(strtolower($host), self::LOOPBACK_HOSTS, true);
+    }
+
+    /**
+     * Scope tokens are separated by spaces on the wire, so one may not contain whitespace, quotes or backslashes.
+     *
+     * @param list<string> $scopes
+     */
+    public static function assertScopes(array $scopes): void
+    {
+        foreach ($scopes as $scope) {
+            if (!is_string($scope) || $scope === '' || preg_match('/[\s"\\\\]/', $scope) === 1) {
+                throw new \InvalidArgumentException('Invalid OAuth2 scope.');
+            }
         }
     }
 
@@ -74,7 +96,7 @@ final class OAuth2TokenEndpoint
         $data = json_decode((string) $response->getBody(), true);
         if ($status !== 200 || !is_array($data)) {
             $error = is_array($data) && isset($data['error']) && is_string($data['error']) ? ': ' . substr($data['error'], 0, 64) : '';
-            throw new OAuth2Exception("OAuth2 token request failed with HTTP $status$error.");
+            throw new OAuth2Exception("OAuth2 token request failed with HTTP $status$error.", $status);
         }
         $accessToken = $data['access_token'] ?? null;
         $type = $data['token_type'] ?? 'Bearer';

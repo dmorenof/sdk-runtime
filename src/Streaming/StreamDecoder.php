@@ -13,6 +13,8 @@ use Psr\Http\Message\StreamInterface;
  * and closes the stream when it finishes or is destroyed.
  *
  * @internal Implementation detail: not covered by the backward-compatibility promise (see docs/PUBLIC_API.md).
+ *
+ * @phpstan-import-type Representation from \Dmorenof\SdkRuntime\Operation
  */
 final class StreamDecoder
 {
@@ -22,14 +24,14 @@ final class StreamDecoder
     private const int CHUNK = 8192;
 
     /**
-     * @param array{type:?string,schemaNullable:bool,rules?:array<string,mixed>,encoding?:string} $entry
+     * @param Representation $entry
      * @return \Generator<int, mixed>
      */
     public static function iterate(StreamInterface $stream, array $entry, string $where): \Generator
     {
         return match ($entry['encoding'] ?? '') {
-            'jsonl' => self::jsonl($stream, $entry, $where),
-            'json-seq' => self::jsonSeq($stream, $entry, $where),
+            'jsonl' => self::items(self::lines($stream), $entry, $where),
+            'json-seq' => self::items(self::records($stream, "\x1e"), $entry, $where), // RFC 7464: records start with RS
             'sse' => self::sse($stream, $entry, $where),
             default => throw new \InvalidArgumentException('Unsupported streaming encoding.'),
         };
@@ -43,6 +45,7 @@ final class StreamDecoder
     public static function lines(StreamInterface $stream): \Generator
     {
         $buffer = '';
+        $scanFrom = 0; // bytes at the start of $buffer already known to hold no terminator
         try {
             while (true) {
                 $chunk = self::read($stream);
@@ -51,22 +54,27 @@ final class StreamDecoder
                 $length = strlen($buffer);
                 $offset = 0;
                 while ($offset < $length) {
-                    $span = strcspn($buffer, "\r\n", $offset);
-                    $position = $offset + $span;
+                    $start = $offset + $scanFrom;
+                    $position = $start + strcspn($buffer, "\r\n", $start);
                     if ($position >= $length) {
-                        break; // no terminator yet
+                        $scanFrom = $length - $offset; // no terminator yet
+                        break;
                     }
                     $width = 1;
                     if ($buffer[$position] === "\r") {
                         if ($position + 1 >= $length && !$eof) {
-                            break; // may be the first half of CRLF: wait for the next byte
+                            $scanFrom = $position - $offset; // may be the first half of CRLF: wait for the next byte
+                            break;
                         }
                         $width = ($position + 1 < $length && $buffer[$position + 1] === "\n") ? 2 : 1;
                     }
-                    yield substr($buffer, $offset, $span);
+                    yield substr($buffer, $offset, $position - $offset);
                     $offset = $position + $width;
+                    $scanFrom = 0;
                 }
-                $buffer = (string) substr($buffer, $offset);
+                if ($offset > 0) {
+                    $buffer = (string) substr($buffer, $offset);
+                }
                 self::assertBounded($buffer);
                 if ($eof) {
                     if ($buffer !== '') {
@@ -88,17 +96,24 @@ final class StreamDecoder
     private static function records(StreamInterface $stream, string $separator): \Generator
     {
         $buffer = '';
+        $scanFrom = 0; // bytes at the start of $buffer already known to hold no separator
         try {
             while (true) {
                 $chunk = self::read($stream);
                 $buffer .= $chunk;
-                while (($position = strpos($buffer, $separator)) !== false) {
-                    $record = substr($buffer, 0, $position);
-                    $buffer = (string) substr($buffer, $position + 1);
+                $offset = 0;
+                while (($position = strpos($buffer, $separator, $offset + $scanFrom)) !== false) {
+                    $record = substr($buffer, $offset, $position - $offset);
+                    $offset = $position + 1;
+                    $scanFrom = 0;
                     if ($record !== '') {
                         yield $record;
                     }
                 }
+                if ($offset > 0) {
+                    $buffer = (string) substr($buffer, $offset);
+                }
+                $scanFrom = strlen($buffer);
                 self::assertBounded($buffer);
                 if ($chunk === '') {
                     if ($buffer !== '') {
@@ -113,33 +128,18 @@ final class StreamDecoder
     }
 
     /**
-     * @param array{type:?string,schemaNullable:bool,rules?:array<string,mixed>} $entry
-     * @return \Generator<int, mixed>
-     */
-    private static function jsonl(StreamInterface $stream, array $entry, string $where): \Generator
-    {
-        $index = 0;
-        foreach (self::lines($stream) as $line) {
-            if (trim($line) === '') {
-                continue; // tolerated, though JSON Lines does not allow blank lines
-            }
-            yield $index => self::item($line, $entry, $where . '[' . $index . ']');
-            $index++;
-        }
-    }
-
-    /**
-     * RFC 7464: each record starts with the RS byte (0x1E) and ends with a newline.
+     * One hydrated item per non-blank record, keyed 0, 1, 2...
      *
-     * @param array{type:?string,schemaNullable:bool,rules?:array<string,mixed>} $entry
+     * @param iterable<string> $records
+     * @param Representation $entry
      * @return \Generator<int, mixed>
      */
-    private static function jsonSeq(StreamInterface $stream, array $entry, string $where): \Generator
+    private static function items(iterable $records, array $entry, string $where): \Generator
     {
         $index = 0;
-        foreach (self::records($stream, "\x1e") as $record) {
+        foreach ($records as $record) {
             if (trim($record) === '') {
-                continue;
+                continue; // tolerated, though neither JSON Lines nor RFC 7464 allow empty records
             }
             yield $index => self::item($record, $entry, $where . '[' . $index . ']');
             $index++;
@@ -150,7 +150,7 @@ final class StreamDecoder
      * HTML Living Standard "Server-sent events" parsing: comments are ignored, `data` lines are joined
      * with a newline, `id` persists until changed, and an event still incomplete at the end is discarded.
      *
-     * @param array{type:?string,schemaNullable:bool,rules?:array<string,mixed>} $entry
+     * @param Representation $entry
      * @return \Generator<int, ServerSentEvent>
      */
     private static function sse(StreamInterface $stream, array $entry, string $where): \Generator
@@ -212,7 +212,7 @@ final class StreamDecoder
         }
     }
 
-    /** @param array{type:?string,schemaNullable:bool,rules?:array<string,mixed>} $entry */
+    /** @param Representation $entry */
     private static function item(string $json, array $entry, string $where): mixed
     {
         if ($entry['type'] === null) {

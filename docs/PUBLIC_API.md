@@ -48,8 +48,8 @@ Application code and generated SDKs may rely on these classes: constructors, pub
 Generated SDKs describe each operation as an array that `Operation::fromArray()` turns into an `Operation`. This format is part of the contract between a generated SDK and the runtime:
 
 - Existing keys keep their name, type and meaning within a major version.
-- Constructor positions never change; new keys are appended with a default, so an SDK generated for runtime 1.x keeps working with every later 1.y.
-- Unknown keys are rejected, so an SDK that uses a newer key requires a runtime that knows it. Generated SDKs therefore require `^1.x` of the runtime version that introduced the keys they use.
+- New keys always have a default, so an SDK generated for runtime 2.0 keeps working with every later 2.y.
+- Unknown keys are rejected, so an SDK that uses a newer key requires a runtime that knows it. Generated SDKs therefore require `^2.x` of the runtime version that introduced the keys they use.
 
 ## Tier 2: generator contract
 
@@ -63,7 +63,7 @@ Generated SDKs describe each operation as an array that `Operation::fromArray()`
 
 ## Tier 3: internal
 
-Everything tagged `@internal` is an implementation detail and may change or disappear in any release: `Hydrator`, `JsonHydrator`, `Serializer`, `SchemaValidator`, `QuerySerializer`, `FormSerializer`, `MultipartSerializer`, `Discriminator`, `MediaType`, `SecurityApplier`, `Pkce`, `OAuth2TokenEndpoint`, `CachedTokenProvider`, `StreamDecoder`, `FormatValidator` (generator contract, see above), plus individual members tagged `@internal` inside stable classes. Private members are never API.
+Everything tagged `@internal` is an implementation detail and may change or disappear in any release: `Hydrator`, `JsonHydrator`, `Serializer`, `SchemaValidator`, `QuerySerializer`, `ParameterStyles`, `ParameterValues`, `FormSerializer`, `MultipartSerializer`, `AdditionalPropertyStore`, everything in `Execution\*` (`RequestBuilder`, `ResponseDecoder`, `ServerSelection`…), `Discriminator`, `MediaType`, `SecurityApplier`, `AppliedSecurity`, `Pkce`, `OAuth2TokenEndpoint`, `CachedTokenProvider`, `StreamDecoder`, `FormatValidator` (generator contract, see above), plus individual members tagged `@internal` inside stable classes. Private members are never API.
 
 ## What counts as a breaking change
 

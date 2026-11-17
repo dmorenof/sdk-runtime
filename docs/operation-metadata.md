@@ -14,7 +14,7 @@ private const array GET_BY_ID = [
 public function getById(int $id, ?GetParams\Users\ById $params = null): DTOs\User
 {
     /** @var DTOs\User $result */
-    $result = $this->executeArguments(self::GET_BY_ID, identifier: $id, identifierName: 'id', payload: $params);
+    $result = $this->executeArguments(self::GET_BY_ID, path: ['id' => $id], parameters: $params);
     return $result;
 }
 ```

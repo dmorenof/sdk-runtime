@@ -10,18 +10,22 @@ Namespace: `Dmorenof\SdkRuntime` unless shown.
 
 | Member | Purpose |
 | --- | --- |
-| `static connect($baseUrl, $httpClient = null, $headers = [], $securityCredentials = null, $transport = null, $serverOverrides = [])` | Create a client |
-| `resource(string $type): static` | A client for one resource class, sharing transport, credentials and server choice |
+| `static connect(Configuration\|string $configuration)` | Create a client. A string is a base URL with every other option at its default |
+| `resource(string $type): static` | A client for one resource class, sharing the transport, credentials and server choice |
 | `lastResponse(): ?ResponseInfo` | Status and headers of the last response of *this* instance |
-| `withMiddleware($m)`, `withRetryPolicy($p)`, `withRedirectPolicy($p)` | Configure the shared transport (modify and return the client) |
-| `useServer($nameOrIndex)`, `withServerVariables($values)` | Choose among declared servers (modify and return the client) |
 | `static serverUrl($server = 0, $variables = [])` | Base URL for a declared root server |
 | `const SECURITY_SCHEMES`, `const SERVERS` | Declared by the SDK. See [Operation metadata](operation-metadata.md) |
 | `executeArguments(...)`, `executeBody(...)`, `executeOperation(...)` (protected) | Run an operation. For generators |
 
+A client never changes after it is created. Every option is set in `Configuration`.
+
 ### `Configuration`
 
-Plain properties: `baseUrl`, `httpClient`, `headers`, `securityCredentials`, `transport`, `serverOverrides`, `middleware`.
+Plain properties, set by name before connecting: `baseUrl`, `httpClient`, `headers`, `securityCredentials`, `transport`, `middleware`, `retryPolicy`, `redirectPolicy`, `serverOverrides`, `server`, `serverVariables`.
+
+### `RequestInput`
+
+The values of one call split by where they travel: `new RequestInput(path: [], query: [], headers: [], body: null, bodyPresent: null)`. For `executeOperation()`.
 
 ### `ApiException extends RuntimeException`
 
@@ -44,8 +48,9 @@ Plain properties: `baseUrl`, `httpClient`, `headers`, `securityCredentials`, `tr
 | `SecurityCredentials` | Scheme name → secret. `new SecurityCredentials(array)`, `forScheme($name)` |
 | `BasicAuthCredentials` | `new BasicAuthCredentials($username, $password)` |
 | `TokenProviderInterface` | `accessToken(): string`, `invalidate(): void` |
-| `OAuth2ClientCredentials` | Machine-to-machine tokens: cached, renewed, replayed after 401. Also `forget()` |
-| `OAuth2AuthorizationCode` | User sign-in with PKCE: `start()`, `complete($request, $callback)`, `isAuthorized()`, `forget()` |
+| `OAuth2Endpoints`, `OAuth2Client`, `OAuth2Options` | What both providers are built from: where the server is, who the application is, and the optional settings |
+| `OAuth2ClientCredentials` | Machine-to-machine tokens: `new OAuth2ClientCredentials($endpoints, $client, $options)`; cached, renewed, replayed after 401. Also `forget()` |
+| `OAuth2AuthorizationCode` | User sign-in with PKCE: same three arguments; `start()`, `complete($request, $callback)`, `isAuthorized()`, `forget()` |
 | `AuthorizationRequest` | State of a started flow: `$url`, `$state`, `$codeVerifier`, `$expiresAt`; `toArray()`, `fromArray()` |
 | `OAuth2Token` | `$accessToken`, `$expiresAt`, `$refreshToken`, `isValid($now, $leeway)` |
 | `TokenStoreInterface`, `InMemoryTokenStore` | `get`, `set`, `delete` by key |
@@ -75,13 +80,12 @@ Plain properties: `baseUrl`, `httpClient`, `headers`, `securityCredentials`, `tr
 
 ## Signatures with more than three parameters
 
-Counted from the public and protected methods of the classes above.
+The rule is at most three arguments, four where it reads better; options travel in configuration objects ([Design decisions](DECISIONS.md), R1 and R2). These are the signatures over three, counted from the public and protected API:
 
-| Parameters | Method |
-| ---: | --- |
-| 27 | `Operation::__construct` |
-| 14 | `Security\OAuth2AuthorizationCode::__construct` |
-| 9 | `Security\OAuth2ClientCredentials::__construct` |
-| 6 | `ApiClient::__construct`, `ApiClient::connect`, `ApiClient::executeBody`, `Transport\RetryPolicy::__construct` |
-| 5 | `Streaming\ServerSentEvent::__construct`, `ApiException::__construct`, `ApiClient::executeArguments`, `ApiClient::executeOperation`, `Transport\RedirectPolicy::__construct`, `Transport\Psr18Transport::__construct`, `Transport\Psr18Transport::sendResponse` |
-| 4 | `Security\AuthorizationRequest::__construct`, `ApiException::fromResponse`, `TransportInterface::send`, `Psr18Transport::send` |
+| Parameters | Signature | Why |
+| ---: | --- | --- |
+| 6 | `Security\OAuth2Options::__construct`, `Transport\RetryPolicy::__construct` | Configuration objects: every argument is an optional setting, used by name |
+| 5 | `RequestInput::__construct`, `Transport\RedirectPolicy::__construct`, `Streaming\ServerSentEvent::__construct` | Configuration or value objects, used by name |
+| 4 | `Security\OAuth2Client::__construct`, `Security\AuthorizationRequest::__construct` | Small value objects |
+| 4 | `ApiException::__construct`, `ApiClient::executeArguments`, `ApiClient::executeBody` | Response + operation + payload + cause; path + parameters + body |
+| 4 | `Transport\TransportInterface::send`, `Transport\Psr18Transport::send` | method, URL, headers, body |

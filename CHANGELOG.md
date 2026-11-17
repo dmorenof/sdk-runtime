@@ -1,5 +1,17 @@
 # Changelog
 
+## [2.0.0] — unreleased
+
+Breaking release that follows the design review in [docs/DECISIONS.md](docs/DECISIONS.md): no function takes more than four arguments, options travel in configuration objects, and a client never changes after it is created. How to move from 1.0.0: [docs/MIGRATING.md](docs/MIGRATING.md). Generated SDKs need sdk-generator 2.0.0.
+
+- **Client**: `ApiClient::connect()` and the constructor take a `Configuration` (or a base URL string). `Configuration` gains `retryPolicy`, `redirectPolicy`, `server` and `serverVariables`. Removed: `withMiddleware()`, `withRetryPolicy()`, `withRedirectPolicy()`, `useServer()`, `withServerVariables()`, and the protected `$baseUrl` and `$serverOverrides`.
+- **Execution**: `executeArguments($operation, $path, $parameters, $body)`, `executeBody($operation, $body, $path, $parameters)` and `executeOperation($operation, RequestInput $input)` replace the 5- and 6-argument versions. New `RequestInput`.
+- **OAuth2**: `OAuth2ClientCredentials` and `OAuth2AuthorizationCode` take `(OAuth2Endpoints, OAuth2Client, OAuth2Options)`. The authorization request lifetime is fixed at 10 minutes.
+- **ApiException**: `new ApiException($response, $operation, $payload, $previous)`; `error` is derived from `payload`. `ApiException::fromResponse()` is gone.
+- **Transport**: `Psr18Transport::__construct($client, $defaultHeaders, $sleeper)`; `sendResponse()` takes a PSR-7 request.
+- **Operation**: constructed only through `Operation::fromArray()`.
+- **Internals** (not public API): request building, response decoding and server choice moved out of `ApiClient` into `Execution\*`; `SecurityApplier::apply()` returns an `AppliedSecurity`; several long methods were split.
+
 ## [1.0.0] — 2026-11-11
 
 First stable release. From here the public API follows Semantic Versioning (see docs/PUBLIC_API.md; the frozen surface is tests/Fixtures/public-api.txt). It accumulates the former 0.2.0 development line: OAuth2 (client credentials, authorization code with PKCE), opt-in retries and redirects, typed response headers, representation selection, relative and dynamic servers, format validation, streaming and the cleanups listed below. Generated SDKs from sdk-generator 1.0.0 require `^1.0.0`.

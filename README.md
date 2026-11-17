@@ -28,6 +28,7 @@ echo $user->id;
 | --- | --- |
 | Make my first call | [Getting started](docs/getting-started.md) |
 | Work with models, parameters and errors | [Using an SDK](docs/using-an-sdk.md) |
+| Pass parameters, upload files, send cookies | [Sending data](docs/sending-data.md) |
 | Authenticate (API key, bearer, basic, OAuth2) | [Authentication](docs/authentication.md) |
 | Set timeouts, retries, redirects, proxies, servers | [Transport and servers](docs/transport.md) |
 | Read headers, files, streams and error bodies | [Responses](docs/responses.md) |

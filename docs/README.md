@@ -7,6 +7,7 @@ Pick your starting point.
 | You are… | Read |
 | --- | --- |
 | Using a generated SDK | [Getting started](getting-started.md), then [Using an SDK](using-an-sdk.md) |
+| Passing parameters, uploading files, cookies | [Sending data](sending-data.md) |
 | Authenticating | [Authentication](authentication.md) |
 | Tuning HTTP behavior (timeouts, retries, proxies, servers) | [Transport and servers](transport.md) |
 | Reading responses (errors, headers, files, streams) | [Responses](responses.md) |

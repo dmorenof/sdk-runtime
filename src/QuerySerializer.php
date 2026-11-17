@@ -14,6 +14,19 @@ final class QuerySerializer
 {
     /**
      * @param array<array-key, scalar|list<scalar>|DTO|Map|TypedArray|\stdClass|null> $parameters
+     * @param array<array-key, mixed> $formats
+     * @param array<string, true> $reserved Names whose data uses reserved expansion.
+     * @param \Closure(string): string $encode
+     */
+    private function __construct(
+        private readonly array $parameters,
+        private readonly array $formats,
+        private readonly array $reserved,
+        private readonly \Closure $encode,
+    ) {}
+
+    /**
+     * @param array<array-key, scalar|list<scalar>|DTO|Map|TypedArray|\stdClass|null> $parameters
      * @param array<array-key, 'multi'|'csv'|'ssv'|'tsv'|'pipes'|'deepObject'|'form-object'|'form-object-explode'> $formats Query name => normalized wire format.
      * @param list<string> $allowReserved Query names whose data uses reserved expansion.
      */
@@ -27,70 +40,114 @@ final class QuerySerializer
         if ($allowReserved !== [] && $encoding !== PHP_QUERY_RFC3986) {
             throw new \InvalidArgumentException('Reserved expansion requires RFC3986 encoding.');
         }
-        $reserved = self::reservedNames($allowReserved);
         foreach ($formats as $name => $format) {
             self::assertFormat($format, (string) $name);
         }
+        $serializer = new self($parameters, $formats, self::reservedNames($allowReserved), $encode);
         $pairs = [];
         foreach ($parameters as $name => $value) {
-            if ($value === null) {
-                continue;
-            }
-            $encodedName = $encode((string) $name);
-            $format = $formats[$name] ?? null;
-            $delimiter = match ($format) { 'ssv' => ' ', 'tsv' => "\t", 'pipes' => '|', default => null };
-            $reservedDelimiter = in_array($format, ['csv', 'form-object'], true) ? ',' : $delimiter;
-            $encodeValue = isset($reserved[$name])
-                ? static fn (string $text): string => self::reserved($text, $reservedDelimiter) : $encode;
-            if (isset($formats[$name])) {
-                $format = $formats[$name];
-                if (in_array($format, ['form-object', 'form-object-explode'], true)) {
-                    $items = [];
-                    foreach (self::objectFields($value, (string) $name, deep: false) as $key => $item) {
-                        $encodedKey = $format === 'form-object' ? $encodeValue((string) $key) : $encode((string) $key);
-                        if ($format === 'form-object-explode') {
-                            if (((string) $key !== (string) $name && array_key_exists($key, $parameters)) || array_key_exists($encodedKey, $pairs)) {
-                                throw new \UnexpectedValueException("Expanded query property $key collides with another parameter.");
-                            }
-                            $pairs[$encodedKey] = $encodeValue(self::scalar($item));
-                        } else {
-                            $items[] = $encodedKey;
-                            $items[] = $encodeValue(self::scalar($item));
-                        }
-                    }
-                    if ($items !== []) {
-                        $pairs[$encodedName] = implode(',', $items);
-                    }
-                    continue;
-                }
-                if ($format === 'deepObject') {
-                    foreach (self::objectFields($value, (string) $name) as $key => $item) {
-                        $expanded = $name . '[' . $key . ']';
-                        if (array_key_exists($expanded, $parameters)) {
-                            throw new \UnexpectedValueException("Deep query parameter $expanded collides with another query parameter.");
-                        }
-                        $pairs[$encode($expanded)] = $encodeValue(self::scalar($item));
-                    }
-                    continue;
-                }
-                $items = self::encodedList($value, (string) $name, $delimiter, $encodeValue);
-                if ($items === []) {
-                    continue; // Empty list expansion has no URI-template members.
-                }
-                if ($format !== 'multi') {
-                    $separator = $delimiter === null ? ',' : $encode($delimiter);
-                    $pairs[$encodedName] = implode($separator, $items);
-                } else {
-                    $pairs[$encodedName] = $items;
-                }
-            } else {
-                if (is_array($value)) {
-                    throw new \UnexpectedValueException("Query array $name requires declared serialization metadata.");
-                }
-                $pairs[$encodedName] = $encodeValue(self::scalar($value));
+            if ($value !== null) {
+                $pairs = $serializer->add($pairs, $name, $value);
             }
         }
         return Query::build($pairs, false);
+    }
+
+    /**
+     * Adds the query pairs of one parameter to those already built.
+     *
+     * @param array<string, string|list<string>> $pairs
+     * @return array<string, string|list<string>>
+     */
+    private function add(array $pairs, int|string $name, mixed $value): array
+    {
+        $format = $this->formats[$name] ?? null;
+        $encodeValue = $this->valueEncoder($name, $format);
+        $encodedName = ($this->encode)((string) $name);
+        if ($format === null) {
+            if (is_array($value)) {
+                throw new \UnexpectedValueException("Query array $name requires declared serialization metadata.");
+            }
+            $pairs[$encodedName] = $encodeValue(self::scalar($value));
+            return $pairs;
+        }
+        return match ($format) {
+            'form-object', 'form-object-explode' => $this->addObject($pairs, $name, $value, $format, $encodeValue),
+            'deepObject' => $this->addDeepObject($pairs, $name, $value, $encodeValue),
+            default => $this->addList($pairs, $name, $value, $format, $encodeValue),
+        };
+    }
+
+    /** The encoder for a parameter's values: reserved expansion keeps the characters its delimiter may need. */
+    private function valueEncoder(int|string $name, ?string $format): \Closure
+    {
+        if (!isset($this->reserved[$name])) {
+            return $this->encode;
+        }
+        $delimiter = match ($format) { 'ssv' => ' ', 'tsv' => "\t", 'pipes' => '|', default => null };
+        $reservedDelimiter = in_array($format, ['csv', 'form-object'], true) ? ',' : $delimiter;
+        return static fn (string $text): string => self::reserved($text, $reservedDelimiter);
+    }
+
+    /**
+     * @param array<string, string|list<string>> $pairs
+     * @param 'form-object'|'form-object-explode' $format
+     * @param \Closure(string): string $encodeValue
+     * @return array<string, string|list<string>>
+     */
+    private function addObject(array $pairs, int|string $name, mixed $value, string $format, \Closure $encodeValue): array
+    {
+        $items = [];
+        foreach (self::objectFields($value, (string) $name, deep: false) as $key => $item) {
+            $encodedKey = $format === 'form-object' ? $encodeValue((string) $key) : ($this->encode)((string) $key);
+            if ($format === 'form-object-explode') {
+                if (((string) $key !== (string) $name && array_key_exists($key, $this->parameters)) || array_key_exists($encodedKey, $pairs)) {
+                    throw new \UnexpectedValueException("Expanded query property $key collides with another parameter.");
+                }
+                $pairs[$encodedKey] = $encodeValue(self::scalar($item));
+            } else {
+                $items[] = $encodedKey;
+                $items[] = $encodeValue(self::scalar($item));
+            }
+        }
+        if ($items !== []) {
+            $pairs[($this->encode)((string) $name)] = implode(',', $items);
+        }
+        return $pairs;
+    }
+
+    /**
+     * @param array<string, string|list<string>> $pairs
+     * @param \Closure(string): string $encodeValue
+     * @return array<string, string|list<string>>
+     */
+    private function addDeepObject(array $pairs, int|string $name, mixed $value, \Closure $encodeValue): array
+    {
+        foreach (self::objectFields($value, (string) $name) as $key => $item) {
+            $expanded = $name . '[' . $key . ']';
+            if (array_key_exists($expanded, $this->parameters)) {
+                throw new \UnexpectedValueException("Deep query parameter $expanded collides with another query parameter.");
+            }
+            $pairs[($this->encode)($expanded)] = $encodeValue(self::scalar($item));
+        }
+        return $pairs;
+    }
+
+    /**
+     * @param array<string, string|list<string>> $pairs
+     * @param \Closure(string): string $encodeValue
+     * @return array<string, string|list<string>>
+     */
+    private function addList(array $pairs, int|string $name, mixed $value, string $format, \Closure $encodeValue): array
+    {
+        $delimiter = match ($format) { 'ssv' => ' ', 'tsv' => "\t", 'pipes' => '|', default => null };
+        $items = self::encodedList($value, (string) $name, $delimiter, $encodeValue);
+        if ($items === []) {
+            return $pairs; // Empty list expansion has no URI-template members.
+        }
+        $encodedName = ($this->encode)((string) $name);
+        $pairs[$encodedName] = $format === 'multi' ? $items : implode($delimiter === null ? ',' : ($this->encode)($delimiter), $items);
+        return $pairs;
     }
 
     /** Serialize a parameter representation once, before its location's normal encoding. */

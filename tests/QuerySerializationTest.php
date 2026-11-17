@@ -38,7 +38,7 @@ class QueryListClient extends ApiClient
     public function search(array $query, array $formats, bool $secure = false): void
     {
         $this->executeOperation(['method' => 'GET', 'path' => '/search', 'querySerialization' => $formats,
-            'success' => [204], 'security' => $secure ? [['Key' => []]] : []], queryParameters: $query);
+            'success' => [204], 'security' => $secure ? [['Key' => []]] : []], new \Dmorenof\SdkRuntime\RequestInput(query: $query));
     }
 }
 

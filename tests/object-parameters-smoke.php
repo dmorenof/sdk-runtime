@@ -14,7 +14,7 @@ $client = new class('https://example.test', httpClient: $http) extends \Dmorenof
     public function submit(\Dmorenof\SdkRuntime\DTO $path, \Dmorenof\SdkRuntime\DTO $payload): void {
         $this->executeArguments(['method' => 'GET', 'path' => '/items/{selector}', 'success' => [204],
             'pathSerialization' => ['selector' => 'object'], 'headerSerialization' => ['X-Filter' => 'object-explode'],
-            'querySerialization' => ['filter' => 'form-object', 'labels' => 'form-object-explode']], identifier: $path, payload: $payload);
+            'querySerialization' => ['filter' => 'form-object', 'labels' => 'form-object-explode']], path: $path, parameters: $payload);
     }
 };
 $selector = new class((object) ['code' => 'a,b', 'active' => false]) extends \Dmorenof\SdkRuntime\DTO { public string $code; public bool $active; };

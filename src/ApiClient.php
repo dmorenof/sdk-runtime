@@ -11,6 +11,9 @@ use GuzzleHttp\Psr7\Utils;
 use Psr\Http\Message\ResponseInterface;
 use Dmorenof\SdkRuntime\Transport\Psr18Transport;
 use Dmorenof\SdkRuntime\Transport\HttpMiddlewareInterface;
+use Dmorenof\SdkRuntime\Execution\InputBuilder;
+use Dmorenof\SdkRuntime\Execution\PreparedRequest;
+use Dmorenof\SdkRuntime\Execution\RequestBuilder;
 use Dmorenof\SdkRuntime\Execution\ResponseDecoder;
 use Dmorenof\SdkRuntime\Security\SecurityApplier;
 use Dmorenof\SdkRuntime\Security\SecurityCredentials;
@@ -227,332 +230,70 @@ abstract class ApiClient
     }
 
     /**
-     * Transfer only initialized properties, preserving OpenAPI wire names.
-     * Shared runtime DTO validation checks required and nested fields.
+     * Run an operation from what a generated method receives: path values (or a parameter object that
+     * declares them), an optional parameter object for query, headers and cookies, and an optional body.
      *
-     * @return array{
-     *   path:array<string,bool|float|int|string|list<bool|float|int|string>|DTO|Map|TypedArray|null>,
-     *   query:array<string,bool|float|int|string|list<bool|float|int|string>|DTO|Map|TypedArray|null>,
-     *   header:array<string,bool|float|int|string|list<bool|float|int|string>|DTO|Map|TypedArray|null>,
-     *   cookie:array<string,bool|float|int|string|list<bool|float|int|string>|DTO|Map|TypedArray|null>,
-     *   body:mixed, bodyPresent:bool
-     * }
+     * @param OperationSpec $operation
+     * @param array<string, scalar|list<scalar>|DTO|Map|TypedArray|\stdClass|null>|DTO $path
      */
-    private static function operationFields(DTO $dto): array
+    protected function executeArguments(array $operation, array|DTO $path = [], ?DTO $parameters = null, ?DTO $body = null): mixed
     {
-        $dto->validateForRequest();
-        $values = get_object_vars($dto);
-        $bodyValue = $values['body'] ?? null;
-        // A query or path parameter may also be named "body"; only an explicit operation body is a payload.
-        $hasBody = defined($dto::class . '::OPERATION_BODY') && constant($dto::class . '::OPERATION_BODY') === true;
-        $body = $hasBody ? $bodyValue : null;
-        $bodyPresent = $hasBody && array_key_exists('body', $values);
-        $fields = ['path' => [], 'query' => [], 'header' => [], 'cookie' => []];
-        /** @var array<string,array<string,string>> $locations */
-        $locations = constant($dto::class . '::OPERATION_FIELDS');
-        foreach ($locations as $location => $properties) {
-            if (!array_key_exists($location, $fields)) {
-                throw new \UnexpectedValueException('Unsupported operation parameter location.');
-            }
-            foreach ($properties as $wireName => $property) {
-                if (!array_key_exists($property, $values)) { continue; }
-                $value = $values[$property];
-                if ($value instanceof DTO || $value instanceof Map || $value instanceof TypedArray) {
-                    if ($location === 'cookie') { throw new \UnexpectedValueException('Structured cookie parameters are unsupported.'); }
-                } elseif (is_array($value)) {
-                    if ($location === 'cookie' || !array_is_list($value)) {
-                        throw new \UnexpectedValueException("Operation parameter must be a supported scalar list: $wireName");
-                    }
-                    $items = [];
-                    foreach ($value as $item) {
-                        if (!is_scalar($item)) { throw new \UnexpectedValueException("Parameter list members must be scalars: $wireName"); }
-                        $items[] = $item;
-                    }
-                    $value = $items;
-                } elseif ($value !== null && !is_scalar($value)) {
-                    throw new \UnexpectedValueException("Non-scalar operation parameter: $wireName");
-                }
-                $fields[$location][$wireName] = $value;
-            }
-        }
-        return $fields + ['body' => $body, 'bodyPresent' => $bodyPresent];
+        $spec = Operation::fromArray($operation);
+        return $this->run($spec, InputBuilder::build($spec, $path, $parameters, $body, $body !== null));
     }
 
     /**
-     * Map identifier + payload to the shared sdk-runtime executor.
+     * Same, when the body is the main argument. A body is always present here, even when it is JSON null;
+     * to leave an optional body out, call executeArguments() instead.
+     *
      * @param OperationSpec $operation
+     * @param array<string, scalar|list<scalar>|DTO|Map|TypedArray|\stdClass|null>|DTO $path
      */
-    protected function executeArguments(
-        array $operation,
-        string|int|float|bool|DTO|null $identifier = null,
-        ?string $identifierName = null,
-        ?DTO $payload = null,
-        ?DTO $body = null,
-    ): mixed {
-        return $this->executeInput($operation, $identifier, $identifierName, $payload, $body, $body !== null);
-    }
-
-    /**
-     * Native body entry point. Explicit presence distinguishes omission from JSON null.
-     * Existing protected DTO executor signatures stay compatible with consumer overrides.
-     * @param OperationSpec $operation
-     */
-    protected function executeBody(
-        array $operation,
-        mixed $body,
-        bool $bodyPresent = true,
-        string|int|float|bool|DTO|null $identifier = null,
-        ?string $identifierName = null,
-        ?DTO $payload = null,
-    ): mixed {
-        if (!isset($operation['requestBody'])) {
+    protected function executeBody(array $operation, mixed $body, array|DTO $path = [], ?DTO $parameters = null): mixed
+    {
+        $spec = Operation::fromArray($operation);
+        if ($spec->requestBody === null) {
             throw new \InvalidArgumentException('Native body execution requires its declared contract.');
         }
-        return $this->executeInput($operation, $identifier, $identifierName, $payload, $body, $bodyPresent);
-    }
-
-    /** @param OperationSpec $operation */
-    private function executeInput(
-        array $operation,
-        string|int|float|bool|DTO|null $identifier,
-        ?string $identifierName,
-        ?DTO $payload,
-        mixed $body,
-        bool $bodyPresent,
-    ): mixed {
-        /** @var array<string,bool|float|int|string|list<bool|float|int|string>|DTO|Map|TypedArray|null> $path */
-        $path = [];
-        if ($identifier instanceof DTO) {
-            $path = self::operationFields($identifier)['path'];
-        } elseif ($identifierName !== null) {
-            $path[$identifierName] = $identifier;
-        }
-        /** @var array<string,bool|float|int|string|list<bool|float|int|string>|DTO|Map|TypedArray|null> $query */
-        $query = [];
-        /** @var array<string,bool|float|int|string|list<bool|float|int|string>|DTO|Map|TypedArray|null> $headers */
-        $headers = [];
-        if ($payload !== null) {
-            $fields = self::operationFields($payload);
-            $query = $fields['query'];
-            $headers = $fields['header'];
-            if ($fields['cookie'] !== []) {
-                $headers = self::withCookies($headers, $fields['cookie'], $operation['parameterContent']['cookie'] ?? []);
-            }
-            $body = $fields['body'];
-            $bodyPresent = $fields['bodyPresent'];
-        }
-        if (isset($operation['requestBody'])) {
-            return $this->executeRequest($operation, $path, $query, $headers, $body, $bodyPresent);
-        }
-        if ($body !== null && !$body instanceof DTO) {
-            throw new \UnexpectedValueException('Legacy operation body must be a DTO.');
-        }
-        return $this->executeOperation(
-            $operation,
-            pathParameters: $path,
-            queryParameters: $query,
-            headerParameters: $headers,
-            body: $body,
-        );
+        return $this->run($spec, InputBuilder::build($spec, $path, $parameters, $body, true));
     }
 
     /**
-     * Execute one generated operation: validate parameters, serialize the request,
-     * send it and decode the typed response.
+     * Run an operation from values already split by where they travel.
      *
      * @param OperationSpec $operation
-     * @param array<string, scalar|list<scalar>|DTO|Map|TypedArray|\stdClass|null> $pathParameters
-     * @param array<string, scalar|list<scalar>|DTO|Map|TypedArray|\stdClass|null> $queryParameters
-     * @param array<string, scalar|list<scalar>|DTO|Map|TypedArray|\stdClass|null> $headerParameters
      */
-    protected function executeOperation(
-        array $operation,
-        array $pathParameters = [],
-        array $queryParameters = [],
-        array $headerParameters = [],
-        ?DTO $body = null,
-    ): mixed {
-        return $this->executeRequest($operation, $pathParameters, $queryParameters, $headerParameters, $body, $body !== null);
+    protected function executeOperation(array $operation, RequestInput $input = new RequestInput()): mixed
+    {
+        return $this->run(Operation::fromArray($operation), $input);
     }
 
-    /**
-     * @param OperationSpec $operation
-     * @param array<string,scalar|list<scalar>|DTO|Map|TypedArray|\stdClass|null> $pathParameters
-     * @param array<string,scalar|list<scalar>|DTO|Map|TypedArray|\stdClass|null> $queryParameters
-     * @param array<string,scalar|list<scalar>|DTO|Map|TypedArray|\stdClass|null> $headerParameters
-     */
-    private function executeRequest(
-        array $operation,
-        array $pathParameters,
-        array $queryParameters,
-        array $headerParameters,
-        mixed $body,
-        bool $bodyPresent,
-    ): mixed {
-        $spec = Operation::fromArray($operation);
-        if (strtoupper($spec->method) === 'TRACE' && $bodyPresent) { throw new \InvalidArgumentException('HTTP TRACE must not contain a request body.'); }
-        self::validateParameters($spec, $pathParameters + $queryParameters + $headerParameters);
-
-        self::assertParameterContent($spec->parameterContent, $spec);
-        $pathParameters = self::contentParameters($pathParameters, $spec->parameterContent['path'] ?? []);
-        $queryParameters = self::contentParameters($queryParameters, $spec->parameterContent['query'] ?? []);
-        $headerParameters = self::contentParameters($headerParameters, $spec->parameterContent['header'] ?? [], true);
-        self::assertSimpleFormats($spec->pathSerialization, path: true);
-        self::assertSimpleFormats($spec->headerSerialization);
-
-        $path = self::expandPath($spec, $pathParameters);
-        $query = array_filter($queryParameters, static fn ($value): bool => $value !== null);
-        $headers = ['Accept' => ResponseDecoder::accept($spec)] + self::stringifyAll($headerParameters, $spec->headerSerialization);
-
-        $kind = self::bodyKind($spec);
-        $body = self::checkedBody($spec, $kind, $body, $bodyPresent);
-        $bodyBytes = null;
-        if ($bodyPresent) {
-            [$bodyBytes, $headers['Content-Type']] = self::serializeBody($spec, $kind, $body);
-        }
-
-        $outcome = $this->sendWithAuthRetry($spec, $operation, $path, $query, $headers, $bodyBytes);
+    private function run(Operation $spec, RequestInput $input): mixed
+    {
+        $outcome = $this->sendWithAuthRetry($spec, RequestBuilder::build($spec, $input));
         return $outcome instanceof HttpResponse ? ResponseDecoder::decode($spec, $outcome) : $outcome;
-    }
-
-    /** @param array<string,mixed> $parameters Path, query and header values by name. */
-    private static function validateParameters(Operation $spec, array $parameters): void
-    {
-        foreach ($spec->validation as $name => $rules) {
-            $value = $parameters[$name] ?? null;
-            if ($value !== null) {
-                Constraints::validate($value, $rules, $spec->label . '.' . $name);
-            }
-        }
-    }
-
-    /** @param array<string,scalar|list<scalar>|DTO|Map|TypedArray|\stdClass|null> $pathParameters */
-    private static function expandPath(Operation $spec, array $pathParameters): string
-    {
-        $path = $spec->path;
-        foreach ($pathParameters as $name => $value) {
-            if ($value === null) {
-                throw new \UnexpectedValueException("Path parameter $name cannot be null.");
-            }
-            if (isset($spec->pathSerialization[$name])) {
-                $encoded = QuerySerializer::path($value, (string) $name, $spec->pathSerialization[$name]);
-            } elseif (is_array($value) || is_object($value)) {
-                throw new \UnexpectedValueException("Structured path parameter $name requires serialization metadata.");
-            } else {
-                $encoded = rawurlencode(self::stringify($value));
-            }
-            $path = str_replace('{' . $name . '}', $encoded, $path);
-        }
-        if (preg_match('/\{[^{}]+\}/', $path) === 1) {
-            throw new \UnexpectedValueException('Missing path parameter for ' . $spec->label);
-        }
-        return $path;
-    }
-
-    /**
-     * How the request body is carried, decided from the declared media type and body encoding.
-     *
-     * @return 'json'|'text'|'binary'|'form'|'multipart'
-     */
-    private static function bodyKind(Operation $spec): string
-    {
-        $media = $spec->requestMediaType;
-        $json = MediaType::isJson($media);
-        $baseMedia = strtolower(trim(explode(';', $media, 2)[0]));
-        $rawMedia = !$json && !str_contains($baseMedia, '*') && !in_array($baseMedia, ['application/x-www-form-urlencoded', 'multipart/form-data'], true)
-            && preg_match("@^[!#$%&'*+.^_`|~a-z0-9-]+/[!#$%&'*+.^_`|~a-z0-9-]+(?:\\s*;[^\\r\\n]*)?$@iD", $media) === 1;
-        $encoding = $spec->requestBody['encoding'] ?? 'json';
-        $kind = match (true) {
-            $json => 'json',
-            $encoding === 'text' && $rawMedia => 'text',
-            $encoding === 'binary' && $rawMedia => 'binary',
-            $media === 'application/x-www-form-urlencoded' => 'form',
-            $media === 'multipart/form-data' => 'multipart',
-            default => null,
-        };
-        if ($kind === null
-            || ($media !== 'application/x-www-form-urlencoded' && $spec->bodySerialization !== [])
-            || ($media !== 'multipart/form-data' && $spec->bodyParts !== [])) {
-            throw new \InvalidArgumentException('Unsupported request body media type or serialization metadata.');
-        }
-        return $kind;
-    }
-
-    /** Validates the body against its declared contract and hydrates it into its declared type. */
-    private static function checkedBody(Operation $spec, string $kind, mixed $body, bool $bodyPresent): mixed
-    {
-        if ($spec->requestBody === null) {
-            if ($bodyPresent && !$body instanceof DTO) {
-                throw new \UnexpectedValueException('Legacy operation body must be a DTO.');
-            }
-            return $body;
-        }
-        $encoding = $spec->requestBody['encoding'] ?? 'json';
-        if (!in_array($kind, ['json', 'text', 'binary'], true) || ($kind === 'json' && $encoding !== 'json')) {
-            throw new \InvalidArgumentException('Request body encoding does not match its media type.');
-        }
-        if ($kind === 'binary' && ($spec->requestBody['rules'] ?? []) !== []) {
-            throw new \InvalidArgumentException('Binary body constraints are unsupported.');
-        }
-        if (!$bodyPresent) {
-            if ($spec->requestBody['required']) {
-                throw new \UnexpectedValueException($spec->label . ' requires a request body.');
-            }
-            return $body;
-        }
-        $bodyRules = $spec->requestBody['rules'] ?? [];
-        if ($body !== null || array_key_exists('schema', $bodyRules) || array_key_exists('const', $bodyRules) || array_key_exists('enum', $bodyRules) || array_key_exists('jsonSchema', $bodyRules)) {
-            Constraints::validate($body, $bodyRules, $spec->label . ' body', 'request');
-        }
-        return Hydrator::hydrate($body, $spec->requestBody['type'], $spec->requestBody['nullable'], $spec->label . ' body');
-    }
-
-    /**
-     * Wire bytes of a present body and the Content-Type header that goes with them.
-     *
-     * @return array{string|\Psr\Http\Message\StreamInterface, string}
-     */
-    private static function serializeBody(Operation $spec, string $kind, mixed $body): array
-    {
-        $contentType = $spec->requestMediaType;
-        if ($kind === 'text' || $kind === 'binary') {
-            if (!is_string($body) && !$body instanceof \Psr\Http\Message\StreamInterface) { throw new \UnexpectedValueException('Raw body must contain bytes.'); }
-            return [$body, $contentType];
-        }
-        if ($kind === 'json') {
-            DTO::validateNestedValue($body, 'request');
-            return [json_encode(Serializer::value($body, 'request'), JSON_THROW_ON_ERROR), $contentType];
-        }
-        if (!$body instanceof DTO) { throw new \UnexpectedValueException('Form body must be a DTO.'); }
-        if ($kind === 'multipart') {
-            $multipart = MultipartSerializer::encode($body, $spec->bodyParts);
-            return [$multipart, $contentType . '; boundary=' . $multipart->getBoundary()];
-        }
-        return [FormSerializer::encode($body, $spec->bodySerialization), $contentType];
     }
 
     /**
      * Sends the request and classifies the answer. A token provider may hold a revoked token: after a 401
      * its token is renewed and the request replayed once, when the body can be sent again.
      *
-     * @param OperationSpec $operation
-     * @param array<string,scalar|list<scalar>|DTO|Map|TypedArray|\stdClass|null> $query
-     * @param array<string,string> $headers
      * @return \Generator<int, mixed>|ResponseInterface|HttpResponse A lazy stream of items, a raw PSR-7 response
      *         the operation hands over as it is, or the buffered response that ResponseDecoder turns into a value.
      */
-    private function sendWithAuthRetry(Operation $spec, array $operation, string $path, array $query, array $headers, string|\Psr\Http\Message\StreamInterface|null $bodyBytes): \Generator|ResponseInterface|HttpResponse
+    private function sendWithAuthRetry(Operation $spec, PreparedRequest $request): \Generator|ResponseInterface|HttpResponse
     {
+        $bodyBytes = $request->body;
         $replayable = !($bodyBytes instanceof \Psr\Http\Message\StreamInterface) || $bodyBytes->isSeekable();
         $streaming = $spec->streamsResponse();
         $baseUrl = null;
         for ($attempt = 0;; $attempt++) {
-            $attemptHeaders = $headers;
+            $attemptHeaders = $request->headers;
             $securityQuery = [];
             /** @var list<\Dmorenof\SdkRuntime\Security\TokenProviderInterface> $providers */
             $providers = [];
             SecurityApplier::apply($this->securityCredentials, $spec->security, static::SECURITY_SCHEMES, $attemptHeaders, $securityQuery, $providers);
-            $url = $this->requestUrl($spec, $path, $query, $securityQuery, $baseUrl);
+            $url = $this->requestUrl($spec, $request, $securityQuery, $baseUrl);
 
             // The PSR-18 adapter answers with PSR-7; legacy transports answer with a buffered HttpResponse.
             if ($this->transport instanceof Psr18Transport) {
@@ -589,13 +330,14 @@ abstract class ApiClient
     }
 
     /**
-     * @param array<string,scalar|list<scalar>|DTO|Map|TypedArray|\stdClass|null> $query
      * @param array<string,string> $securityQuery Credentials sent as query parameters.
      * @param string|null $baseUrl Resolved on first use and then kept for the replay.
      * @param-out string $baseUrl
      */
-    private function requestUrl(Operation $spec, string $path, array $query, array $securityQuery, ?string &$baseUrl): string
+    private function requestUrl(Operation $spec, PreparedRequest $request, array $securityQuery, ?string &$baseUrl): string
     {
+        $query = $request->query;
+        $path = $request->path;
         $formats = $spec->querySerialization;
         foreach ($securityQuery as $name => $credential) {
             $query[$name] = $credential;
@@ -618,109 +360,4 @@ abstract class ApiClient
         );
     }
 
-    /** @param array<array-key,mixed> $content Unvalidated nested metadata at the execution boundary. */
-    private static function assertParameterContent(array $content, Operation $spec): void
-    {
-        foreach ($content as $location => $formats) {
-            if (!in_array($location, ['path', 'query', 'header', 'cookie'], true) || !is_array($formats)) {
-                throw new \InvalidArgumentException('Unsupported parameter content location.');
-            }
-            foreach ($formats as $name => $media) {
-                $styles = match ($location) {
-                    'path' => $spec->pathSerialization, 'query' => $spec->querySerialization,
-                    'header' => $spec->headerSerialization, default => [],
-                };
-                if (!in_array($media, ['application/json', 'text/plain'], true)
-                    || ($location === 'cookie' && $media !== 'text/plain') || isset($styles[$name])
-                    || ($location === 'query' && in_array((string) $name, $spec->queryAllowReserved, true))) {
-                    throw new \InvalidArgumentException('Parameter content cannot combine incompatible media or style metadata.');
-                }
-            }
-        }
-    }
-
-    /**
-     * @param array<string,scalar|list<scalar>|DTO|Map|TypedArray|\stdClass|null> $parameters
-     * @param array<array-key,'application/json'|'text/plain'> $formats
-     * @return array<string,scalar|list<scalar>|DTO|Map|TypedArray|\stdClass|null>
-     */
-    private static function contentParameters(array $parameters, array $formats, bool $header = false): array
-    {
-        foreach ($formats as $name => $media) {
-            if (array_key_exists($name, $parameters) && $parameters[$name] !== null) {
-                $parameters[$name] = QuerySerializer::content($parameters[$name], $media, $header);
-            }
-        }
-        return $parameters;
-    }
-
-    /**
-     * @param array<string, scalar|list<scalar>|DTO|Map|TypedArray|\stdClass|null> $values
-     * @param array<array-key,'csv'|'ssv'|'tsv'|'pipes'|'object'|'object-explode'> $formats
-     * @return array<string, string> Parameters that carry a value, as they appear on the wire.
-     */
-    private static function stringifyAll(array $values, array $formats = []): array
-    {
-        $result = [];
-        foreach ($values as $name => $value) {
-            if ($value !== null) {
-                if (isset($formats[$name])) {
-                    $result[$name] = QuerySerializer::simple($value, (string) $name, $formats[$name], header: true);
-                } elseif (is_array($value) || is_object($value)) {
-                    throw new \UnexpectedValueException("Structured header parameter $name requires serialization metadata.");
-                } else {
-                    $result[$name] = self::stringify($value);
-                }
-            }
-        }
-        return $result;
-    }
-
-    /** @param array<array-key,mixed> $formats */
-    private static function assertSimpleFormats(array $formats, bool $path = false): void
-    {
-        foreach ($formats as $format) {
-            if (!in_array($format, ['csv', 'ssv', 'tsv', 'pipes', 'object', 'object-explode'], true)
-                && !($path && is_string($format) && preg_match('/^(label|matrix)(?:-(list|object)(-explode)?)?$/D', $format) === 1)) {
-                throw new \InvalidArgumentException('Unsupported simple path/header parameter metadata.');
-            }
-        }
-    }
-
-    /**
-     * Folds cookie parameters into the Cookie header, next to any Cookie header the caller already set.
-     *
-     * @param array<string,bool|float|int|string|list<bool|float|int|string>|DTO|Map|TypedArray|null> $headers
-     * @param array<string,bool|float|int|string|list<bool|float|int|string>|DTO|Map|TypedArray|null> $cookies
-     * @param array<array-key,mixed> $content Cookie names declared as raw text content.
-     * @return array<string,bool|float|int|string|list<bool|float|int|string>|DTO|Map|TypedArray|null>
-     */
-    private static function withCookies(array $headers, array $cookies, array $content): array
-    {
-        $cookieHeaders = [];
-        foreach ($headers as $name => $value) {
-            if (strcasecmp((string) $name, 'Cookie') === 0) {
-                if ($value !== null) {
-                    if (!is_scalar($value)) { throw new \UnexpectedValueException('Cookie header must be scalar.'); }
-                    $cookieHeaders[$name] = self::stringify($value);
-                }
-                unset($headers[$name]);
-            }
-        }
-        $rawCookies = [];
-        foreach ($content as $name => $media) {
-            if ($media !== 'text/plain') { throw new \InvalidArgumentException('Cookie content supports only text/plain.'); }
-            if (array_key_exists($name, $cookies) && $cookies[$name] !== null) {
-                $rawCookies[] = CookieHeader::pair((string) $name, QuerySerializer::content($cookies[$name], $media));
-            }
-            unset($cookies[$name]);
-        }
-        return $headers + CookieHeader::merge($cookieHeaders, ['Cookie' => implode('; ', $rawCookies)],
-            ['Cookie' => str_replace('&', '; ', QuerySerializer::encode($cookies))]);
-    }
-
-    private static function stringify(string|int|float|bool|null $value): string
-    {
-        return is_bool($value) ? ($value ? 'true' : 'false') : (string) $value;
-    }
 }

@@ -8,8 +8,8 @@ try {
     if (!ctype_digit($port)) { throw new RuntimeException('Missing port.'); }
     $client = new class('http://127.0.0.1:' . $port) extends \Dmorenof\SdkRuntime\ApiClient {
         public function post(string $path, mixed $value, string $type = 'mixed', bool $present = true, ?\Dmorenof\SdkRuntime\DTO $params = null): mixed {
-            return $this->executeBody(['method' => 'POST', 'path' => $path, 'success' => [204],
-                'requestBody' => ['type' => $type, 'required' => false, 'nullable' => true]], $value, $present, 7, 'id', $params);
+            $spec = ['method' => 'POST', 'path' => $path, 'success' => [204], 'requestBody' => ['type' => $type, 'required' => false, 'nullable' => true]];
+            return $present ? $this->executeBody($spec, $value, ['id' => 7], $params) : $this->executeArguments($spec, ['id' => 7], $params);
         }
     };
     $client->post('/scalar', 'valid', 'string');

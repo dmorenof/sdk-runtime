@@ -35,7 +35,7 @@ class StreamingProbeClient extends ApiClient
             'requestMediaType' => 'multipart/form-data', 'bodyParts' => [
                 'file' => ['contentType' => null, 'filename' => 'file.bin'],
                 'second' => ['contentType' => null, 'filename' => 'second.bin'],
-            ]], queryParameters: ['body' => 'query +'], headerParameters: ['X-Trace' => 'trace'], body: $body);
+            ]], new \Dmorenof\SdkRuntime\RequestInput(query: ['body' => 'query +'], headers: ['X-Trace' => 'trace'], body: $body));
     }
 }
 

@@ -8,7 +8,7 @@ try {
     if (!ctype_digit($port)) { throw new RuntimeException('Missing port.'); }
     $client = new class('http://127.0.0.1:' . $port, headers: ['COOKIE' => 'default=base'], securityCredentials: new \Dmorenof\SdkRuntime\Security\SecurityCredentials(['Session' => 'a+/b=='])) extends \Dmorenof\SdkRuntime\ApiClient {
         protected const array SECURITY_SCHEMES = ['Session' => ['type' => 'apiKey', 'scheme' => null, 'location' => 'cookie', 'parameterName' => 'session']];
-        public function call(string $method, \Dmorenof\SdkRuntime\DTO $params): void { $this->executeArguments(['method' => $method, 'path' => '/items', 'success' => [204], 'security' => [['Session' => []]]], payload: $params); }
+        public function call(string $method, \Dmorenof\SdkRuntime\DTO $params): void { $this->executeArguments(['method' => $method, 'path' => '/items', 'success' => [204], 'security' => [['Session' => []]]], parameters: $params); }
     };
     $params = new class((object) ['theme' => 'a/b,ñ', 'enabled' => false, 'count' => 0, 'empty' => '', 'queryBody' => 'query body', 'raw' => 'caller=ok']) extends \Dmorenof\SdkRuntime\DTO {
         public const bool OPERATION_BODY = true;

@@ -19,8 +19,7 @@ class ServerRoutingClient extends ApiClient
     public function routed(): void
     {
         $this->executeOperation(['method' => 'GET', 'path' => '/items/{id}',
-            'serverUrl' => 'https://platform.example.test/v2/'],
-            pathParameters: ['id' => 'a/b'], queryParameters: ['q' => 'a b']);
+            'serverUrl' => 'https://platform.example.test/v2/'], new \Dmorenof\SdkRuntime\RequestInput(path: ['id' => 'a/b'], query: ['q' => 'a b']));
     }
 
     public function invalid(): void

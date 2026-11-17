@@ -31,7 +31,7 @@ $client = new class('https://example.test', httpClient: $http) extends \Dmorenof
     public function fetch(int $scenario, array $types): mixed
     {
         return $this->executeOperation(['method' => 'GET', 'path' => '/objects', 'success' => [200, 201, 202, 204],
-            'responseTypes' => $types], queryParameters: ['scenario' => $scenario]);
+            'responseTypes' => $types], new \Dmorenof\SdkRuntime\RequestInput(query: ['scenario' => $scenario]));
     }
 };
 if ($client->fetch(200, $types)::class !== $user::class || $client->fetch(201, $types)::class !== $created::class

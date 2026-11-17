@@ -21,8 +21,7 @@ final class BinaryResponseClient extends ApiClient
     public function download(): ?ResponseInterface
     {
         return $this->executeOperation(['method' => 'GET', 'path' => '/files', 'success' => [200, 206, 204],
-            'responseType' => ResponseInterface::class, 'errors' => [404 => Address::class]],
-            queryParameters: ['body' => 'query body'], headerParameters: ['X-Trace' => 'trace']);
+            'responseType' => ResponseInterface::class, 'errors' => [404 => Address::class]], new \Dmorenof\SdkRuntime\RequestInput(query: ['body' => 'query body'], headers: ['X-Trace' => 'trace']));
     }
 }
 final class BinaryResponseTest extends TestCase

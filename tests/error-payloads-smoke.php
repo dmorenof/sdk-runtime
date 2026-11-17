@@ -24,7 +24,7 @@ try {
         public array $descriptors;
         public function getById(int $id, \Dmorenof\SdkRuntime\DTO $params): mixed {
             return $this->executeArguments(['method' => 'GET', 'path' => '/errors/{id}', 'responseType' => 'mixed',
-                'errors' => ['default' => $this->descriptors['default']['type']], 'errorResponses' => $this->descriptors], $id, 'id', $params);
+                'errors' => ['default' => $this->descriptors['default']['type']], 'errorResponses' => $this->descriptors], path: ['id' => $id], parameters: $params);
         }
     };
     $resource->descriptors = [

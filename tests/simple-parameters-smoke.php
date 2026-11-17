@@ -19,13 +19,12 @@ $http = new class implements \Psr\Http\Client\ClientInterface {
 $client = new class('https://example.test', httpClient: $http) extends \Dmorenof\SdkRuntime\ApiClient {
     public function numeric(): void {
         $this->executeOperation(['method' => 'GET', 'path' => '/numeric/{0}', 'success' => [204],
-            'pathSerialization' => ['0' => 'csv'], 'headerSerialization' => ['0' => 'csv']],
-            pathParameters: ['0' => ['a,b', 'c/d']], headerParameters: ['0' => ['alpha', 'beta']]);
+            'pathSerialization' => ['0' => 'csv'], 'headerSerialization' => ['0' => 'csv']], new \Dmorenof\SdkRuntime\RequestInput(path: ['0' => ['a,b', 'c/d']], headers: ['0' => ['alpha', 'beta']]));
     }
     public function submit(\Dmorenof\SdkRuntime\DTO $path, \Dmorenof\SdkRuntime\DTO $payload): void {
         $this->executeArguments(['method' => 'POST', 'path' => '/items/{ids}', 'success' => [204],
             'pathSerialization' => ['ids' => 'csv'], 'headerSerialization' => ['X-Codes' => 'csv'],
-            'querySerialization' => ['q' => 'multi']], identifier: $path, payload: $payload);
+            'querySerialization' => ['q' => 'multi']], path: $path, parameters: $payload);
     }
 };
 $path = new class((object) ['ids' => ['a,b', 'c/d', '%2F', 'ñ']]) extends \Dmorenof\SdkRuntime\DTO {

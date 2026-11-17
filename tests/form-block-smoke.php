@@ -9,8 +9,7 @@ try {
     $client = new class('http://127.0.0.1:' . $port) extends \Dmorenof\SdkRuntime\ApiClient {
         public function submit(string $path, \Dmorenof\SdkRuntime\DTO $body, array $formats = [], array $parts = []): void {
             $this->executeOperation(['method' => 'POST', 'path' => $path, 'success' => [204],
-                'requestMediaType' => $parts === [] ? 'application/x-www-form-urlencoded' : 'multipart/form-data', 'bodySerialization' => $formats, 'bodyParts' => $parts],
-                queryParameters: ['body' => 'query body'], headerParameters: ['X-Trace' => 'trace'], body: $body);
+                'requestMediaType' => $parts === [] ? 'application/x-www-form-urlencoded' : 'multipart/form-data', 'bodySerialization' => $formats, 'bodyParts' => $parts], new \Dmorenof\SdkRuntime\RequestInput(query: ['body' => 'query body'], headers: ['X-Trace' => 'trace'], body: $body));
         }
     };
     $body = new class extends \Dmorenof\SdkRuntime\DTO {

@@ -37,7 +37,7 @@ final class PathStyleTest extends TestCase {
    self::assertMatchesRegularExpression('/^[0-9]+$/',$port);
    $client=new class('http://127.0.0.1:'.$port) extends \Dmorenof\SdkRuntime\ApiClient {
     public function target(string $format): string {
-     return $this->executeOperation(['method'=>'GET','path'=>'/items/{id}','responseType'=>'string','pathSerialization'=>['id'=>$format]],pathParameters:['id'=>'']);
+     return $this->executeOperation(['method'=>'GET','path'=>'/items/{id}','responseType'=>'string','pathSerialization'=>['id'=>$format]], new \Dmorenof\SdkRuntime\RequestInput(path: ['id'=>'']));
     }
    };
    self::assertSame('/items/.',$client->target('label'));

@@ -18,8 +18,7 @@ try {
                 'responseTypes' => $fallback ? ['default' => ['type' => $this->addressType, 'schemaNullable' => false]] : [
                     201 => ['type' => \Psr\Http\Message\ResponseInterface::class, 'schemaNullable' => false],
                     204 => ['type' => null, 'schemaNullable' => false], '2XX' => ['type' => $this->userType, 'schemaNullable' => false]],
-                'errors' => [400 => null, '4XX' => $this->userType, 'default' => $this->addressType]],
-                queryParameters: ['status' => $status, 'body' => 'query body'], headerParameters: ['X-Trace' => 'trace'], body: $post ? $body : null);
+                'errors' => [400 => null, '4XX' => $this->userType, 'default' => $this->addressType]], new \Dmorenof\SdkRuntime\RequestInput(query: ['status' => $status, 'body' => 'query body'], headers: ['X-Trace' => 'trace'], body: $post ? $body : null));
         }
     };
     $client->userType = $userType; $client->addressType = $addressType;

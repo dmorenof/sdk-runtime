@@ -18,9 +18,10 @@ final class RawMediaTest extends TestCase {
         };
         $client = new class('https://example.test', httpClient: $http) extends ApiClient {
             public function post(string $encoding, mixed $value, bool $present = true, ?DTO $params = null): mixed {
-                return $this->executeBody(['method' => 'POST', 'path' => '/raw', 'responseType' => 'string', 'responseMediaType' => 'text/plain',
+                $spec = ['method' => 'POST', 'path' => '/raw', 'responseType' => 'string', 'responseMediaType' => 'text/plain',
                     'requestMediaType' => $encoding === 'text' ? 'text/plain' : 'application/octet-stream',
-                    'requestBody' => ['type' => $encoding === 'text' ? 'string' : 'stream', 'nullable' => false, 'required' => false, 'encoding' => $encoding]], $value, $present, payload: $params);
+                    'requestBody' => ['type' => $encoding === 'text' ? 'string' : 'stream', 'nullable' => false, 'required' => false, 'encoding' => $encoding]];
+                return $present ? $this->executeBody($spec, $value, parameters: $params) : $this->executeArguments($spec, parameters: $params);
             }
             public function get(): mixed { return $this->executeOperation(['method' => 'GET', 'path' => '/raw', 'success' => [200, 201, 202, 204],
                 'responseTypes' => [200 => ['type' => 'string', 'schemaNullable' => false, 'mediaType' => 'text/plain'], 201 => ['type' => 'int', 'schemaNullable' => false], 202 => ['type' => \Psr\Http\Message\ResponseInterface::class, 'schemaNullable' => false], 204 => ['type' => null, 'schemaNullable' => false]]]); }

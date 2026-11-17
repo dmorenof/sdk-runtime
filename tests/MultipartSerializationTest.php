@@ -34,7 +34,7 @@ class MultipartProbeClient extends ApiClient
                 'display-name' => ['contentType' => 'text/plain'], 'active' => ['contentType' => 'text/plain'],
                 'file' => ['contentType' => 'application/octet-stream', 'filename' => 'file'],
                 'ids' => ['contentType' => 'text/plain'], 'note' => ['contentType' => 'text/plain'],
-            ]], queryParameters: ['body' => 'query +'], headerParameters: ['X-Trace' => 'trace'], body: $body);
+            ]], new \Dmorenof\SdkRuntime\RequestInput(query: ['body' => 'query +'], headers: ['X-Trace' => 'trace'], body: $body));
     }
 }
 

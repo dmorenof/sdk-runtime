@@ -27,7 +27,7 @@ class CookieClient extends ApiClient
     protected const array SECURITY_SCHEMES = ['Session' => ['type' => 'apiKey', 'scheme' => null, 'location' => 'cookie', 'parameterName' => 'session']];
     public function call(CookieParams $params): void
     {
-        $this->executeArguments(['method' => 'GET', 'path' => '/items', 'security' => [['Session' => []]], 'success' => [204]], payload: $params);
+        $this->executeArguments(['method' => 'GET', 'path' => '/items', 'security' => [['Session' => []]], 'success' => [204]], parameters: $params);
     }
 }
 final class CookieTest extends TestCase

@@ -35,8 +35,7 @@ class FormProbeClient extends ApiClient
     public function submit(?DTO $body, array $formats = [], string $media = 'application/x-www-form-urlencoded'): void
     {
         $this->executeOperation(['method' => 'POST', 'path' => '/forms', 'success' => [204],
-            'requestMediaType' => $media, 'bodySerialization' => $formats],
-            queryParameters: ['name' => 'query +'], headerParameters: ['X-Trace' => 'trace'], body: $body);
+            'requestMediaType' => $media, 'bodySerialization' => $formats], new \Dmorenof\SdkRuntime\RequestInput(query: ['name' => 'query +'], headers: ['X-Trace' => 'trace'], body: $body));
     }
 }
 

@@ -15,7 +15,7 @@ try {
     $client = new class('http://127.0.0.1:' . $port) extends \Dmorenof\SdkRuntime\ApiClient {
         public string $recordType;
         public function record(?\Dmorenof\SdkRuntime\DTO $body = null): mixed {
-            return $this->executeOperation(['method' => $body === null ? 'GET' : 'POST', 'path' => '/native', 'responseType' => $this->recordType], body: $body);
+            return $this->executeOperation(['method' => $body === null ? 'GET' : 'POST', 'path' => '/native', 'responseType' => $this->recordType], new \Dmorenof\SdkRuntime\RequestInput(body: $body));
         }
         public function value(string $path): mixed {
             return $this->executeOperation(['method' => 'GET', 'path' => $path, 'responseType' => match ($path) { '/value' => 'string|int|bool|null', '/items' => 'array', default => 'mixed' },
@@ -23,7 +23,7 @@ try {
         }
         public function parameter(\Dmorenof\SdkRuntime\DTO $params): mixed {
             return $this->executeArguments(['method' => 'GET', 'path' => '/param/{id}', 'responseType' => 'string|int|bool|null',
-                'parameterContent' => ['query' => ['json' => 'application/json', 'plain' => 'text/plain']]], identifier: 1, identifierName: 'id', payload: $params);
+                'parameterContent' => ['query' => ['json' => 'application/json', 'plain' => 'text/plain']]], path: ['id' => 1], parameters: $params);
         }
     };
     $client->recordType = $prototype::class;

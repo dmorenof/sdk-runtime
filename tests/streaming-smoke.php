@@ -44,7 +44,7 @@ $client = new class($realHttp ? $argv[2] : 'https://example.test', httpClient: $
         $this->executeOperation(['method' => 'POST', 'path' => '/uploads', 'success' => [204],
             'requestMediaType' => 'multipart/form-data', 'bodyParts' => [
                 'file' => ['contentType' => null, 'filename' => 'fallback.bin'], 'name' => ['contentType' => 'text/plain'],
-            ]], queryParameters: ['body' => 'query body'], headerParameters: ['X-Trace' => 'trace'], body: $body);
+            ]], new \Dmorenof\SdkRuntime\RequestInput(query: ['body' => 'query body'], headers: ['X-Trace' => 'trace'], body: $body));
     }
 };
 $files = [];

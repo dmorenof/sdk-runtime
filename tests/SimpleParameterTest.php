@@ -32,12 +32,10 @@ class SimplePayload extends DTO {
 class SimpleParameterClient extends ApiClient {
     public function submit(DTO $path, DTO $params): void {
         $this->executeArguments(['method' => 'POST', 'path' => '/items/{ids}', 'success' => [204],
-            'pathSerialization' => ['ids' => 'csv'], 'headerSerialization' => ['X-Ids' => 'csv'], 'querySerialization' => ['q' => 'multi']],
-            identifier: $path, payload: $params);
+            'pathSerialization' => ['ids' => 'csv'], 'headerSerialization' => ['X-Ids' => 'csv'], 'querySerialization' => ['q' => 'multi']], path: $path, parameters: $params);
     }
     public function raw(array $path, array $headers = [], array $metadata = []): void {
-        $this->executeOperation(['method' => 'GET', 'path' => '/items/{ids}', 'success' => [204]] + $metadata,
-            pathParameters: $path, headerParameters: $headers);
+        $this->executeOperation(['method' => 'GET', 'path' => '/items/{ids}', 'success' => [204]] + $metadata, new \Dmorenof\SdkRuntime\RequestInput(path: $path, headers: $headers));
     }
 }
 final class SimpleParameterTest extends TestCase {
@@ -101,8 +99,7 @@ final class SimpleParameterTest extends TestCase {
             $client = new class('https://example.test', httpClient: $http, transport: $psr ? null : $transport) extends ApiClient {
                 public function numeric(): void {
                     $this->executeOperation(['method' => 'GET', 'path' => '/numeric/{0}', 'success' => [204],
-                        'pathSerialization' => ['0' => 'csv'], 'headerSerialization' => ['0' => 'csv']],
-                        pathParameters: ['0' => ['a,b', 'c/d']], headerParameters: ['0' => ['alpha', 'beta']]);
+                        'pathSerialization' => ['0' => 'csv'], 'headerSerialization' => ['0' => 'csv']], new \Dmorenof\SdkRuntime\RequestInput(path: ['0' => ['a,b', 'c/d']], headers: ['0' => ['alpha', 'beta']]));
                 }
             };
             $client->numeric();

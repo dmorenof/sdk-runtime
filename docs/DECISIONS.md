@@ -33,3 +33,25 @@ The exception built itself from a response, with two decoding strategies, and to
 
 ### D4. `Operation::declares()` replaces looking into the raw array
 The client used to keep the generated array only to ask "did the generator set `responseEncoding`, or is that the default?". `Operation` now remembers which keys were given, so nothing downstream needs the raw array and several methods lose a parameter.
+
+### D5. `ApiClient` is split by responsibility (797 → 363 lines)
+The client mixed sending, building requests, reading responses and server choice in one class. Request and response work moved to small internal classes in `Execution\`, each with one job:
+
+| Class | Job |
+| --- | --- |
+| `InputBuilder` | Turn what a generated method receives (path values, a parameter object, a body) into a `RequestInput` |
+| `RequestParameters` | Validate and serialize path, query, header and cookie values |
+| `RequestBody` | Decide how the body is carried, check it against its contract, produce its bytes |
+| `RequestBuilder` | Combine the two into a `PreparedRequest` (path, query, headers, body) |
+| `ResponseDecoder` | The `Accept` header, decoding a success, building an `ApiException` |
+
+The code was moved, not rewritten; the existing 499 tests and 19 smoke scripts are the proof it still behaves the same.
+
+### D6. The three execute methods take at most 4 arguments
+`executeArguments`, `executeBody` and `executeOperation` had 5 and 6 parameters (`identifier`, `identifierName`, `bodyPresent`, separate path/query/header arrays…). They are now:
+
+- `executeArguments($operation, $path = [], ?DTO $parameters = null, ?DTO $body = null)`
+- `executeBody($operation, $body, $path = [], ?DTO $parameters = null)`
+- `executeOperation($operation, RequestInput $input = new RequestInput())`
+
+`$path` is an array of path values or a parameter object that declares them, which replaces `identifier` + `identifierName`. "Body present" is no longer a flag: a method that sends an optional body calls `executeBody()` when it has one and `executeArguments()` when it does not. `RequestInput` is a configuration object (R2) with five named options.

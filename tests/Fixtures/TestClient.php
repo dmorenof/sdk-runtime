@@ -40,12 +40,12 @@ final class TestClient extends ApiClient
 
     public function getUser(int $id, ?bool $verbose = null): User
     {
-        return $this->executeOperation(self::GET_USER, ['id' => $id], ['verbose' => $verbose]);
+        return $this->executeOperation(self::GET_USER, new \Dmorenof\SdkRuntime\RequestInput(path: ['id' => $id], query: ['verbose' => $verbose]));
     }
 
     public function createUser(User $user): User
     {
-        return $this->executeOperation(self::CREATE_USER, body: $user);
+        return $this->executeOperation(self::CREATE_USER, new \Dmorenof\SdkRuntime\RequestInput(body: $user));
     }
 
     public function ping(): void
@@ -55,6 +55,6 @@ final class TestClient extends ApiClient
 
     public function deleteUser(int $id): ?User
     {
-        return $this->executeOperation(self::DELETE_USER, ['id' => $id]);
+        return $this->executeOperation(self::DELETE_USER, new \Dmorenof\SdkRuntime\RequestInput(path: ['id' => $id]));
     }
 }

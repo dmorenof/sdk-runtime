@@ -8,10 +8,13 @@ try {
     $client = new class('http://127.0.0.1:' . $port) extends \Dmorenof\SdkRuntime\ApiClient {
         public function text(string $value): mixed { return $this->executeBody(['method' => 'POST', 'path' => '/text', 'responseType' => 'string', 'responseMediaType' => 'text/plain', 'responseValidation' => ['minLength' => 2],
             'requestMediaType' => 'text/plain', 'requestBody' => ['type' => 'string', 'nullable' => false, 'required' => true, 'encoding' => 'text', 'rules' => ['minLength' => 2]]], $value); }
-        public function optional(?string $value = null): mixed { return $this->executeBody(['method' => 'POST', 'path' => '/optional', 'success' => [204], 'requestMediaType' => 'text/plain',
-            'requestBody' => ['type' => 'string', 'nullable' => false, 'required' => false, 'encoding' => 'text']], $value, func_num_args() > 0); }
+        public function optional(?string $value = null): mixed {
+            $spec = ['method' => 'POST', 'path' => '/optional', 'success' => [204], 'requestMediaType' => 'text/plain',
+                'requestBody' => ['type' => 'string', 'nullable' => false, 'required' => false, 'encoding' => 'text']];
+            return func_num_args() > 0 ? $this->executeBody($spec, $value) : $this->executeArguments($spec);
+        }
         public function binary(\Dmorenof\SdkRuntime\DTO $params): mixed { return $this->executeBody(['method' => 'POST', 'path' => '/binary/{id}', 'success' => [204], 'requestMediaType' => 'application/octet-stream',
-            'requestBody' => ['type' => 'stream', 'nullable' => false, 'required' => true, 'encoding' => 'binary']], null, identifier: 7, identifierName: 'id', payload: $params); }
+            'requestBody' => ['type' => 'stream', 'nullable' => false, 'required' => true, 'encoding' => 'binary']], null, path: ['id' => 7], parameters: $params); }
         public function mixed(): mixed { return $this->executeOperation(['method' => 'GET', 'path' => '/mixed', 'success' => [200, 201, 202, 204], 'responseTypes' => [
             200 => ['type' => 'string', 'schemaNullable' => false, 'mediaType' => 'text/plain'], 201 => ['type' => 'int', 'schemaNullable' => false],
             202 => ['type' => \Psr\Http\Message\ResponseInterface::class, 'schemaNullable' => false], 204 => ['type' => null, 'schemaNullable' => false]]]); }

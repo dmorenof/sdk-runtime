@@ -30,7 +30,7 @@ class FileListProbeClient extends ApiClient
         $this->executeOperation(['method' => 'POST', 'path' => '/files', 'success' => [204],
             'requestMediaType' => 'multipart/form-data', 'bodyParts' => [
                 'upload-files' => ['contentType' => $mime, 'filename' => 'upload.bin'],
-            ]], body: $body);
+            ]], new \Dmorenof\SdkRuntime\RequestInput(body: $body));
     }
 }
 

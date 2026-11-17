@@ -32,7 +32,7 @@ class UploadProbeClient extends ApiClient
         $this->executeOperation(['method' => 'POST', 'path' => '/uploads', 'success' => [204],
             'requestMediaType' => $media, 'bodyParts' => $media === 'multipart/form-data'
                 ? ['upload-file' => ['contentType' => $mime, 'filename' => 'fallback.bin'],
-                    'optional' => ['contentType' => null, 'filename' => 'optional.bin']] : []], body: $body);
+                    'optional' => ['contentType' => null, 'filename' => 'optional.bin']] : []], new \Dmorenof\SdkRuntime\RequestInput(body: $body));
     }
 }
 

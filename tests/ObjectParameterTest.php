@@ -39,7 +39,7 @@ class FlatParameterClient extends ApiClient {
     public function submit(DTO $path, DTO $payload): void {
         $this->executeArguments(['method' => 'POST', 'path' => '/items/{selector}', 'success' => [204],
             'pathSerialization' => ['selector' => 'object'], 'headerSerialization' => ['X-Filter' => 'object-explode'],
-            'querySerialization' => ['filter' => 'form-object']], identifier: $path, payload: $payload);
+            'querySerialization' => ['filter' => 'form-object']], path: $path, parameters: $payload);
     }
 }
 final class ObjectParameterTest extends TestCase {

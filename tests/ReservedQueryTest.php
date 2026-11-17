@@ -19,7 +19,7 @@ class ReservedQueryParams extends DTO {
 class ReservedQueryClient extends ApiClient {
     protected const array SECURITY_SCHEMES = ['Key' => ['type' => 'apiKey', 'scheme' => null, 'location' => 'query', 'parameterName' => 'k']];
     public function call(ReservedQueryParams $params): void {
-        $this->executeArguments(['method' => 'POST', 'path' => '/items', 'success' => [204], 'queryAllowReserved' => ['q', 'body', 'k'], 'security' => [['Key' => []]]], payload: $params);
+        $this->executeArguments(['method' => 'POST', 'path' => '/items', 'success' => [204], 'queryAllowReserved' => ['q', 'body', 'k'], 'security' => [['Key' => []]]], parameters: $params);
     }
 }
 final class ReservedQueryTest extends TestCase {

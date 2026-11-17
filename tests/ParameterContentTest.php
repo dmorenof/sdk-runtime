@@ -18,10 +18,10 @@ class ContentParams extends DTO {
 }
 class ContentClient extends ApiClient {
     public function call(ContentPath $path, ContentParams $params): void {
-        $this->executeArguments(['method' => 'POST', 'path' => '/items/{id}', 'success' => [204], 'parameterContent' => ['path' => ['id' => 'application/json'], 'query' => ['body' => 'application/json', 'labels' => 'application/json', 'text' => 'text/plain'], 'header' => ['X-Filter' => 'application/json'], 'cookie' => ['session' => 'text/plain']]], $path, payload: $params);
+        $this->executeArguments(['method' => 'POST', 'path' => '/items/{id}', 'success' => [204], 'parameterContent' => ['path' => ['id' => 'application/json'], 'query' => ['body' => 'application/json', 'labels' => 'application/json', 'text' => 'text/plain'], 'header' => ['X-Filter' => 'application/json'], 'cookie' => ['session' => 'text/plain']]], path: $path, parameters: $params);
     }
     public function raw(array $metadata): void { $this->executeOperation(['method' => 'GET', 'path' => '/items', 'success' => [204]] + $metadata); }
-    public function scalar(string $id): void { $this->executeOperation(['method' => 'GET', 'path' => '/{id}', 'success' => [204], 'validation' => ['id' => ['minLength' => 1]], 'parameterContent' => ['path' => ['id' => 'application/json']]], pathParameters: ['id' => $id]); }
+    public function scalar(string $id): void { $this->executeOperation(['method' => 'GET', 'path' => '/{id}', 'success' => [204], 'validation' => ['id' => ['minLength' => 1]], 'parameterContent' => ['path' => ['id' => 'application/json']]], new \Dmorenof\SdkRuntime\RequestInput(path: ['id' => $id])); }
 }
 final class ParameterContentTest extends TestCase {
     public function testContentReusesRequestDirectionCollectionsAndNumericMapKeys(): void {

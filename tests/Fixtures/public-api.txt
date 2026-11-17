@@ -12,9 +12,9 @@ class Dmorenof\SdkRuntime\AnyOf implements JsonSerializable
 abstract class Dmorenof\SdkRuntime\ApiClient
     const protected SECURITY_SCHEMES
     const protected SERVERS
-    method protected executeArguments(array $operation, Dmorenof\SdkRuntime\DTO|string|int|float|bool|null $identifier = NULL, ?string $identifierName = NULL, ?Dmorenof\SdkRuntime\DTO $payload = NULL, ?Dmorenof\SdkRuntime\DTO $body = NULL): mixed
-    method protected executeBody(array $operation, mixed $body, bool $bodyPresent = true, Dmorenof\SdkRuntime\DTO|string|int|float|bool|null $identifier = NULL, ?string $identifierName = NULL, ?Dmorenof\SdkRuntime\DTO $payload = NULL): mixed
-    method protected executeOperation(array $operation, array $pathParameters = array ( ), array $queryParameters = array ( ), array $headerParameters = array ( ), ?Dmorenof\SdkRuntime\DTO $body = NULL): mixed
+    method protected executeArguments(array $operation, Dmorenof\SdkRuntime\DTO|array $path = array ( ), ?Dmorenof\SdkRuntime\DTO $parameters = NULL, ?Dmorenof\SdkRuntime\DTO $body = NULL): mixed
+    method protected executeBody(array $operation, mixed $body, Dmorenof\SdkRuntime\DTO|array $path = array ( ), ?Dmorenof\SdkRuntime\DTO $parameters = NULL): mixed
+    method protected executeOperation(array $operation, Dmorenof\SdkRuntime\RequestInput $input = \Dmorenof\SdkRuntime\RequestInput::__set_state(array( 'bodyPresent' => false, 'path' => array ( ), 'query' => array ( ), 'headers' => array ( ), 'body' => NULL, ))): mixed
     method public final __construct(string $baseUrl, ?Psr\Http\Client\ClientInterface $httpClient = NULL, array $headers = array ( ), ?Dmorenof\SdkRuntime\Security\SecurityCredentials $securityCredentials = NULL, ?Dmorenof\SdkRuntime\Transport\TransportInterface $transport = NULL, array $serverOverrides = array ( ))
     method public lastResponse(): ?Dmorenof\SdkRuntime\Transport\ResponseInfo
     method public resource(string $type): self
@@ -123,6 +123,14 @@ final readonly class Dmorenof\SdkRuntime\Operation
 class Dmorenof\SdkRuntime\Request extends Dmorenof\SdkRuntime\DTO
     method public jsonSerialize(): object
     method public validate(): void
+
+final readonly class Dmorenof\SdkRuntime\RequestInput
+    method public __construct(array $path = array ( ), array $query = array ( ), array $headers = array ( ), mixed $body = NULL, ?bool $bodyPresent = NULL)
+    property public readonly array $headers
+    property public readonly array $path
+    property public readonly array $query
+    property public readonly bool $bodyPresent
+    property public readonly mixed $body
 
 class Dmorenof\SdkRuntime\Response extends Dmorenof\SdkRuntime\DTO
     method public jsonSerialize(): object

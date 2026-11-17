@@ -21,7 +21,7 @@ try {
         public function image(\Dmorenof\SdkRuntime\DTO $params): mixed {
             return $this->executeBody(['method' => 'POST', 'path' => '/image/{id}', 'success' => [201], 'responseType' => \Psr\Http\Message\ResponseInterface::class, 'responseMediaType' => 'image/png', 'responseEncoding' => 'binary',
                 'errorResponses' => [400 => ['type' => $this->detailType, 'schemaNullable' => false, 'mediaType' => 'application/problem+json']],
-                'requestMediaType' => 'image/png', 'requestBody' => ['type' => 'stream', 'nullable' => false, 'required' => true, 'encoding' => 'binary']], null, identifier: 7, identifierName: 'id', payload: $params);
+                'requestMediaType' => 'image/png', 'requestBody' => ['type' => 'stream', 'nullable' => false, 'required' => true, 'encoding' => 'binary']], null, path: ['id' => 7], parameters: $params);
         }
         public function pdf(): mixed {
             return $this->executeOperation(['method' => 'GET', 'path' => '/pdf', 'success' => [200, 201], 'responseTypes' => [

@@ -10,10 +10,7 @@ try {
         public function send(string $method): void {
             $this->executeOperation(['method' => $method, 'path' => '/items/{spaces}/{tabs}/{pipes}', 'success' => [204],
                 'pathSerialization' => ['spaces' => 'ssv', 'tabs' => 'tsv', 'pipes' => 'pipes'],
-                'headerSerialization' => ['X-Spaces' => 'ssv', 'X-Tabs' => 'tsv', 'X-Pipes' => 'pipes']],
-                pathParameters: array_fill_keys(['spaces', 'tabs', 'pipes'], ['a/b', '%2F', 'ñ']),
-                queryParameters: ['body' => 'query body'], headerParameters: array_fill_keys(['X-Spaces', 'X-Tabs', 'X-Pipes'], ['alpha', 'beta']),
-                body: $method === 'POST' ? new class((object) ['name' => 'Ada']) extends \Dmorenof\SdkRuntime\DTO { public string $name; } : null);
+                'headerSerialization' => ['X-Spaces' => 'ssv', 'X-Tabs' => 'tsv', 'X-Pipes' => 'pipes']], new \Dmorenof\SdkRuntime\RequestInput(path: array_fill_keys(['spaces', 'tabs', 'pipes'], ['a/b', '%2F', 'ñ']), query: ['body' => 'query body'], headers: array_fill_keys(['X-Spaces', 'X-Tabs', 'X-Pipes'], ['alpha', 'beta']), body: $method === 'POST' ? new class((object) ['name' => 'Ada']) extends \Dmorenof\SdkRuntime\DTO { public string $name; } : null));
         }
     };
     $client->send('GET'); $client->send('POST');

@@ -31,7 +31,7 @@ class SharedProbe extends ApiClient
     public function submit(SharedParameters $params): void
     {
         $this->executeArguments(['method' => 'POST', 'path' => '/items/{id}', 'success' => [204],
-            'requestMediaType' => 'application/x-www-form-urlencoded'], 7, 'id', $params);
+            'requestMediaType' => 'application/x-www-form-urlencoded'], path: ['id' => 7], parameters: $params);
     }
 }
 

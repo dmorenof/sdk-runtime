@@ -9,7 +9,7 @@ try {
     $client = new class('http://127.0.0.1:' . $port) extends \Dmorenof\SdkRuntime\ApiClient {
         public function submit(\Dmorenof\SdkRuntime\DTO $body): mixed {
             return $this->executeOperation(['method' => 'POST', 'path' => '/rules', 'responseType' => $body::class,
-                'validation' => ['amount' => ['multipleOf' => 0.1]]], queryParameters: ['amount' => 0.3], body: $body);
+                'validation' => ['amount' => ['multipleOf' => 0.1]]], new \Dmorenof\SdkRuntime\RequestInput(query: ['amount' => 0.3], body: $body));
         }
         public function scalar(bool $bad = false): mixed {
             return $this->executeOperation(['method' => 'GET', 'path' => $bad ? '/scalar-bad' : '/scalar', 'responseType' => 'float', 'responseValidation' => ['exclusiveMinimum' => 0, 'exclusiveMaximum' => 1, 'multipleOf' => 0.1]]);

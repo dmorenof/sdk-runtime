@@ -61,7 +61,7 @@ The values of one call split by where they travel: `new RequestInput(path: [], q
 | Class | Purpose |
 | --- | --- |
 | `TransportInterface` | `send($method, $url, $headers, $body): HttpResponse` |
-| `Psr18Transport` | The default transport over any PSR-18 client; adds middleware, retries, redirects and streaming |
+| `Psr18Transport`, `Psr18Options` | The default transport over any PSR-18 client, and its options: default headers, middleware, retries, redirects. Adds streaming |
 | `HttpMiddlewareInterface` | `beforeRequest($request)`, `afterResponse($request, $response)` |
 | `RetryPolicy` | `maxAttempts`, `statuses`, `methods`, `baseDelayMs`, `maxDelayMs`, `retryNetworkErrors` |
 | `RedirectPolicy` | `maxRedirects`, `statuses`, `allowDowngrade`, `followCrossOrigin`, `crossOriginHeaders`; `RedirectPolicy::none()` |

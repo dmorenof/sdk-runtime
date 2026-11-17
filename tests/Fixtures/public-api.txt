@@ -242,13 +242,18 @@ final readonly class Dmorenof\SdkRuntime\Transport\HttpResponse
     property public readonly int $status
     property public readonly string $body
 
+final readonly class Dmorenof\SdkRuntime\Transport\Psr18Options
+    method public __construct(array $defaultHeaders = array ( ), array $middleware = array ( ), ?Dmorenof\SdkRuntime\Transport\RetryPolicy $retryPolicy = NULL, ?Dmorenof\SdkRuntime\Transport\RedirectPolicy $redirectPolicy = NULL, ?Closure $sleeper = NULL)
+    property public readonly ?Closure $sleeper
+    property public readonly ?Dmorenof\SdkRuntime\Transport\RedirectPolicy $redirectPolicy
+    property public readonly ?Dmorenof\SdkRuntime\Transport\RetryPolicy $retryPolicy
+    property public readonly array $defaultHeaders
+    property public readonly array $middleware
+
 final class Dmorenof\SdkRuntime\Transport\Psr18Transport implements Dmorenof\SdkRuntime\Transport\TransportInterface
-    method public __construct(Psr\Http\Client\ClientInterface $client, array $defaultHeaders = array ( ), ?Closure $sleeper = NULL)
-    method public addMiddleware(Dmorenof\SdkRuntime\Transport\HttpMiddlewareInterface $middleware): void
+    method public __construct(Psr\Http\Client\ClientInterface $client, Dmorenof\SdkRuntime\Transport\Psr18Options $options = \Dmorenof\SdkRuntime\Transport\Psr18Options::__set_state(array( 'defaultHeaders' => array ( ), 'middleware' => array ( ), 'retryPolicy' => NULL, 'redirectPolicy' => NULL, 'sleeper' => NULL, )))
     method public send(string $method, string $url, array $headers, Psr\Http\Message\StreamInterface|string|null $body): Dmorenof\SdkRuntime\Transport\HttpResponse
     method public sendResponse(Psr\Http\Message\RequestInterface $request, bool $stream = false): Psr\Http\Message\ResponseInterface
-    method public setRedirectPolicy(?Dmorenof\SdkRuntime\Transport\RedirectPolicy $policy): void
-    method public setRetryPolicy(?Dmorenof\SdkRuntime\Transport\RetryPolicy $policy): void
 
 final class Dmorenof\SdkRuntime\Transport\RedirectException extends RuntimeException
     method public __construct(string $message, Psr\Http\Message\ResponseInterface $response)

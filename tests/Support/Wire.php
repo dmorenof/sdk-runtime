@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace Dmorenof\SdkRuntime\Tests\Support;
 
+use Dmorenof\SdkRuntime\Transport\Psr18Options;
 use Dmorenof\SdkRuntime\Transport\Psr18Transport;
 use Dmorenof\SdkRuntime\Transport\RedirectPolicy;
 use Dmorenof\SdkRuntime\Transport\RetryPolicy;
@@ -16,6 +17,7 @@ final class Wire
 {
     /**
      * @param array<string, string> $defaultHeaders
+     * @param list<\Dmorenof\SdkRuntime\Transport\HttpMiddlewareInterface> $middleware
      * @param ?\Closure(int): void $sleeper
      */
     public static function transport(
@@ -24,11 +26,9 @@ final class Wire
         ?RetryPolicy $retryPolicy = null,
         ?\Closure $sleeper = null,
         ?RedirectPolicy $redirectPolicy = null,
+        array $middleware = [],
     ): Psr18Transport {
-        $transport = new Psr18Transport($client, $defaultHeaders, $sleeper);
-        $transport->setRetryPolicy($retryPolicy);
-        $transport->setRedirectPolicy($redirectPolicy);
-        return $transport;
+        return new Psr18Transport($client, new Psr18Options($defaultHeaders, $middleware, $retryPolicy, $redirectPolicy, $sleeper));
     }
 
     /** @param array<string, string> $headers */

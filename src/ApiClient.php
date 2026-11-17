@@ -12,6 +12,7 @@ use Dmorenof\SdkRuntime\Security\SecurityApplier;
 use Dmorenof\SdkRuntime\Security\SecurityCredentials;
 use Dmorenof\SdkRuntime\Streaming\StreamDecoder;
 use Dmorenof\SdkRuntime\Transport\HttpResponse;
+use Dmorenof\SdkRuntime\Transport\Psr18Options;
 use Dmorenof\SdkRuntime\Transport\Psr18Transport;
 use Dmorenof\SdkRuntime\Transport\ResponseHeaders;
 use Dmorenof\SdkRuntime\Transport\ResponseInfo;
@@ -126,17 +127,11 @@ abstract class ApiClient
 
     private static function defaultTransport(Configuration $configuration): Psr18Transport
     {
-        $transport = new Psr18Transport(
+        return new Psr18Transport(
             $configuration->httpClient ?? new \GuzzleHttp\Client(['http_errors' => false,
                 'curl' => defined('CURLOPT_PATH_AS_IS') ? [CURLOPT_PATH_AS_IS => true] : []]),
-            $configuration->headers,
+            new Psr18Options($configuration->headers, $configuration->middleware, $configuration->retryPolicy, $configuration->redirectPolicy),
         );
-        $transport->setRetryPolicy($configuration->retryPolicy);
-        $transport->setRedirectPolicy($configuration->redirectPolicy);
-        foreach ($configuration->middleware as $middleware) {
-            $transport->addMiddleware($middleware);
-        }
-        return $transport;
     }
 
     /**

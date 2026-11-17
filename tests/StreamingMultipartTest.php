@@ -96,8 +96,7 @@ final class StreamingMultipartTest extends TestCase
                 return new Response(200, [], 'ok');
             }
         };
-        $transport = \Dmorenof\SdkRuntime\Tests\Support\Wire::transport($http);
-        $transport->addMiddleware(new class($replacement) implements HttpMiddlewareInterface {
+        $inspector = new class($replacement) implements HttpMiddlewareInterface {
             public function __construct(private \Psr\Http\Message\StreamInterface $replacement) {}
             public function beforeRequest(RequestInterface $request): RequestInterface
             {
@@ -109,7 +108,8 @@ final class StreamingMultipartTest extends TestCase
             {
                 return $response->withHeader('X-After', 'yes');
             }
-        });
+        };
+        $transport = \Dmorenof\SdkRuntime\Tests\Support\Wire::transport($http, middleware: [$inspector]);
         $response = $transport->send('POST', 'https://example.test', [], Utils::streamFor('original'));
         self::assertSame($replacement, $http->request->getBody());
         self::assertSame('yes', $response->headers['X-After']);

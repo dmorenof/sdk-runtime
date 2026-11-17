@@ -244,8 +244,7 @@ final class RedirectPolicyTest extends TestCase
                 return $response;
             }
         };
-        $transport = \Dmorenof\SdkRuntime\Tests\Support\Wire::transport($http, redirectPolicy: new RedirectPolicy());
-        $transport->addMiddleware($middleware);
+        $transport = \Dmorenof\SdkRuntime\Tests\Support\Wire::transport($http, redirectPolicy: new RedirectPolicy(), middleware: [$middleware]);
 
         \Dmorenof\SdkRuntime\Tests\Support\Wire::send($transport, 'GET', 'https://api.example.com/a', [], null);
 
@@ -334,8 +333,7 @@ final class RedirectPolicyTest extends TestCase
             }
         };
         $http = $this->http([self::redirect(302, 'https://cdn.other.test/f'), new Response(200)]);
-        $transport = \Dmorenof\SdkRuntime\Tests\Support\Wire::transport($http, redirectPolicy: new RedirectPolicy());
-        $transport->addMiddleware($addsAuthorization);
+        $transport = \Dmorenof\SdkRuntime\Tests\Support\Wire::transport($http, redirectPolicy: new RedirectPolicy(), middleware: [$addsAuthorization]);
 
         \Dmorenof\SdkRuntime\Tests\Support\Wire::send($transport, 'GET', 'https://api.example.com/a', [], null);
 
@@ -357,8 +355,7 @@ final class RedirectPolicyTest extends TestCase
             }
         };
         $http = $this->http([self::redirect(302, '/next'), new Response(200)]);
-        $transport = \Dmorenof\SdkRuntime\Tests\Support\Wire::transport($http, redirectPolicy: new RedirectPolicy());
-        $transport->addMiddleware($addsAuthorization);
+        $transport = \Dmorenof\SdkRuntime\Tests\Support\Wire::transport($http, redirectPolicy: new RedirectPolicy(), middleware: [$addsAuthorization]);
 
         \Dmorenof\SdkRuntime\Tests\Support\Wire::send($transport, 'GET', 'https://api.example.com/a', [], null);
 

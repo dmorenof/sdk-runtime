@@ -23,43 +23,16 @@ use Psr\Http\Message\UriInterface;
  */
 final class Psr18Transport implements TransportInterface
 {
-    /** @var list<HttpMiddlewareInterface> */
-    private array $middlewares = [];
-
-    private ?RetryPolicy $retryPolicy = null;
-
-    private ?RedirectPolicy $redirectPolicy = null;
-
     /** @var \Closure(int): void Receives the delay in milliseconds. */
     private \Closure $sleeper;
 
-    /**
-     * @param array<string, string> $defaultHeaders Sent with every request.
-     * @param ?\Closure(int): void $sleeper Replaces the default millisecond sleep (useful in tests).
-     */
     public function __construct(
         protected ClientInterface $client,
-        private array $defaultHeaders = [],
-        ?\Closure $sleeper = null,
+        private Psr18Options $options = new Psr18Options(),
     ) {
-        $this->sleeper = $sleeper ?? static function (int $ms): void {
+        $this->sleeper = $options->sleeper ?? static function (int $ms): void {
             usleep($ms * 1000);
         };
-    }
-
-    public function setRetryPolicy(?RetryPolicy $policy): void
-    {
-        $this->retryPolicy = $policy;
-    }
-
-    public function setRedirectPolicy(?RedirectPolicy $policy): void
-    {
-        $this->redirectPolicy = $policy;
-    }
-
-    public function addMiddleware(HttpMiddlewareInterface $middleware): void
-    {
-        $this->middlewares[] = $middleware;
     }
 
     /** @param array<string, string> $headers */
@@ -79,8 +52,8 @@ final class Psr18Transport implements TransportInterface
     {
         /** @var array<string, string> $own */
         $own = array_map(static fn (array $values): string => implode(', ', $values), $request->getHeaders());
-        $request = new Request($request->getMethod(), $request->getUri(), \Dmorenof\SdkRuntime\CookieHeader::merge($this->defaultHeaders, $own), $request->getBody());
-        $policy = $this->redirectPolicy ?? RedirectPolicy::none();
+        $request = new Request($request->getMethod(), $request->getUri(), \Dmorenof\SdkRuntime\CookieHeader::merge($this->options->defaultHeaders, $own), $request->getBody());
+        $policy = $this->options->redirectPolicy ?? RedirectPolicy::none();
         $origin = $request->getUri();
 
         for ($hop = 0;; $hop++) {
@@ -107,7 +80,7 @@ final class Psr18Transport implements TransportInterface
      */
     private function exchange(RequestInterface $request, bool $stream, UriInterface $origin, RedirectPolicy $redirects): ResponseInterface
     {
-        foreach ($this->middlewares as $middleware) {
+        foreach ($this->options->middleware as $middleware) {
             $request = $middleware->beforeRequest($request);
         }
         if (!self::sameOrigin($origin, $request->getUri())) {
@@ -116,7 +89,7 @@ final class Psr18Transport implements TransportInterface
 
         $response = $this->sendWithRetries($request, $stream);
 
-        foreach ($this->middlewares as $middleware) {
+        foreach ($this->options->middleware as $middleware) {
             $response = $middleware->afterResponse($request, $response);
         }
         if ($response->getBody()->isSeekable()) {
@@ -128,7 +101,7 @@ final class Psr18Transport implements TransportInterface
     /** Sends once, or again after a transient failure when the policy allows the method and the body can be resent. */
     private function sendWithRetries(RequestInterface $request, bool $stream): ResponseInterface
     {
-        $policy = $this->retryPolicy ?? new RetryPolicy(maxAttempts: 1);
+        $policy = $this->options->retryPolicy ?? new RetryPolicy(maxAttempts: 1);
         $maxAttempts = $policy->allows($request->getMethod()) && self::replayable($request) ? $policy->maxAttempts : 1;
 
         for ($attempt = 1;; $attempt++) {

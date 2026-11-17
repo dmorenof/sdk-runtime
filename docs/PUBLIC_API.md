@@ -35,7 +35,7 @@ Application code and generated SDKs may rely on these classes: constructors, pub
 
 **Transport**
 
-- `TransportInterface`, `HttpMiddlewareInterface` (interfaces you implement), `Psr18Transport`, `HttpResponse`.
+- `TransportInterface`, `HttpMiddlewareInterface` (interfaces you implement), `Psr18Transport` and its `Psr18Options`, `HttpResponse`.
 - `RetryPolicy`, `RedirectPolicy`, `RedirectException`.
 - `ResponseHeaders`, `ResponseInfo`.
 

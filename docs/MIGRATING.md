@@ -54,6 +54,6 @@ For the authorization code flow, `authorizationUrl` and `issuer` go in `OAuth2En
 
 ## Writing a transport or a generator
 
-- `Psr18Transport::sendResponse(RequestInterface $request, bool $stream = false)` replaces the method/URL/headers/body form, and its constructor no longer takes the policies.
+- `new Psr18Transport($client, new Psr18Options(...))` replaces `new Psr18Transport($client, $headers, $retryPolicy, $sleeper, $redirectPolicy)`, and `setRetryPolicy()`, `setRedirectPolicy()` and `addMiddleware()` are gone: everything is passed in `Psr18Options`. `sendResponse(RequestInterface $request, bool $stream = false)` replaces the method/URL/headers/body form.
 - `Operation` is built only with `Operation::fromArray($spec)`.
 - `executeArguments`, `executeBody` and `executeOperation` have new signatures: [Operation metadata](operation-metadata.md#executing).

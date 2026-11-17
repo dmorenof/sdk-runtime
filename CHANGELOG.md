@@ -8,7 +8,7 @@ Breaking release that follows the design review in [docs/DECISIONS.md](docs/DECI
 - **Execution**: `executeArguments($operation, $path, $parameters, $body)`, `executeBody($operation, $body, $path, $parameters)` and `executeOperation($operation, RequestInput $input)` replace the 5- and 6-argument versions. New `RequestInput`.
 - **OAuth2**: `OAuth2ClientCredentials` and `OAuth2AuthorizationCode` take `(OAuth2Endpoints, OAuth2Client, OAuth2Options)`. The authorization request lifetime is fixed at 10 minutes.
 - **ApiException**: `new ApiException($response, $operation, $payload, $previous)`; `error` is derived from `payload`. `ApiException::fromResponse()` is gone.
-- **Transport**: `Psr18Transport::__construct($client, $defaultHeaders, $sleeper)`; `sendResponse()` takes a PSR-7 request.
+- **Transport**: `new Psr18Transport($client, new Psr18Options(defaultHeaders:, middleware:, retryPolicy:, redirectPolicy:, sleeper:))`; the setters and `addMiddleware()` are gone; `sendResponse()` takes a PSR-7 request.
 - **Operation**: constructed only through `Operation::fromArray()`.
 - **Internals** (not public API): request building, response decoding and server choice moved out of `ApiClient` into `Execution\*`; `SecurityApplier::apply()` returns an `AppliedSecurity`; several long methods were split.
 

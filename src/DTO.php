@@ -16,7 +16,6 @@ class DTO implements \JsonSerializable, \Stringable
     /** @var array<string,mixed> */
     protected const array MODEL_VALIDATION = [];
     /** @var \WeakMap<self, array<string, mixed>>|null */
-    private static ?\WeakMap $additionalPropertyValues = null;
     /** @var array<class-string, array<string, mixed>> */
     private static array $declared = [];
 
@@ -37,7 +36,7 @@ class DTO implements \JsonSerializable, \Stringable
             if (property_exists($this, $propertyName)) {
                 $this->{$propertyName} = Hydrator::hydrateProperty($this, $propertyName, $value, $where);
             } else {
-                self::storeAdditionalProperty($this, $name, $this->hydrateAdditional($value, $where));
+                AdditionalPropertyStore::put($this, $name, $this->hydrateAdditional($value, $where));
             }
         }
 
@@ -127,45 +126,18 @@ class DTO implements \JsonSerializable, \Stringable
         $where = static::class . "::$name";
         $converted = $this->hydrateAdditional($value, $where);
         Constraints::validate($converted, $this->declaredRules('ADDITIONAL_PROPERTIES_VALIDATION'), $where);
-        self::storeAdditionalProperty($this, $name, $converted);
+        AdditionalPropertyStore::put($this, $name, $converted);
     }
 
     public function getAdditionalProperty(string $name): mixed
     {
-        return self::additionalPropertiesFor($this)[$name] ?? null;
+        return AdditionalPropertyStore::all($this)[$name] ?? null;
     }
 
     /** @return array<string, mixed> */
     public function additionalProperties(): array
     {
-        return self::additionalPropertiesFor($this);
-    }
-
-    /** @return \WeakMap<self,array<string,mixed>> */
-    private static function additionalPropertyMap(): \WeakMap
-    {
-        if (self::$additionalPropertyValues === null) {
-            /** @var \WeakMap<self,array<string,mixed>> $newMap */
-            $newMap = new \WeakMap();
-            self::$additionalPropertyValues = $newMap;
-        }
-        return self::$additionalPropertyValues;
-    }
-
-    private static function storeAdditionalProperty(self $dto, string $name, mixed $value): void
-    {
-        $values = self::additionalPropertiesFor($dto);
-        $values[$name] = $value;
-        self::additionalPropertyMap()[$dto] = $values;
-    }
-
-    /** @return array<string, mixed> */
-    private static function additionalPropertiesFor(self $dto): array
-    {
-        if (self::$additionalPropertyValues === null) {
-            return [];
-        }
-        return self::$additionalPropertyValues[$dto] ?? [];
+        return AdditionalPropertyStore::all($this);
     }
 
     /** @return array<string, mixed> */
@@ -173,7 +145,7 @@ class DTO implements \JsonSerializable, \Stringable
     {
         /** @var array<string, mixed> $declared */
         $declared = get_object_vars($this);
-        return array_replace($declared, self::additionalPropertiesFor($this));
+        return array_replace($declared, AdditionalPropertyStore::all($this));
     }
 
     private function assertRequiredFields(bool $request = false, bool $response = false): void
@@ -244,7 +216,7 @@ class DTO implements \JsonSerializable, \Stringable
         }
         $additionalRules = $this->declaredRules('ADDITIONAL_PROPERTIES_VALIDATION');
         if ($additionalRules !== []) {
-            foreach (self::additionalPropertiesFor($this) as $name => $value) {
+            foreach (AdditionalPropertyStore::all($this) as $name => $value) {
                 Constraints::validate($value, $additionalRules, static::class . "::$name", $mode);
             }
         }

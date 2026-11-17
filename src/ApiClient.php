@@ -56,7 +56,7 @@ abstract class ApiClient
     final public function __construct(Configuration $configuration)
     {
         $this->servers = new ServerSelection($configuration);
-        $this->configuration = $configuration;
+        $this->configuration = clone $configuration; // a snapshot: later changes to the caller's object change nothing
         $this->securityCredentials = $configuration->securityCredentials ?? new SecurityCredentials();
         $this->transport = $configuration->transport ?? self::defaultTransport($configuration);
         if ($configuration->transport !== null && ($configuration->middleware !== [] || $configuration->retryPolicy !== null || $configuration->redirectPolicy !== null)) {

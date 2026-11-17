@@ -116,36 +116,10 @@ final class Constraints
     private static function assert(mixed $value, string $rule, mixed $limit, string $where): void
     {
         if ($rule === 'items') {
-            if (!is_array($value) || !array_is_list($value)) {
-                throw new \UnexpectedValueException("Expected a list for items at $where.");
-            }
-            if (!is_array($limit) || !in_array($limit['type'] ?? null, ['string', 'int', 'float', 'bool', 'binary'], true)
-                || !is_array($limit['rules'] ?? [])) {
-                throw new \LogicException("Invalid items constraint for $where.");
-            }
-            $itemRules = [];
-            foreach ($limit['rules'] ?? [] as $ruleName => $ruleValue) {
-                if (!is_string($ruleName)) {
-                    throw new \LogicException("Item rule names must be strings at $where.");
-                }
-                $itemRules[$ruleName] = $ruleValue;
-            }
-            foreach ($value as $index => $item) {
-                $at = $where . '[' . $index . ']';
-                Hydrator::hydrate($item, $limit['type'], false, $at);
-                self::validate($item, $itemRules, $at);
-            }
+            self::assertItems($value, $limit, $where);
             return;
         } elseif ($rule === 'pattern') {
-            if (!is_string($limit) || !is_string($value)) {
-                throw new \UnexpectedValueException("Expected string for pattern at $where.");
-            }
-            $regex = '~' . str_replace('~', '\\~', $limit) . '~u';
-            $matched = preg_match($regex, $value);
-            if ($matched === false) {
-                throw new \LogicException("Invalid pattern constraint for $where.");
-            }
-            $valid = $matched === 1;
+            $valid = self::matchesPattern($value, $limit, $where);
         } elseif ($rule === 'enum') {
             if (!is_array($limit)) {
                 throw new \LogicException("Invalid enum constraint for $where.");
@@ -172,6 +146,42 @@ final class Constraints
             $description = ($rule === 'enum' ? 'allowed values ' : ($rule === 'format' ? 'format ' : 'limit ')) . var_export($limit, true);
             throw new \UnexpectedValueException("Validation $rule failed at $where ($description).");
         }
+    }
+
+    /** Each item of a list is hydrated as the declared scalar type and checked against the item rules. */
+    private static function assertItems(mixed $value, mixed $limit, string $where): void
+    {
+        if (!is_array($value) || !array_is_list($value)) {
+            throw new \UnexpectedValueException("Expected a list for items at $where.");
+        }
+        if (!is_array($limit) || !in_array($limit['type'] ?? null, ['string', 'int', 'float', 'bool', 'binary'], true)
+            || !is_array($limit['rules'] ?? [])) {
+            throw new \LogicException("Invalid items constraint for $where.");
+        }
+        $itemRules = [];
+        foreach ($limit['rules'] ?? [] as $ruleName => $ruleValue) {
+            if (!is_string($ruleName)) {
+                throw new \LogicException("Item rule names must be strings at $where.");
+            }
+            $itemRules[$ruleName] = $ruleValue;
+        }
+        foreach ($value as $index => $item) {
+            $at = $where . '[' . $index . ']';
+            Hydrator::hydrate($item, $limit['type'], false, $at);
+            self::validate($item, $itemRules, $at);
+        }
+    }
+
+    private static function matchesPattern(mixed $value, mixed $limit, string $where): bool
+    {
+        if (!is_string($limit) || !is_string($value)) {
+            throw new \UnexpectedValueException("Expected string for pattern at $where.");
+        }
+        $matched = preg_match('~' . str_replace('~', '\\~', $limit) . '~u', $value);
+        if ($matched === false) {
+            throw new \LogicException("Invalid pattern constraint for $where.");
+        }
+        return $matched === 1;
     }
 
     private static function stringLength(mixed $value, string $rule, int|float $limit, string $where): bool

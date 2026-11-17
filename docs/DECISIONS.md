@@ -27,3 +27,9 @@ Its constructor had 27 parameters and was never meant to be called by hand: gene
 - `OAuth2Options`: scopes, HTTP client, store, subject, leeway, clock (everything with a default).
 
 Each value object validates its own data, so the providers only hold behavior. `requestLifetime` stopped being an option: a started authorization flow lives 10 minutes, and nobody needs to tune that (KISS). The credentials-in-body flag moved to `OAuth2Client` because it describes how that client authenticates.
+
+### D3. `ApiException` only carries data; decoding moved to `ResponseDecoder`
+The exception built itself from a response, with two decoding strategies, and took five constructor arguments. It is now `ApiException(HttpResponse $response, string $operation, mixed $payload = null, ?Throwable $previous = null)`: the response, what failed, the decoded error and the reason decoding failed. `$error` (the payload when it is a model) is derived, not passed. All decoding lives in the internal `Execution\ResponseDecoder`, next to the code that decodes successes, so a response has one place that knows how to read it.
+
+### D4. `Operation::declares()` replaces looking into the raw array
+The client used to keep the generated array only to ask "did the generator set `responseEncoding`, or is that the default?". `Operation` now remembers which keys were given, so nothing downstream needs the raw array and several methods lose a parameter.

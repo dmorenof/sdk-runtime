@@ -11,6 +11,7 @@ use GuzzleHttp\Psr7\Utils;
 use Psr\Http\Message\ResponseInterface;
 use Dmorenof\SdkRuntime\Transport\Psr18Transport;
 use Dmorenof\SdkRuntime\Transport\HttpMiddlewareInterface;
+use Dmorenof\SdkRuntime\Execution\ResponseDecoder;
 use Dmorenof\SdkRuntime\Security\SecurityApplier;
 use Dmorenof\SdkRuntime\Security\SecurityCredentials;
 
@@ -401,7 +402,7 @@ abstract class ApiClient
 
         $path = self::expandPath($spec, $pathParameters);
         $query = array_filter($queryParameters, static fn ($value): bool => $value !== null);
-        $headers = ['Accept' => self::acceptHeader($spec, $operation)] + self::stringifyAll($headerParameters, $spec->headerSerialization);
+        $headers = ['Accept' => ResponseDecoder::accept($spec)] + self::stringifyAll($headerParameters, $spec->headerSerialization);
 
         $kind = self::bodyKind($spec);
         $body = self::checkedBody($spec, $kind, $body, $bodyPresent);
@@ -411,7 +412,7 @@ abstract class ApiClient
         }
 
         $outcome = $this->sendWithAuthRetry($spec, $operation, $path, $query, $headers, $bodyBytes);
-        return $outcome instanceof HttpResponse ? self::decodeResponse($spec, $operation, $outcome) : $outcome;
+        return $outcome instanceof HttpResponse ? ResponseDecoder::decode($spec, $outcome) : $outcome;
     }
 
     /** @param array<string,mixed> $parameters Path, query and header values by name. */
@@ -446,32 +447,6 @@ abstract class ApiClient
             throw new \UnexpectedValueException('Missing path parameter for ' . $spec->label);
         }
         return $path;
-    }
-
-    /**
-     * The Accept header: every declared success and error representation, most preferred first.
-     *
-     * @param OperationSpec $operation
-     */
-    private static function acceptHeader(Operation $spec, array $operation): string
-    {
-        $accepted = [];
-        if ($spec->responseType !== null || Operation::isStreamingEncoding($spec->responseEncoding)) {
-            $legacyBinary = $spec->responseType !== null && ltrim($spec->responseType, '\\') === \Psr\Http\Message\ResponseInterface::class;
-            $accepted[] = $legacyBinary && !array_key_exists('responseMediaType', $operation) ? 'application/octet-stream' : $spec->responseMediaType;
-        }
-        foreach (array_merge($spec->responseTypes, $spec->errorResponses) as $entry) {
-            foreach (Operation::representations($entry) as $representation) {
-                if ($representation['type'] === null && !Operation::isStreamingEncoding($representation['encoding'] ?? null)) {
-                    continue;
-                }
-                $accepted[] = $representation['mediaType'] ?? MediaType::defaultFor($representation['type'], $representation['encoding'] ?? null);
-            }
-        }
-        $accepted = array_values(array_unique($accepted));
-        // usort is stable, so equally preferred types keep the order of previously emitted SDKs.
-        usort($accepted, static fn (string $left, string $right): int => MediaType::preference($left) <=> MediaType::preference($right));
-        return implode(', ', $accepted === [] ? ['application/json'] : $accepted);
     }
 
     /**
@@ -564,7 +539,7 @@ abstract class ApiClient
      * @param array<string,scalar|list<scalar>|DTO|Map|TypedArray|\stdClass|null> $query
      * @param array<string,string> $headers
      * @return \Generator<int, mixed>|ResponseInterface|HttpResponse A lazy stream of items, a raw PSR-7 response
-     *         the operation hands over as it is, or the buffered response that decodeResponse() turns into a value.
+     *         the operation hands over as it is, or the buffered response that ResponseDecoder turns into a value.
      */
     private function sendWithAuthRetry(Operation $spec, array $operation, string $path, array $query, array $headers, string|\Psr\Http\Message\StreamInterface|null $bodyBytes): \Generator|ResponseInterface|HttpResponse
     {
@@ -601,7 +576,7 @@ abstract class ApiClient
             $this->recordResponse($spec, $status, $wireHeaders);
 
             if (Operation::allowsResponseBody($spec->method, $status) && $spec->succeeded($status)) {
-                $entry = $spec->responseTypeFor($status, $contentType) ?? self::legacyResponse($spec, $operation);
+                $entry = ResponseDecoder::entry($spec, $status, $contentType);
                 if ($streaming && Operation::isStreamingEncoding($entry['encoding'] ?? 'json')) {
                     return StreamDecoder::iterate($raw instanceof ResponseInterface ? $raw->getBody() : Utils::streamFor($raw->body), $entry, $spec->label . ' response');
                 }
@@ -631,52 +606,6 @@ abstract class ApiClient
         $baseUrl ??= $this->baseUrlFor($spec);
         $url = rtrim($baseUrl, '/') . $path;
         return $encodedQuery === '' ? $url : $url . '?' . $encodedQuery;
-    }
-
-    /**
-     * The response description of an operation declared with the single-response keys instead of per-status entries.
-     *
-     * @param OperationSpec $operation
-     * @return array{type:?string,schemaNullable:bool,mediaType:string,encoding:string}
-     */
-    private static function legacyResponse(Operation $spec, array $operation): array
-    {
-        return [
-            'type' => $spec->responseType,
-            'schemaNullable' => $spec->schemaNullable,
-            'mediaType' => $spec->responseMediaType,
-            'encoding' => array_key_exists('responseEncoding', $operation) ? $spec->responseEncoding : ($spec->responseMediaType === 'text/plain' ? 'text' : 'json'),
-        ];
-    }
-
-    /**
-     * Turns a buffered response into the operation's value: null for bodyless answers, the decoded and
-     * validated payload for a success, or an ApiException for any other status.
-     *
-     * @param OperationSpec $operation
-     */
-    private static function decodeResponse(Operation $spec, array $operation, HttpResponse $response): mixed
-    {
-        if (!Operation::allowsResponseBody($spec->method, $response->status)) {
-            if (!$spec->succeeded($response->status)) { throw new ApiException($response, null, $spec->label); }
-            return null;
-        }
-        $contentType = $response->header('Content-Type');
-        if (!$spec->succeeded($response->status)) {
-            throw ApiException::fromResponse($response, $spec->label, $spec->errorTypeFor($response->status), $spec->errorResponseFor($response->status, $contentType));
-        }
-        $declared = $spec->responseTypeFor($response->status, $contentType);
-        $responseType = $declared ?? self::legacyResponse($spec, $operation);
-        if ($responseType['type'] === null || ($declared === null && $spec->noContentAllowed && $response->body === '')) {
-            return null;
-        }
-        $responseEncoding = $responseType['encoding'] ?? (($responseType['mediaType'] ?? '') === 'text/plain' ? 'text' : 'json');
-        if (!in_array($responseEncoding, ['json', 'text', 'binary'], true)) { throw new \InvalidArgumentException('Unsupported response encoding.'); }
-        $result = $responseEncoding !== 'json'
-            ? Hydrator::hydrate($response->body, $responseType['type'], false, $spec->label . ' response')
-            : JsonHydrator::decode($response->body, $responseType['type'], $responseType['schemaNullable']);
-        Constraints::validate($result, $responseType['rules'] ?? $spec->responseValidation, $spec->label . ' response', 'response');
-        return $result;
     }
 
     /** @param array<array-key, array<string>|string> $headers */

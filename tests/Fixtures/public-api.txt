@@ -31,7 +31,7 @@ abstract class Dmorenof\SdkRuntime\ApiClient
     property protected string $baseUrl
 
 class Dmorenof\SdkRuntime\ApiException extends RuntimeException
-    method public __construct(Dmorenof\SdkRuntime\Transport\HttpResponse $response, ?Dmorenof\SdkRuntime\DTO $error, string $operation, ?Throwable $previous = NULL, mixed $payload = NULL)
+    method public __construct(Dmorenof\SdkRuntime\Transport\HttpResponse $response, string $operation, mixed $payload = NULL, ?Throwable $previous = NULL)
     property public readonly ?Dmorenof\SdkRuntime\DTO $error
     property public readonly Dmorenof\SdkRuntime\Transport\HttpResponse $response
     property public readonly mixed $payload

@@ -126,6 +126,11 @@ final readonly class Operation
         public string $responseEncoding = self::DEFAULTS['responseEncoding'],
         public array $responseHeaders = self::DEFAULTS['responseHeaders'],
         public array $servers = self::DEFAULTS['servers'],
+        /**
+         * @internal Which keys the generated array gave; read it through declares().
+         * @var list<string>
+         */
+        public array $declared = [],
     ) {
         if ($servers !== [] && $serverUrl !== null) {
             throw new \InvalidArgumentException('An operation declares either serverUrl or servers, not both.');
@@ -136,7 +141,20 @@ final readonly class Operation
     /** @param OperationSpec $spec */
     public static function fromArray(array $spec): self
     {
-        return new self(...$spec);
+        if (array_key_exists('declared', $spec)) {
+            throw new \InvalidArgumentException('An operation cannot declare "declared": it records which keys were given.');
+        }
+        return new self(...$spec, declared: array_map('strval', array_keys($spec)));
+    }
+
+    /**
+     * Whether the generated array gave this key, as opposed to leaving it at its default.
+     *
+     * @internal Used by the runtime itself; not covered by the backward-compatibility promise.
+     */
+    public function declares(string $key): bool
+    {
+        return in_array($key, $this->declared, true);
     }
 
     /** The error model for a failed status: its own entry, then the 'default' one. */

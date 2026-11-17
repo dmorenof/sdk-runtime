@@ -6,75 +6,26 @@ namespace Dmorenof\SdkRuntime;
 use Dmorenof\SdkRuntime\Transport\HttpResponse;
 
 /**
- * Typed HTTP API error that preserves the raw response even when error DTO
- * decoding fails. Connection/transport exceptions retain their original type.
- *
- * @phpstan-import-type Representation from Operation
+ * An HTTP answer the operation does not declare as success. It always keeps the raw response, even when the
+ * error body could not be decoded. Connection and transport failures are not wrapped: they keep their own type.
  */
 class ApiException extends \RuntimeException
 {
-    /** Decoded declared error payload; the legacy error property remains DTO-only. */
-    public readonly mixed $payload;
+    /** The decoded error when it is a model, else null. */
+    public readonly ?DTO $error;
+
+    /**
+     * @param string $operation Which operation failed, as "METHOD /path" or its label.
+     * @param mixed $payload The decoded error body when the API documents one (a model, list, map or scalar).
+     * @param ?\Throwable $previous Why decoding the body failed, if it did.
+     */
     public function __construct(
         public readonly HttpResponse $response,
-        public readonly ?DTO $error,
         string $operation,
+        public readonly mixed $payload = null,
         ?\Throwable $previous = null,
-        mixed $payload = null,
     ) {
-        $this->payload = $payload ?? $error;
-        parent::__construct(
-            "Unexpected HTTP status from $operation: " . $response->status,
-            $response->status,
-            $previous,
-        );
-    }
-
-    /** @param string|null $errorType Legacy DTO error class.
-     * @param Representation|null $errorResponse Declared general error response.
-     *
-     * @internal Used by the runtime itself; not covered by the backward-compatibility promise.
-     */
-    public static function fromResponse(HttpResponse $response, string $operation, ?string $errorType, ?array $errorResponse = null): self
-    {
-        $error = null;
-        $previous = null;
-        if ($errorResponse !== null) {
-            $payload = null;
-            if ($errorResponse['type'] !== null) {
-                try {
-                    $media = $errorResponse['mediaType'] ?? 'application/json';
-                    $encoding = $errorResponse['encoding'] ?? (in_array($media, ['text/plain', 'application/octet-stream'], true) ? 'text' : 'json');
-                    $payload = match ($encoding) {
-                        'text', 'binary' => Hydrator::hydrate($response->body, $errorResponse['type'], false, $operation . ' error'),
-                        'json' => JsonHydrator::decode($response->body, $errorResponse['type'], $errorResponse['schemaNullable']),
-                    };
-                    DTO::validateNestedValue($payload, 'response');
-                    Constraints::validate($payload, $errorResponse['rules'] ?? [], $operation . ' error', 'response');
-                    $error = $payload instanceof DTO ? $payload : null;
-                } catch (\Throwable $exception) {
-                    $previous = $exception;
-                    $payload = null;
-                }
-            }
-            return new self($response, $error, $operation, $previous, $payload);
-        }
-        if ($errorType !== null) {
-            try {
-                if (!is_a($errorType, DTO::class, true)) {
-                    throw new \LogicException("Error type $errorType must extend Core\\DTO.");
-                }
-                $json = json_decode($response->body, false, 512, JSON_THROW_ON_ERROR);
-                if (!is_object($json)) {
-                    throw new \UnexpectedValueException("Expected JSON object for error type $errorType.");
-                }
-                $error = new $errorType($json);
-                $error->validateForResponse();
-            } catch (\Throwable $exception) {
-                // Always expose HTTP response information to the caller.
-                $previous = $exception;
-            }
-        }
-        return new self($response, $error, $operation, $previous);
+        $this->error = $payload instanceof DTO ? $payload : null;
+        parent::__construct("Unexpected HTTP status from $operation: " . $response->status, $response->status, $previous);
     }
 }

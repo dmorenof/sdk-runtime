@@ -141,10 +141,13 @@ final readonly class Operation
     /** @param OperationSpec $spec */
     public static function fromArray(array $spec): self
     {
-        if (array_key_exists('declared', $spec)) {
+        /** @var array<string, mixed> $arguments */
+        $arguments = $spec;
+        if (array_key_exists('declared', $arguments)) {
             throw new \InvalidArgumentException('An operation cannot declare "declared": it records which keys were given.');
         }
-        return new self(...$spec, declared: array_map('strval', array_keys($spec)));
+        $arguments['declared'] = array_map('strval', array_keys($arguments));
+        return new self(...$arguments);
     }
 
     /**

@@ -29,7 +29,9 @@ final readonly class OAuth2Options
         public int $leeway = 30,
         public ?\Closure $clock = null,
     ) {
-        foreach ($scopes as $scope) {
+        /** @var array<mixed> $unchecked Checked here: the list is typed, but callers may pass anything. */
+        $unchecked = $scopes;
+        foreach ($unchecked as $scope) {
             if (!is_string($scope) || $scope === '' || preg_match('/[\s"\\\\]/', $scope) === 1) {
                 throw new \InvalidArgumentException('Invalid OAuth2 scope.');
             }

@@ -40,17 +40,27 @@ new SecurityCredentials([
 
 When an operation lists several requirements, the runtime uses the first one you can satisfy. When one requirement names two schemes (both required), it applies both. You do not configure this; just provide every credential you have.
 
-## OAuth2: client credentials (machine to machine)
+## OAuth2
+
+Both OAuth2 flows are built from the same three small objects:
+
+| Object | Holds |
+| --- | --- |
+| `OAuth2Endpoints` | `tokenUrl`, `authorizationUrl` (authorization code only), `issuer` (checks the callback, RFC 9207) |
+| `OAuth2Client` | `id`, `secret` (null for a public client), `redirectUri` (authorization code only), `secretInBody` |
+| `OAuth2Options` | `scopes`, `http` (PSR-18 client for token requests), `store`, `subject`, `leeway`, `clock`: all optional |
+
+Token endpoints need TLS: `https`, or `http` only toward `localhost`.
+
+### Client credentials (machine to machine)
 
 ```php
-use Dmorenof\SdkRuntime\Security\OAuth2ClientCredentials;
+use Dmorenof\SdkRuntime\Security\{OAuth2Client, OAuth2ClientCredentials, OAuth2Endpoints, OAuth2Options};
 
 $oauth = new OAuth2ClientCredentials(
-    'https://auth.example.com/oauth/token',   // token URL
-    $clientId,
-    $clientSecret,
-    new \GuzzleHttp\Client(),                 // any PSR-18 client
-    scopes: ['read'],
+    new OAuth2Endpoints('https://auth.example.com/oauth/token'),
+    new OAuth2Client($clientId, $clientSecret),
+    new OAuth2Options(scopes: ['read']),
 );
 
 $config->securityCredentials = new SecurityCredentials(['OAuth' => $oauth]);
@@ -62,25 +72,31 @@ The provider:
 2. caches it and renews it 30 seconds before it expires (`leeway`);
 3. after a `401`, discards the token, asks for a new one and **replays the request once**.
 
-Pass `credentialsInBody: true` for token servers that do not accept HTTP Basic client authentication. By default tokens live in memory. To share them between processes, implement `TokenStoreInterface` (`get`, `set`, `delete`) and pass it as `store:`.
+Use `new OAuth2Client($id, $secret, secretInBody: true)` for token servers that do not accept HTTP Basic client authentication. Tokens live in memory unless you give `OAuth2Options` a `store:`; implement `TokenStoreInterface` (`get`, `set`, `delete`) to share tokens between processes.
 
-## OAuth2: authorization code with PKCE (a signed-in user)
+### Authorization code with PKCE (a signed-in user)
 
 For apps that act for a user. The runtime does the protocol; sending the browser to the login page is yours.
 
 ```php
-use Dmorenof\SdkRuntime\Security\{AuthorizationRequest, OAuth2AuthorizationCode};
+use Dmorenof\SdkRuntime\Security\{AuthorizationRequest, OAuth2AuthorizationCode, OAuth2Client, OAuth2Endpoints, OAuth2Options};
 
 $flow = new OAuth2AuthorizationCode(
-    authorizationUrl: 'https://auth.example.com/authorize',
-    tokenUrl:         'https://auth.example.com/token',
-    clientId:         $clientId,
-    redirectUri:      'https://app.example.com/callback',
-    http:             new \GuzzleHttp\Client(),
-    clientSecret:     null,                    // null for public clients; PKCE protects them
-    scopes:           ['read'],
-    store:            $tokenStore,             // must outlive the request
-    subject:          (string) $user->id,      // tokens belong to one user
+    new OAuth2Endpoints(
+        tokenUrl:         'https://auth.example.com/token',
+        authorizationUrl: 'https://auth.example.com/authorize',
+        issuer:           'https://auth.example.com',     // optional: verified on the callback
+    ),
+    new OAuth2Client(
+        id:          $clientId,
+        secret:      null,                                // null for public clients; PKCE protects them
+        redirectUri: 'https://app.example.com/callback',
+    ),
+    new OAuth2Options(
+        scopes:  ['read'],
+        store:   $tokenStore,                             // must outlive the request
+        subject: (string) $user->id,                      // tokens belong to one user
+    ),
 );
 
 // 1. Start: keep the request server-side, redirect the browser to its URL.
@@ -95,6 +111,8 @@ $flow->complete(AuthorizationRequest::fromArray($_SESSION['oauth']), $_GET);
 $config->securityCredentials = new SecurityCredentials(['OAuth' => $flow]);
 ```
 
+A started flow stays valid for 10 minutes.
+
 | Situation | What happens |
 | --- | --- |
 | No token yet, or the refresh token was rejected | `ReauthorizationRequiredException`: send the user through step 1 again. |
@@ -102,7 +120,7 @@ $config->securityCredentials = new SecurityCredentials(['OAuth' => $flow]);
 | User signs out | `$flow->forget()` |
 | Is the user signed in? | `$flow->isAuthorized()` |
 
-Security notes: the PKCE verifier is a secret (session only, never in the URL or logs); `state` is compared in constant time; the callback can verify the issuer (`issuer:`, RFC 9207); the token URL must be HTTPS except for localhost.
+Security notes: the PKCE verifier is a secret (session only, never in the URL or logs); `state` is compared in constant time; the redirect URI must be `https`, `http` on localhost, or a private-use scheme such as `com.example.app:/callback`.
 
 ## Your own token source
 

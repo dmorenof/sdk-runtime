@@ -14,7 +14,7 @@ final class QuerySerializer
 {
     /**
      * @param array<array-key, scalar|list<scalar>|DTO|Map|TypedArray|\stdClass|null> $parameters
-     * @param array<array-key, mixed> $formats
+     * @param array<array-key, 'multi'|'csv'|'ssv'|'tsv'|'pipes'|'deepObject'|'form-object'|'form-object-explode'> $formats
      * @param array<string, true> $reserved Names whose data uses reserved expansion.
      * @param \Closure(string): string $encode
      */
@@ -78,7 +78,11 @@ final class QuerySerializer
         };
     }
 
-    /** The encoder for a parameter's values: reserved expansion keeps the characters its delimiter may need. */
+    /**
+     * The encoder for a parameter's values: reserved expansion keeps the characters its delimiter may need.
+     *
+     * @return \Closure(string): string
+     */
     private function valueEncoder(int|string $name, ?string $format): \Closure
     {
         if (!isset($this->reserved[$name])) {

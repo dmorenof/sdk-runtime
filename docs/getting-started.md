@@ -81,7 +81,11 @@ Users::configure($config);
 | `httpClient` | Any PSR-18 client. Default: Guzzle. Timeouts, proxies and TLS live here. |
 | `transport` | Replace the whole transport (rare). See [Transport](transport.md). |
 | `middleware` | Hooks around every request. See [Transport](transport.md#middleware). |
+| `retryPolicy`, `redirectPolicy` | Opt-in retries and redirect following. See [Transport](transport.md). |
+| `server`, `serverVariables` | Which declared server operations use, and values for templated servers. |
 | `serverOverrides` | Map a declared server URL to another one (environments). |
+
+A client takes a snapshot of its configuration when you connect and never changes afterwards.
 
 ## What can go wrong
 
@@ -89,7 +93,7 @@ Users::configure($config);
 | --- | --- |
 | `Dmorenof\SdkRuntime\ApiException` | The API answered with a status the operation does not declare as success. `$e->response` has status, headers and body; `$e->payload` has the decoded error when the API documents one. |
 | `UnexpectedValueException` | A request or response did not match the declared schema (missing required field, wrong type, rule broken). |
-| `LogicException` | The facade was used before `configure()`. |
+| `LogicException` | The facade was used before `configure()`, or `middleware`/`retryPolicy`/`redirectPolicy` were set together with a custom `transport`. |
 | A PSR-18 exception | The network failed. It is passed through untouched. |
 
 Details and the full list: [Errors](using-an-sdk.md#errors).

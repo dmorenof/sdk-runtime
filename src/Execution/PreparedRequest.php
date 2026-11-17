@@ -13,7 +13,7 @@ use Psr\Http\Message\StreamInterface;
 final readonly class PreparedRequest
 {
     /**
-     * @param array<string, mixed> $query
+     * @param array<string, scalar|list<scalar>|\Dmorenof\SdkRuntime\DTO|\Dmorenof\SdkRuntime\Map|\Dmorenof\SdkRuntime\TypedArray|\stdClass|null> $query
      * @param array<string, string> $headers
      */
     public function __construct(

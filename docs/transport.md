@@ -36,7 +36,10 @@ $http = new class implements \Psr\Http\Client\ClientInterface {
     }
 };
 
-$client = Client::connect('https://api.example.com', $http);
+$config = new Configuration();
+$config->baseUrl = 'https://api.example.com';
+$config->httpClient = $http;
+$client = Client::connect($config);
 ```
 
 ## Middleware
@@ -60,8 +63,7 @@ final class RequestId implements HttpMiddlewareInterface
     }
 }
 
-$config->middleware = [new RequestId()];
-// or, on a client:  $client->withMiddleware(new RequestId());
+$config->middleware = [new RequestId()];     // run in this order
 ```
 
 Middleware must not read a streaming response body (`jsonl`, `sse`): it would consume it. If you prefer, a Guzzle `HandlerStack` on your own `httpClient` does the same job.
@@ -73,9 +75,8 @@ Off by default. Turn them on for transient failures:
 ```php
 use Dmorenof\SdkRuntime\Transport\RetryPolicy;
 
-$client->withRetryPolicy(new RetryPolicy());                       // sensible defaults
-$client->withRetryPolicy(new RetryPolicy(maxAttempts: 5, baseDelayMs: 500));
-$client->withRetryPolicy(null);                                    // off again
+$config->retryPolicy = new RetryPolicy();                                    // sensible defaults
+$config->retryPolicy = new RetryPolicy(maxAttempts: 5, baseDelayMs: 500);    // or tune it
 ```
 
 Defaults: up to **3 attempts in total**; retries statuses **429, 502, 503, 504** and network errors; only for **GET, HEAD, OPTIONS, PUT, DELETE** (add `POST` or `PATCH` to `methods:` only if the API makes them safe to repeat); waits 200 ms doubling up to 10 s, with jitter.
@@ -91,20 +92,19 @@ By default a `3xx` is **not** followed: you get it as it arrives (an `ApiExcepti
 ```php
 use Dmorenof\SdkRuntime\Transport\RedirectPolicy;
 
-$client->withRedirectPolicy(new RedirectPolicy());                          // follow up to 5
-$client->withRedirectPolicy(new RedirectPolicy(maxRedirects: 2, followCrossOrigin: false));
-$client->withRedirectPolicy(null);                                          // back to not following
+$config->redirectPolicy = new RedirectPolicy();                                              // follow up to 5
+$config->redirectPolicy = new RedirectPolicy(maxRedirects: 2, followCrossOrigin: false);     // or tune it
 ```
 
 Safety rules that always apply when following: a redirect to another origin drops every request header except `Accept`, `Accept-Encoding`, `Accept-Language`, `User-Agent` and `Content-Type` (credentials never leak, even if a middleware adds them again); `https` → `http` is refused with `RedirectException`; `303` turns any method except GET/HEAD into GET; `301`/`302` turn POST into GET; `307`/`308` keep method and body (if the body can be sent again).
 
-Both policies belong to the **transport**, which a client shares with every resource created from it. Setting one on a client applies to that client and its resources.
+Both policies belong to the **transport**, which a client shares with every resource created from it, so they apply to the client and all its resources.
 
 ## Servers
 
 ### The base URL
 
-`Client::connect($baseUrl, …)` (or `Configuration::$baseUrl`) is where requests go. A generated SDK defaults it to the first server the API declares.
+`Configuration::$baseUrl` is where requests go. A generated SDK defaults it to the first server the API declares. `Client::connect('https://…')` is shorthand for a configuration with only that base URL.
 
 ### Operations on another server
 
@@ -121,8 +121,8 @@ $config->serverOverrides = [
 If an API declares several servers, or servers with variables (`https://{region}.api.example.com/{version}`), an operation can offer a choice:
 
 ```php
-$client->useServer('sandbox');                      // by name or index; null = the first one
-$client->withServerVariables(['region' => 'us']);   // checked against the API's allowed values
+$config->server = 'sandbox';                        // by name or index; null = the first one
+$config->serverVariables = ['region' => 'us'];      // checked against the API's allowed values
 ```
 
 Variables the chosen server does not use are ignored, so one set of values serves every operation. Values that would change the URL's structure (`/` in a host, `?`, `#`, `@`, spaces) are rejected.
@@ -131,7 +131,7 @@ For **root** servers (the base URL itself), the SDK exposes a builder:
 
 ```php
 $url = Client::serverUrl('production', ['region' => 'us']);   // https://us.api.example.com/v1
-$client = Client::connect($url);
+$client = Client::connect($url);                               // a base URL is all it needs
 ```
 
 ### Relative servers
@@ -140,8 +140,8 @@ A server such as `/v2` or `../v2` is resolved against the base URL you configure
 
 ## Writing your own transport
 
-Implement `TransportInterface::send($method, $url, $headers, $body): HttpResponse` and pass it as `transport:`. Retries, redirects, middleware and streaming belong to `Psr18Transport` and are not available through a custom transport. Wrapping the PSR-18 client is almost always the better choice.
+Implement `TransportInterface::send($method, $url, $headers, $body): HttpResponse` and set it as `Configuration::$transport`. Retries, redirects, middleware and streaming belong to `Psr18Transport` and are not available through a custom transport: setting `middleware`, `retryPolicy` or `redirectPolicy` together with a custom `transport` throws `LogicException` when you connect. Wrapping the PSR-18 client (`httpClient`) is almost always the better choice.
 
-## Methods that change the client
+## A client never changes
 
-`withMiddleware`, `withRetryPolicy`, `withRedirectPolicy`, `useServer` and `withServerVariables` **modify the client you call them on and return it**; they do not return a copy. Chain them for convenience, but do not expect the original to stay untouched. Server choices (`useServer`, `withServerVariables`) are copied to resources you create afterwards; retry, redirect and middleware settings live in the shared transport, so they reach every resource of that client, including ones created earlier.
+Everything above is set in `Configuration` before connecting, and `connect()` takes a snapshot of it: changing the configuration object afterwards changes nothing. To use other options (another region, no retries), connect another client; it is cheap. A resource created with `$client->resource(…)` shares its client's transport (so middleware, retries and redirects) and server choice.

@@ -77,6 +77,7 @@ final class Psr18Transport implements TransportInterface
      */
     public function sendResponse(RequestInterface $request, bool $stream = false): ResponseInterface
     {
+        /** @var array<string, string> $own */
         $own = array_map(static fn (array $values): string => implode(', ', $values), $request->getHeaders());
         $request = new Request($request->getMethod(), $request->getUri(), \Dmorenof\SdkRuntime\CookieHeader::merge($this->defaultHeaders, $own), $request->getBody());
         $policy = $this->redirectPolicy ?? RedirectPolicy::none();

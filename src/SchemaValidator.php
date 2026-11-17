@@ -7,6 +7,8 @@ namespace Dmorenof\SdkRuntime;
  * Evaluates generated schema descriptors against JSON, without hydrating or dispatching classes.
  *
  * @internal Implementation detail: not covered by the backward-compatibility promise (see docs/PUBLIC_API.md).
+ *
+ * @phpstan-type Schema array{kind:string, ref?:string, nullable?:bool, enum?:list<mixed>, rules?:array<string,mixed>, branches?:list<array<string,mixed>>, properties?:array<string,array<string,mixed>>, required?:list<string>, readOnly?:list<string>, writeOnly?:list<string>, additional?:bool|array<string,mixed>, items?:array<string,mixed>}
  */
 final class SchemaValidator
 {
@@ -34,6 +36,7 @@ final class SchemaValidator
     /** @param array<string, mixed> $schema */
     private function check(mixed $value, array $schema, int $depth): bool
     {
+        /** @var Schema $schema */
         if ($depth > 256) {
             throw new \UnexpectedValueException('Schema evaluation depth exceeded.');
         }
@@ -64,7 +67,7 @@ final class SchemaValidator
         return true;
     }
 
-    /** @param array<string, mixed> $schema */
+    /** @param Schema $schema */
     private function checkComposition(mixed $value, array $schema, string $kind, int $depth): bool
     {
         if (!$this->satisfies($value, $schema['rules'] ?? [])) {
@@ -86,7 +89,7 @@ final class SchemaValidator
 
     /**
      * @param array<mixed> $items
-     * @param array<string, mixed> $schema
+     * @param Schema $schema
      */
     private function checkItems(array $items, array $schema, int $depth): bool
     {
@@ -98,7 +101,7 @@ final class SchemaValidator
         return true;
     }
 
-    /** @param array<string, mixed> $schema */
+    /** @param Schema $schema */
     private function checkObject(\stdClass $value, array $schema, int $depth): bool
     {
         $properties = $schema['properties'] ?? [];

@@ -34,7 +34,9 @@ final readonly class ServerSelection
         foreach ($configuration->serverOverrides as $declared => $replacement) {
             $overrides[ServerUrl::normalize($declared)] = ServerUrl::normalize($replacement);
         }
-        foreach ($configuration->serverVariables as $name => $value) {
+        /** @var array<mixed> $variables Checked here: Configuration is filled in by hand. */
+        $variables = $configuration->serverVariables;
+        foreach ($variables as $name => $value) {
             if (!is_string($name) || $name === '' || !is_string($value)) {
                 throw new \InvalidArgumentException('Server variables map nonempty names to string values.');
             }

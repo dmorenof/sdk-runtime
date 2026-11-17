@@ -50,7 +50,7 @@ final readonly class OAuth2Client
         }
     }
 
-    /** @return array<string, string> Secrets are never exposed. */
+    /** @return array<string, ?string> Secrets are never exposed. */
     public function __debugInfo(): array
     {
         return ['id' => $this->id, 'redirectUri' => $this->redirectUri];

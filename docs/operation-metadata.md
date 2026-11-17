@@ -27,9 +27,11 @@ Three protected methods on `ApiClient` run an operation. Choose by what the meth
 
 | Method | Use when |
 | --- | --- |
-| `executeArguments($op, identifier:, identifierName:, payload:, body:)` | The generated method takes an optional parameters object (`GetParams\…`) and maybe a body. The runtime reads path, query and header values from the object's `OPERATION_FIELDS`. |
-| `executeBody($op, $body, bodyPresent:, identifier:, identifierName:, payload:)` | The request body is the main argument. |
-| `executeOperation($op, $pathParameters, $queryParameters, $headerParameters, $body)` | You already have the values split by location. |
+| `executeArguments($op, $path = [], ?DTO $parameters = null, ?DTO $body = null)` | The generated method takes path values and an optional parameter object (`GetParams\…`). `$path` is an array of path values, or a parameter object that declares them. Also the way to call an operation whose optional body the caller left out. |
+| `executeBody($op, $body, $path = [], ?DTO $parameters = null)` | The request body is the main argument. A body is always present here, even when it is JSON `null`. |
+| `executeOperation($op, RequestInput $input = new RequestInput())` | You already have the values split by where they travel: `new RequestInput(path: [...], query: [...], headers: [...], body: ...)`. |
+
+The runtime reads query, header and cookie values from the parameter object's `OPERATION_FIELDS` (see [Models](#models)).
 
 ## Keys
 

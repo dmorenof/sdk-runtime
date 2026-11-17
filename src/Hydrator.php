@@ -90,7 +90,6 @@ final class Hydrator
         return $builtin ? self::scalar($value, $kind, $where) : self::object($value, $kind, $where);
     }
 
-    /** @param class-string $kind */
     private static function object(mixed $value, string $kind, string $where): mixed
     {
         if ($kind === \Psr\Http\Message\UploadedFileInterface::class) {

@@ -68,3 +68,11 @@ Now `connect(Configuration|string $configuration)` is the only way in (a string 
 
 ### D9. `Psr18Transport` is configured by the client, and sends a PSR-7 request
 Its constructor lost the retry and redirect policies (the client sets them from `Configuration`), leaving `(client, defaultHeaders, sleeper)`. `sendResponse` takes a `RequestInterface` instead of method, URL, headers and body: the request already is the object that groups those four values.
+
+### D10. Long methods were split where they mixed several jobs
+`SchemaValidator::matches` (91 lines, 5 parameters) now has one small method per job (references, compositions, kinds, objects, items) and its extra parameters live in the instance. `Hydrator::convert` (87 lines) dispatches to one method per target type (`object`, `enum`, `model`). `QuerySerializer::encode` (75 lines) has one method per parameter format; `MultipartSerializer::encode` (65 lines) has `element()` and `uploadedFile()`. `ApiClient::sendWithAuthRetry` is now the retry loop only, with `exchange()` (one round trip) and `outcome()` (what the caller receives) next to it.
+
+Left as they are on purpose: `StreamDecoder::sse` is a small state machine whose lines read in order, and `Constraints::validate` is a flat sequence of independent checks. Splitting either would scatter a single idea over several methods without making it easier to follow (KISS).
+
+### D11. `Operation` keeps a 28-parameter private constructor
+It is the one place where the length is honest: the object has 28 immutable properties, one per metadata key. The constructor is private (D1), so no caller sees it, and `fromArray()` is the only door. Replacing it with 28 setters or a builder would add code to hide a list that is already the specification of the format.

@@ -20,6 +20,7 @@ use GuzzleHttp\Psr7\Request as PsrRequest;
 use GuzzleHttp\Psr7\Response as PsrResponse;
 use GuzzleHttp\Psr7\Utils;
 use Psr\Http\Message\ResponseInterface;
+use Psr\Http\Message\StreamInterface;
 
 /**
  * Shared endpoint-client infrastructure; derived API classes only emit typed operations.
@@ -193,47 +194,57 @@ abstract class ApiClient
      */
     private function sendWithAuthRetry(Operation $spec, PreparedRequest $request): \Generator|ResponseInterface|HttpResponse
     {
-        $bodyBytes = $request->body;
-        $replayable = !($bodyBytes instanceof \Psr\Http\Message\StreamInterface) || $bodyBytes->isSeekable();
-        $streaming = $spec->streamsResponse();
+        $replayable = !($request->body instanceof StreamInterface) || $request->body->isSeekable();
         $baseUrl = null;
         for ($attempt = 0;; $attempt++) {
             $security = SecurityApplier::apply($this->securityCredentials, $spec->security, static::SECURITY_SCHEMES);
-            $attemptHeaders = CookieHeader::merge($request->headers, $security->headers);
             $url = $this->requestUrl($spec, $request, $security->query, $baseUrl);
-
-            // The PSR-18 adapter answers with PSR-7; legacy transports answer with a buffered HttpResponse.
-            if ($this->transport instanceof Psr18Transport) {
-                $raw = $this->transport->sendResponse(new PsrRequest($spec->method, $url, $attemptHeaders, $bodyBytes ?? ''), $streaming);
-                $status = $raw->getStatusCode();
-                $wireHeaders = $raw->getHeaders();
-                $contentType = $raw->getHeaderLine('Content-Type');
-            } else {
-                $raw = $this->transport->send($spec->method, $url, $attemptHeaders,
-                    $bodyBytes instanceof \Psr\Http\Message\StreamInterface ? (string) $bodyBytes : $bodyBytes);
-                $status = $raw->status;
-                $wireHeaders = $raw->headers;
-                $contentType = $raw->header('Content-Type');
-            }
+            $raw = $this->exchange($spec, $url, CookieHeader::merge($request->headers, $security->headers), $request->body);
+            $status = $raw instanceof ResponseInterface ? $raw->getStatusCode() : $raw->status;
             if ($attempt === 0 && $security->providers !== [] && $replayable && $status === 401 && !$spec->succeeded(401)) {
                 foreach ($security->providers as $provider) {
                     $provider->invalidate();
                 }
                 continue;
             }
-            $this->recordResponse($spec, $status, $wireHeaders);
-
-            if (Operation::allowsResponseBody($spec->method, $status) && $spec->succeeded($status)) {
-                $entry = ResponseDecoder::entry($spec, $status, $contentType);
-                if ($streaming && Operation::isStreamingEncoding($entry['encoding'] ?? 'json')) {
-                    return StreamDecoder::iterate($raw instanceof ResponseInterface ? $raw->getBody() : Utils::streamFor($raw->body), $entry, $spec->label . ' response');
-                }
-                if (ltrim((string) $entry['type'], '\\') === ResponseInterface::class) {
-                    return $raw instanceof ResponseInterface ? $raw : new PsrResponse($status, $raw->headers, $raw->body);
-                }
-            }
-            return $raw instanceof ResponseInterface ? HttpResponse::fromPsr($raw) : $raw;
+            $this->recordResponse($spec, $raw);
+            return self::outcome($spec, $raw);
         }
+    }
+
+    /**
+     * One round trip. The PSR-18 transport answers with PSR-7; a custom transport answers with a buffered HttpResponse.
+     *
+     * @param array<string, string> $headers
+     */
+    private function exchange(Operation $spec, string $url, array $headers, string|StreamInterface|null $body): ResponseInterface|HttpResponse
+    {
+        if ($this->transport instanceof Psr18Transport) {
+            return $this->transport->sendResponse(new PsrRequest($spec->method, $url, $headers, $body ?? ''), $spec->streamsResponse());
+        }
+        return $this->transport->send($spec->method, $url, $headers, $body instanceof StreamInterface ? (string) $body : $body);
+    }
+
+    /**
+     * What the caller receives: a lazy stream of items, the raw PSR-7 response the operation hands over as it
+     * is, or the buffered response that ResponseDecoder turns into a value.
+     *
+     * @return \Generator<int, mixed>|ResponseInterface|HttpResponse
+     */
+    private static function outcome(Operation $spec, ResponseInterface|HttpResponse $raw): \Generator|ResponseInterface|HttpResponse
+    {
+        $status = $raw instanceof ResponseInterface ? $raw->getStatusCode() : $raw->status;
+        if (Operation::allowsResponseBody($spec->method, $status) && $spec->succeeded($status)) {
+            $contentType = $raw instanceof ResponseInterface ? $raw->getHeaderLine('Content-Type') : $raw->header('Content-Type');
+            $entry = ResponseDecoder::entry($spec, $status, $contentType);
+            if ($spec->streamsResponse() && Operation::isStreamingEncoding($entry['encoding'] ?? 'json')) {
+                return StreamDecoder::iterate($raw instanceof ResponseInterface ? $raw->getBody() : Utils::streamFor($raw->body), $entry, $spec->label . ' response');
+            }
+            if (ltrim((string) $entry['type'], '\\') === ResponseInterface::class) {
+                return $raw instanceof ResponseInterface ? $raw : new PsrResponse($status, $raw->headers, $raw->body);
+            }
+        }
+        return $raw instanceof ResponseInterface ? HttpResponse::fromPsr($raw) : $raw;
     }
 
     /**
@@ -257,14 +268,10 @@ abstract class ApiClient
         return $encodedQuery === '' ? $url : $url . '?' . $encodedQuery;
     }
 
-    /** @param array<array-key, array<string>|string> $headers */
-    private function recordResponse(Operation $spec, int $status, array $headers): void
+    private function recordResponse(Operation $spec, ResponseInterface|HttpResponse $raw): void
     {
-        $this->lastResponse = new ResponseInfo(
-            $status,
-            new ResponseHeaders($headers, $spec->responseHeadersFor($status)),
-            $spec->label,
-        );
+        $status = $raw instanceof ResponseInterface ? $raw->getStatusCode() : $raw->status;
+        $headers = $raw instanceof ResponseInterface ? $raw->getHeaders() : $raw->headers;
+        $this->lastResponse = new ResponseInfo($status, new ResponseHeaders($headers, $spec->responseHeadersFor($status)), $spec->label);
     }
-
 }

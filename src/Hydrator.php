@@ -31,8 +31,7 @@ final class Hydrator
         if ($kind === 'binary') {
             return self::hydrate($value, is_string($value) ? 'string' : \Psr\Http\Message\UploadedFileInterface::class, $nullable, $where);
         }
-        $builtin = in_array($kind, ['mixed', 'int', 'float', 'string', 'bool', 'null', 'array'], true);
-        return self::convert($value, $kind, $nullable, $builtin, $where);
+        return self::convert($value, $kind, $nullable, $where);
     }
 
     /** Hydrate a JSON value into the declared type of a public model property. */
@@ -72,46 +71,38 @@ final class Hydrator
             }
             return self::hydrate($value, is_string($value) ? 'string' : $upload, $type->allowsNull(), $where);
         }
-        return self::convert($value, $type->getName(), $type->allowsNull(), $type->isBuiltin(), $where);
+        return self::convert($value, $type->getName(), $type->allowsNull(), $where);
     }
 
-    private static function convert(
-        mixed $value,
-        string $kind,
-        bool $nullable,
-        bool $builtin,
-        string $where,
-    ): mixed {
+    /** A value for one named (non-union) type: a scalar, or an instance of a model, map, collection, enum or composition. */
+    private static function convert(mixed $value, string $kind, bool $nullable, string $where): mixed
+    {
+        $builtin = in_array($kind, ['mixed', 'int', 'float', 'string', 'bool', 'null', 'array'], true);
         if (!$builtin && is_subclass_of($kind, AnyOf::class)) {
-            if ($value instanceof $kind) {
-                return $value;
-            }
-            return $kind::fromValue($value);
+            return $value instanceof $kind ? $value : $kind::fromValue($value);
         }
-
         if ($value === null) {
             if (!$nullable && $kind !== 'mixed' && $kind !== 'null') {
                 throw new \UnexpectedValueException("Unexpected null at $where.");
             }
             return null;
         }
+        return $builtin ? self::scalar($value, $kind, $where) : self::object($value, $kind, $where);
+    }
 
-        if ($builtin) {
-            return self::scalar($value, $kind, $where);
-        }
-
+    /** @param class-string $kind */
+    private static function object(mixed $value, string $kind, string $where): mixed
+    {
         if ($kind === \Psr\Http\Message\UploadedFileInterface::class) {
             if (!$value instanceof \Psr\Http\Message\UploadedFileInterface) {
                 throw new \UnexpectedValueException("Expected uploaded file at $where.");
             }
             return $value;
         }
-
         if ($kind === \stdClass::class) {
             if (!$value instanceof \stdClass) { throw new \UnexpectedValueException("Expected JSON object at $where."); }
             return $value;
         }
-
         if (is_subclass_of($kind, Map::class)) {
             if ($value instanceof $kind) {
                 return $value;
@@ -121,46 +112,54 @@ final class Hydrator
             }
             return new $kind($value);
         }
-
         if (is_subclass_of($kind, \BackedEnum::class)) {
-            if ($value instanceof $kind) {
-                return $value;
-            }
-            if (is_float($value) && (new \ReflectionEnum($kind))->getBackingType()?->getName() === 'int') {
-                $value = self::scalar($value, 'int', $where);
-            }
-            if (!is_string($value) && !is_int($value)) {
-                throw new \UnexpectedValueException("Invalid enum value at $where.");
-            }
-            return $kind::from($value);
+            return self::enum($value, $kind, $where);
         }
-
         if (is_subclass_of($kind, TypedArray::class)) {
             return self::collection($value, $kind, $where);
         }
-
         if (is_subclass_of($kind, DTO::class)) {
-            if ($value instanceof $kind) {
-                return $value;
-            }
-            if (!is_object($value)) {
-                throw new \UnexpectedValueException("Expected JSON object at $where.");
-            }
-            if (defined($kind . '::DISCRIMINATOR_BASE') && $kind::DISCRIMINATOR_BASE === $kind) {
-                /** @var string $property */
-                $property = $kind::DISCRIMINATOR_PROPERTY;
-                /** @var array<string, class-string> $mapping */
-                $mapping = $kind::DISCRIMINATOR_MAPPING;
-                $selected = Discriminator::select($value, $property, $mapping, $where);
-                if (!is_a($selected, $kind, true)) {
-                    throw new \LogicException("Discriminator target $selected must extend $kind.");
-                }
-                return new $selected($value);
-            }
-            return new $kind($value);
+            return self::model($value, $kind, $where);
         }
-
         throw new \UnexpectedValueException("Unsupported nested PHP type $kind at $where.");
+    }
+
+    /** @param class-string<\BackedEnum> $kind */
+    private static function enum(mixed $value, string $kind, string $where): \BackedEnum
+    {
+        if ($value instanceof $kind) {
+            return $value;
+        }
+        if (is_float($value) && (new \ReflectionEnum($kind))->getBackingType()?->getName() === 'int') {
+            $value = self::scalar($value, 'int', $where);
+        }
+        if (!is_string($value) && !is_int($value)) {
+            throw new \UnexpectedValueException("Invalid enum value at $where.");
+        }
+        return $kind::from($value);
+    }
+
+    /** @param class-string<DTO> $kind */
+    private static function model(mixed $value, string $kind, string $where): DTO
+    {
+        if ($value instanceof $kind) {
+            return $value;
+        }
+        if (!is_object($value)) {
+            throw new \UnexpectedValueException("Expected JSON object at $where.");
+        }
+        if (defined($kind . '::DISCRIMINATOR_BASE') && $kind::DISCRIMINATOR_BASE === $kind) {
+            /** @var string $property */
+            $property = $kind::DISCRIMINATOR_PROPERTY;
+            /** @var array<string, class-string> $mapping */
+            $mapping = $kind::DISCRIMINATOR_MAPPING;
+            $selected = Discriminator::select($value, $property, $mapping, $where);
+            if (!is_a($selected, $kind, true)) {
+                throw new \LogicException("Discriminator target $selected must extend $kind.");
+            }
+            return new $selected($value);
+        }
+        return new $kind($value);
     }
 
     /** @param list<string> $types */

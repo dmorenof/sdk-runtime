@@ -15,17 +15,20 @@ abstract class CachedTokenProvider implements TokenProviderInterface
 {
     private readonly TokenStoreInterface $store;
 
-    /**
-     * @param string $storeKey Identifies this provider's token inside the store.
-     * @param int $leeway Seconds before expiry at which a token is already considered stale.
-     */
+    protected readonly OAuth2TokenEndpoint $endpoint;
+    private readonly string $storeKey;
+    private readonly int $leeway;
+
+    /** Providers differ only in the grant they use; everything else comes from the same three value objects. */
     public function __construct(
-        protected readonly OAuth2TokenEndpoint $endpoint,
-        ?TokenStoreInterface $store,
-        private readonly string $storeKey,
-        private readonly int $leeway,
+        protected readonly OAuth2Endpoints $endpoints,
+        protected readonly OAuth2Client $client,
+        protected readonly OAuth2Options $options,
     ) {
-        $this->store = $store ?? new InMemoryTokenStore();
+        $this->endpoint = new OAuth2TokenEndpoint($endpoints, $client, $options);
+        $this->store = $options->store ?? new InMemoryTokenStore();
+        $this->leeway = $options->leeway;
+        $this->storeKey = self::storeKey(static::class, $endpoints->tokenUrl, $client->id, implode(' ', $options->scopes), $options->subject);
     }
 
     final public function accessToken(): string

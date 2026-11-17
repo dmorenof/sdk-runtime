@@ -15,3 +15,15 @@ Decisions taken during the quality review that led to 2.0.0. Each entry says wha
 ## Decisions
 
 Filled in as the review progresses.
+
+### D1. `Operation` is built only with `fromArray()`
+Its constructor had 27 parameters and was never meant to be called by hand: generated code always supplies an array. The constructor is now private. One way in, no 27-argument signature to document or keep stable.
+
+### D2. OAuth2 providers take three value objects
+`OAuth2ClientCredentials` had 9 constructor parameters and `OAuth2AuthorizationCode` had 14. Both now take `(OAuth2Endpoints $endpoints, OAuth2Client $client, OAuth2Options $options = new OAuth2Options())`:
+
+- `OAuth2Endpoints`: token URL, authorization URL, issuer (where the server is).
+- `OAuth2Client`: id, secret, redirect URI, secret-in-body (who the application is).
+- `OAuth2Options`: scopes, HTTP client, store, subject, leeway, clock (everything with a default).
+
+Each value object validates its own data, so the providers only hold behavior. `requestLifetime` stopped being an option: a started authorization flow lives 10 minutes, and nobody needs to tune that (KISS). The credentials-in-body flag moved to `OAuth2Client` because it describes how that client authenticates.

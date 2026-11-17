@@ -4,7 +4,6 @@ declare(strict_types=1);
 namespace Dmorenof\SdkRuntime\Security;
 
 use GuzzleHttp\Psr7\Query;
-use Psr\Http\Client\ClientInterface;
 
 /**
  * OAuth2 authorization code grant with PKCE (RFC 6749 section 4.1, RFC 7636, S256), for web apps and public
@@ -15,6 +14,7 @@ use Psr\Http\Client\ClientInterface;
  * Tokens belong to one end user: create one instance per user, with a distinct `$subject` when instances
  * share a store.
  *
+ *     $flow = new OAuth2AuthorizationCode($endpoints, $client, $options);
  *     $request = $flow->start();                  // keep $request in the session, redirect to $request->url
  *     $flow->complete($request, $_GET);           // on the redirect URI, once
  *     new SecurityCredentials(['OAuth' => $flow]) // then use it like any bearer token
@@ -23,63 +23,20 @@ final class OAuth2AuthorizationCode extends CachedTokenProvider
 {
     private const array RESERVED = ['response_type', 'client_id', 'redirect_uri', 'scope', 'state', 'code_challenge', 'code_challenge_method'];
 
-    /**
-     * @param ?string $clientSecret Null for a public client (native or single-page apps); PKCE protects it.
-     * @param list<string> $scopes
-     * @param string $subject Identifies the end user inside a shared token store.
-     * @param ?string $issuer When set, the callback must carry a matching `iss` parameter (RFC 9207).
-     * @param int $requestLifetime Seconds a started flow stays valid.
-     * @param int $leeway Seconds before expiry at which a token is already considered stale.
-     * @param (\Closure(): int)|null $clock Current Unix time; tests inject a fixed one.
-     */
-    public function __construct(
-        private readonly string $authorizationUrl,
-        string $tokenUrl,
-        private readonly string $clientId,
-        private readonly string $redirectUri,
-        ClientInterface $http,
-        ?string $clientSecret = null,
-        private readonly array $scopes = [],
-        ?TokenStoreInterface $store = null,
-        string $subject = '',
-        private readonly ?string $issuer = null,
-        bool $credentialsInBody = false,
-        private readonly int $requestLifetime = 600,
-        int $leeway = 30,
-        ?\Closure $clock = null,
-    ) {
-        OAuth2TokenEndpoint::assertUrl($authorizationUrl, 'authorization URL');
-        self::assertRedirectUri($redirectUri);
-        OAuth2TokenEndpoint::assertScopes($scopes);
-        if ($requestLifetime < 1) {
-            throw new \InvalidArgumentException('requestLifetime must be positive.');
-        }
-        parent::__construct(
-            new OAuth2TokenEndpoint($tokenUrl, $clientId, $clientSecret, $http, $credentialsInBody, $clock),
-            $store,
-            self::storeKey($tokenUrl, $clientId, implode(' ', $scopes), $subject),
-            $leeway,
-        );
-    }
+    /** Seconds a started flow stays valid. */
+    private const int REQUEST_LIFETIME = 600;
 
-    /**
-     * RFC 6749 section 3.1.2 and RFC 8252: https, http only on the loopback interface, or a private-use
-     * scheme named after a domain (`com.example.app:/callback`); never a fragment or embedded credentials.
-     */
-    private static function assertRedirectUri(string $uri): void
+    private readonly string $authorizationUrl;
+    private readonly string $redirectUri;
+
+    public function __construct(OAuth2Endpoints $endpoints, OAuth2Client $client, OAuth2Options $options = new OAuth2Options())
     {
-        $parts = parse_url($uri);
-        $scheme = strtolower($parts['scheme'] ?? '');
-        $host = strtolower($parts['host'] ?? '');
-        $valid = $parts !== false && $scheme !== '' && !isset($parts['fragment']) && !isset($parts['user']) && !isset($parts['pass'])
-            && match (true) {
-                $scheme === 'https' => $host !== '',
-                $scheme === 'http' => OAuth2TokenEndpoint::isLoopback($host),
-                default => str_contains($scheme, '.'),
-            };
-        if (!$valid) {
-            throw new \InvalidArgumentException('OAuth2 redirect URI must be https, http on localhost, or a private-use scheme containing a dot; without credentials or fragment.');
+        if ($endpoints->authorizationUrl === null || $client->redirectUri === null) {
+            throw new \InvalidArgumentException('The authorization code flow needs an authorization URL and a redirect URI.');
         }
+        $this->authorizationUrl = $endpoints->authorizationUrl;
+        $this->redirectUri = $client->redirectUri;
+        parent::__construct($endpoints, $client, $options);
     }
 
     /**
@@ -98,11 +55,11 @@ final class OAuth2AuthorizationCode extends CachedTokenProvider
         $state = Pkce::base64Url(random_bytes(32));
         $parameters = [
             'response_type' => 'code',
-            'client_id' => $this->clientId,
+            'client_id' => $this->client->id,
             'redirect_uri' => $this->redirectUri,
         ];
-        if ($this->scopes !== []) {
-            $parameters['scope'] = implode(' ', $this->scopes);
+        if ($this->options->scopes !== []) {
+            $parameters['scope'] = implode(' ', $this->options->scopes);
         }
         $parameters += ['state' => $state, 'code_challenge' => Pkce::challenge($verifier), 'code_challenge_method' => 'S256'] + $extra;
 
@@ -111,7 +68,7 @@ final class OAuth2AuthorizationCode extends CachedTokenProvider
             $this->authorizationUrl . $separator . Query::build($parameters),
             $state,
             $verifier,
-            $this->endpoint->now() + $this->requestLifetime,
+            $this->endpoint->now() + self::REQUEST_LIFETIME,
         );
     }
 
@@ -136,7 +93,7 @@ final class OAuth2AuthorizationCode extends CachedTokenProvider
             $error = is_string($callback['error']) && preg_match('/^[A-Za-z0-9_.\-]{1,64}$/D', $callback['error']) === 1 ? $callback['error'] : 'unknown_error';
             throw new OAuth2Exception("OAuth2 authorization failed: $error.");
         }
-        if ($this->issuer !== null && (($callback['iss'] ?? null) !== $this->issuer)) {
+        if ($this->endpoints->issuer !== null && (($callback['iss'] ?? null) !== $this->endpoints->issuer)) {
             throw new OAuth2Exception('The callback issuer does not match the expected authorization server.');
         }
         $code = $callback['code'] ?? null;
@@ -189,6 +146,6 @@ final class OAuth2AuthorizationCode extends CachedTokenProvider
     /** @return array<string, string> Secrets are never exposed. */
     public function __debugInfo(): array
     {
-        return ['clientId' => $this->clientId, 'authorizationUrl' => $this->authorizationUrl];
+        return ['clientId' => $this->client->id, 'authorizationUrl' => $this->authorizationUrl];
     }
 }

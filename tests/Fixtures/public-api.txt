@@ -150,7 +150,7 @@ final class Dmorenof\SdkRuntime\Security\InMemoryTokenStore implements Dmorenof\
     method public set(string $key, Dmorenof\SdkRuntime\Security\OAuth2Token $token): void
 
 final class Dmorenof\SdkRuntime\Security\OAuth2AuthorizationCode implements Dmorenof\SdkRuntime\Security\TokenProviderInterface
-    method public __construct(string $authorizationUrl, string $tokenUrl, string $clientId, string $redirectUri, Psr\Http\Client\ClientInterface $http, ?string $clientSecret = NULL, array $scopes = array ( ), ?Dmorenof\SdkRuntime\Security\TokenStoreInterface $store = NULL, string $subject = '', ?string $issuer = NULL, bool $credentialsInBody = false, int $requestLifetime = 600, int $leeway = 30, ?Closure $clock = NULL)
+    method public __construct(Dmorenof\SdkRuntime\Security\OAuth2Endpoints $endpoints, Dmorenof\SdkRuntime\Security\OAuth2Client $client, Dmorenof\SdkRuntime\Security\OAuth2Options $options = \Dmorenof\SdkRuntime\Security\OAuth2Options::__set_state(array( 'scopes' => array ( ), 'http' => NULL, 'store' => NULL, 'subject' => '', 'leeway' => 30, 'clock' => NULL, )))
     method public __debugInfo(): array
     method public complete(Dmorenof\SdkRuntime\Security\AuthorizationRequest $request, array $callback): Dmorenof\SdkRuntime\Security\OAuth2Token
     method public final accessToken(): string
@@ -159,16 +159,39 @@ final class Dmorenof\SdkRuntime\Security\OAuth2AuthorizationCode implements Dmor
     method public isAuthorized(): bool
     method public start(array $extra = array ( )): Dmorenof\SdkRuntime\Security\AuthorizationRequest
 
+final readonly class Dmorenof\SdkRuntime\Security\OAuth2Client
+    method public __construct(string $id, ?string $secret = NULL, ?string $redirectUri = NULL, bool $secretInBody = false)
+    method public __debugInfo(): array
+    property public readonly ?string $redirectUri
+    property public readonly ?string $secret
+    property public readonly bool $secretInBody
+    property public readonly string $id
+
 final class Dmorenof\SdkRuntime\Security\OAuth2ClientCredentials implements Dmorenof\SdkRuntime\Security\TokenProviderInterface
-    method public __construct(string $tokenUrl, string $clientId, string $clientSecret, Psr\Http\Client\ClientInterface $http, array $scopes = array ( ), ?Dmorenof\SdkRuntime\Security\TokenStoreInterface $store = NULL, bool $credentialsInBody = false, int $leeway = 30, ?Closure $clock = NULL)
+    method public __construct(Dmorenof\SdkRuntime\Security\OAuth2Endpoints $endpoints, Dmorenof\SdkRuntime\Security\OAuth2Client $client, Dmorenof\SdkRuntime\Security\OAuth2Options $options = \Dmorenof\SdkRuntime\Security\OAuth2Options::__set_state(array( 'scopes' => array ( ), 'http' => NULL, 'store' => NULL, 'subject' => '', 'leeway' => 30, 'clock' => NULL, )))
     method public __debugInfo(): array
     method public final accessToken(): string
     method public final forget(): void
     method public final invalidate(): void
 
+final readonly class Dmorenof\SdkRuntime\Security\OAuth2Endpoints
+    method public __construct(string $tokenUrl, ?string $authorizationUrl = NULL, ?string $issuer = NULL)
+    property public readonly ?string $authorizationUrl
+    property public readonly ?string $issuer
+    property public readonly string $tokenUrl
+
 class Dmorenof\SdkRuntime\Security\OAuth2Exception extends RuntimeException
     method public __construct(string $message, int $status = 0, ?Throwable $previous = NULL)
     method public isRejection(): bool
+
+final readonly class Dmorenof\SdkRuntime\Security\OAuth2Options
+    method public __construct(array $scopes = array ( ), ?Psr\Http\Client\ClientInterface $http = NULL, ?Dmorenof\SdkRuntime\Security\TokenStoreInterface $store = NULL, string $subject = '', int $leeway = 30, ?Closure $clock = NULL)
+    property public readonly ?Closure $clock
+    property public readonly ?Dmorenof\SdkRuntime\Security\TokenStoreInterface $store
+    property public readonly ?Psr\Http\Client\ClientInterface $http
+    property public readonly array $scopes
+    property public readonly int $leeway
+    property public readonly string $subject
 
 final readonly class Dmorenof\SdkRuntime\Security\OAuth2Token
     method public __construct(string $accessToken, ?int $expiresAt = NULL, ?string $refreshToken = NULL)

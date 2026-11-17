@@ -15,66 +15,19 @@ use Psr\Http\Client\ClientInterface;
  */
 final class OAuth2TokenEndpoint
 {
-    /** Hosts that count as "this machine": TLS is not required toward them. */
-    private const array LOOPBACK_HOSTS = ['localhost', '127.0.0.1', '[::1]'];
+    private readonly ClientInterface $http;
 
-    /** @var (\Closure(): int)|null */
-    private readonly ?\Closure $clock;
-
-    /**
-     * @param ?string $clientSecret Null for a public client (id in the body, no secret).
-     * @param bool $credentialsInBody Send client_id/client_secret in the form body instead of HTTP Basic.
-     * @param (\Closure(): int)|null $clock Current Unix time; tests inject a fixed one.
-     */
     public function __construct(
-        public readonly string $tokenUrl,
-        public readonly string $clientId,
-        private readonly ?string $clientSecret,
-        private readonly ClientInterface $http,
-        private readonly bool $credentialsInBody = false,
-        ?\Closure $clock = null,
+        private readonly OAuth2Endpoints $endpoints,
+        private readonly OAuth2Client $client,
+        private readonly OAuth2Options $options,
     ) {
-        self::assertUrl($tokenUrl, 'token URL');
-        if ($clientId === '' || $clientSecret === '') {
-            throw new \InvalidArgumentException('OAuth2 client id and secret must be nonempty.');
-        }
-        $this->clock = $clock;
-    }
-
-    /** OAuth endpoints need TLS: https, or http only toward the local machine (tests, loopback redirects). */
-    public static function assertUrl(string $url, string $what): void
-    {
-        $parts = parse_url($url);
-        $host = strtolower($parts['host'] ?? '');
-        if ($parts === false || $host === '' || isset($parts['user']) || isset($parts['pass']) || isset($parts['fragment'])
-            || !(($parts['scheme'] ?? '') === 'https' || (($parts['scheme'] ?? '') === 'http' && self::isLoopback($host)))) {
-            throw new \InvalidArgumentException("OAuth2 $what must be an absolute https URL (http only for localhost) without credentials or fragment.");
-        }
-    }
-
-    /** Whether a host (as parse_url reports it) is the local machine. */
-    public static function isLoopback(string $host): bool
-    {
-        return in_array(strtolower($host), self::LOOPBACK_HOSTS, true);
-    }
-
-    /**
-     * Scope tokens are separated by spaces on the wire, so one may not contain whitespace, quotes or backslashes.
-     *
-     * @param array<mixed> $scopes Checked at runtime: each scope must be a nonempty string without whitespace, quotes or backslashes.
-     */
-    public static function assertScopes(array $scopes): void
-    {
-        foreach ($scopes as $scope) {
-            if (!is_string($scope) || $scope === '' || preg_match('/[\s"\\\\]/', $scope) === 1) {
-                throw new \InvalidArgumentException('Invalid OAuth2 scope.');
-            }
-        }
+        $this->http = $options->http ?? new \GuzzleHttp\Client(['http_errors' => false]);
     }
 
     public function now(): int
     {
-        return $this->clock !== null ? ($this->clock)() : time();
+        return $this->options->clock !== null ? ($this->options->clock)() : time();
     }
 
     /**
@@ -84,16 +37,16 @@ final class OAuth2TokenEndpoint
     public function request(array $form, ?string $previousRefreshToken = null): OAuth2Token
     {
         $headers = ['Content-Type' => 'application/x-www-form-urlencoded', 'Accept' => 'application/json'];
-        if ($this->clientSecret === null) {
-            $form['client_id'] = $this->clientId;
-        } elseif ($this->credentialsInBody) {
-            $form['client_id'] = $this->clientId;
-            $form['client_secret'] = $this->clientSecret;
+        if ($this->client->secret === null) {
+            $form['client_id'] = $this->client->id;
+        } elseif ($this->client->secretInBody) {
+            $form['client_id'] = $this->client->id;
+            $form['client_secret'] = $this->client->secret;
         } else {
             // RFC 6749 section 2.3.1: form-urlencode id and secret before Basic encoding.
-            $headers['Authorization'] = 'Basic ' . base64_encode(urlencode($this->clientId) . ':' . urlencode($this->clientSecret));
+            $headers['Authorization'] = 'Basic ' . base64_encode(urlencode($this->client->id) . ':' . urlencode($this->client->secret));
         }
-        $response = $this->http->sendRequest(new Request('POST', $this->tokenUrl, $headers, Query::build($form)));
+        $response = $this->http->sendRequest(new Request('POST', $this->endpoints->tokenUrl, $headers, Query::build($form)));
         $status = $response->getStatusCode();
         $data = json_decode((string) $response->getBody(), true);
         if ($status !== 200 || !is_array($data)) {

@@ -6,7 +6,11 @@ namespace Dmorenof\SdkRuntime\Tests;
 use Dmorenof\SdkRuntime\Security\AuthorizationRequest;
 use Dmorenof\SdkRuntime\Security\InMemoryTokenStore;
 use Dmorenof\SdkRuntime\Security\OAuth2AuthorizationCode;
+use Dmorenof\SdkRuntime\Security\OAuth2Client;
 use Dmorenof\SdkRuntime\Security\OAuth2ClientCredentials;
+use Dmorenof\SdkRuntime\Security\OAuth2Endpoints;
+use Dmorenof\SdkRuntime\Security\OAuth2Options;
+use Dmorenof\SdkRuntime\Security\TokenStoreInterface;
 use Dmorenof\SdkRuntime\Security\OAuth2Exception;
 use Dmorenof\SdkRuntime\Security\Pkce;
 use Dmorenof\SdkRuntime\Security\ReauthorizationRequiredException;
@@ -28,6 +32,20 @@ final class OAuth2AuthorizationCodeTest extends TestCase
     private const string REDIRECT = 'https://app.example.com/callback';
 
     /** @param list<ResponseInterface> $responses */
+    private static function authorizationCode(string $authorizationUrl, string $tokenUrl, string $clientId, string $redirectUri, ClientInterface $http, ?string $clientSecret = null, array $scopes = [], ?TokenStoreInterface $store = null, string $subject = '', ?string $issuer = null, bool $credentialsInBody = false, int $leeway = 30, ?\Closure $clock = null): OAuth2AuthorizationCode
+    {
+        return new OAuth2AuthorizationCode(
+            new OAuth2Endpoints($tokenUrl, $authorizationUrl, $issuer),
+            new OAuth2Client($clientId, $clientSecret, $redirectUri, $credentialsInBody),
+            new OAuth2Options($scopes, $http, $store, $subject, $leeway, $clock),
+        );
+    }
+
+    private static function clientCredentials(string $tokenUrl, ClientInterface $http): OAuth2ClientCredentials
+    {
+        return new OAuth2ClientCredentials(new OAuth2Endpoints($tokenUrl), new OAuth2Client('id', 'secret'), new OAuth2Options(http: $http));
+    }
+
     private function http(array $responses): object
     {
         return new class ($responses) implements ClientInterface {
@@ -61,7 +79,7 @@ final class OAuth2AuthorizationCodeTest extends TestCase
     {
         $http = $this->http($responses);
         $options += ['clientSecret' => 'the-secret', 'scopes' => ['read', 'write']];
-        return [new OAuth2AuthorizationCode(self::AUTHORIZE, self::TOKEN, 'client-1', self::REDIRECT, $http, ...$options), $http];
+        return [self::authorizationCode(self::AUTHORIZE, self::TOKEN, 'client-1', self::REDIRECT, $http, ...$options), $http];
     }
 
     /** @return array<string,string> */
@@ -172,16 +190,16 @@ final class OAuth2AuthorizationCodeTest extends TestCase
         if (!$valid) {
             $this->expectException(\InvalidArgumentException::class);
         }
-        $flow = new OAuth2AuthorizationCode($authorize, self::TOKEN, 'client-1', $redirect, $this->http([]));
+        $flow = self::authorizationCode($authorize, self::TOKEN, 'client-1', $redirect, $this->http([]));
         self::assertInstanceOf(OAuth2AuthorizationCode::class, $flow);
     }
 
     public function testTokenEndpointRequiresTlsExceptOnLoopback(): void
     {
-        new OAuth2ClientCredentials('http://localhost:9000/token', 'id', 'secret', $this->http([]));
+        self::clientCredentials('http://localhost:9000/token', $this->http([]));
 
         $this->expectException(\InvalidArgumentException::class);
-        new OAuth2ClientCredentials('http://auth.example.com/token', 'id', 'secret', $this->http([]));
+        self::clientCredentials('http://auth.example.com/token', $this->http([]));
     }
 
     public function testCompleteExchangesTheCodeWithTheVerifierAndStoresTheToken(): void

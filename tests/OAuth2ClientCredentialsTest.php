@@ -5,7 +5,11 @@ namespace Dmorenof\SdkRuntime\Tests;
 
 use Dmorenof\SdkRuntime\ApiException;
 use Dmorenof\SdkRuntime\Security\InMemoryTokenStore;
+use Dmorenof\SdkRuntime\Security\OAuth2Client;
 use Dmorenof\SdkRuntime\Security\OAuth2ClientCredentials;
+use Dmorenof\SdkRuntime\Security\OAuth2Endpoints;
+use Dmorenof\SdkRuntime\Security\OAuth2Options;
+use Dmorenof\SdkRuntime\Security\TokenStoreInterface;
 use Dmorenof\SdkRuntime\Security\OAuth2Token;
 use Dmorenof\SdkRuntime\Security\SecurityApplier;
 use Dmorenof\SdkRuntime\Security\SecurityCredentials;
@@ -23,6 +27,16 @@ final class OAuth2ClientCredentialsTest extends TestCase
     private const string TOKEN_URL = 'https://auth.example.com/oauth/token';
 
     /** @param list<ResponseInterface> $responses */
+    /** Builds a provider from flat arguments, so each test names only what it varies. */
+    private static function provider(string $tokenUrl, string $id, string $secret, ClientInterface $http, array $scopes = [], ?TokenStoreInterface $store = null, bool $credentialsInBody = false, int $leeway = 30, ?\Closure $clock = null): OAuth2ClientCredentials
+    {
+        return new OAuth2ClientCredentials(
+            new OAuth2Endpoints($tokenUrl),
+            new OAuth2Client($id, $secret, secretInBody: $credentialsInBody),
+            new OAuth2Options($scopes, $http, $store, leeway: $leeway, clock: $clock),
+        );
+    }
+
     private function http(array $responses): object
     {
         return new class ($responses) implements ClientInterface {
@@ -53,7 +67,7 @@ final class OAuth2ClientCredentialsTest extends TestCase
     public function testObtainsAndCachesTokenWithBasicClientAuthentication(): void
     {
         $http = $this->http([self::token('t1')]);
-        $oauth = new OAuth2ClientCredentials(self::TOKEN_URL, 'id:1', 'se cret', $http, ['read', 'write']);
+        $oauth = self::provider(self::TOKEN_URL, 'id:1', 'se cret', $http, ['read', 'write']);
 
         self::assertSame('t1', $oauth->accessToken());
         self::assertSame('t1', $oauth->accessToken());
@@ -69,7 +83,7 @@ final class OAuth2ClientCredentialsTest extends TestCase
     public function testCanSendClientCredentialsInBody(): void
     {
         $http = $this->http([self::token('t1')]);
-        $oauth = new OAuth2ClientCredentials(self::TOKEN_URL, 'id', 'secret', $http, credentialsInBody: true);
+        $oauth = self::provider(self::TOKEN_URL, 'id', 'secret', $http, credentialsInBody: true);
 
         $oauth->accessToken();
 
@@ -83,7 +97,7 @@ final class OAuth2ClientCredentialsTest extends TestCase
     {
         $now = 1000;
         $http = $this->http([self::token('t1', 100), self::token('t2', 100)]);
-        $oauth = new OAuth2ClientCredentials(self::TOKEN_URL, 'id', 'secret', $http, leeway: 30, clock: function () use (&$now): int {
+        $oauth = self::provider(self::TOKEN_URL, 'id', 'secret', $http, leeway: 30, clock: function () use (&$now): int {
             return $now;
         });
 
@@ -98,7 +112,7 @@ final class OAuth2ClientCredentialsTest extends TestCase
     {
         $now = 0;
         $http = $this->http([self::token('t1', 10, 'r1'), self::token('t2', 10), self::token('t3', 10)]);
-        $oauth = new OAuth2ClientCredentials(self::TOKEN_URL, 'id', 'secret', $http, leeway: 0, clock: function () use (&$now): int {
+        $oauth = self::provider(self::TOKEN_URL, 'id', 'secret', $http, leeway: 0, clock: function () use (&$now): int {
             return $now;
         });
 
@@ -122,7 +136,7 @@ final class OAuth2ClientCredentialsTest extends TestCase
             new Response(400, [], '{"error":"invalid_grant"}'),
             self::token('t2', 10),
         ]);
-        $oauth = new OAuth2ClientCredentials(self::TOKEN_URL, 'id', 'secret', $http, leeway: 0, clock: function () use (&$now): int {
+        $oauth = self::provider(self::TOKEN_URL, 'id', 'secret', $http, leeway: 0, clock: function () use (&$now): int {
             return $now;
         });
 
@@ -137,7 +151,7 @@ final class OAuth2ClientCredentialsTest extends TestCase
     public function testFailuresNeverLeakSecrets(): void
     {
         $http = $this->http([new Response(401, [], '{"error":"invalid_client","error_description":"bad secret-value"}')]);
-        $oauth = new OAuth2ClientCredentials(self::TOKEN_URL, 'id', 'secret-value', $http);
+        $oauth = self::provider(self::TOKEN_URL, 'id', 'secret-value', $http);
 
         try {
             $oauth->accessToken();
@@ -155,7 +169,7 @@ final class OAuth2ClientCredentialsTest extends TestCase
             new Response(200, [], '{"token_type":"Bearer"}'),
             new Response(200, [], 'not json'),
         ] as $response) {
-            $oauth = new OAuth2ClientCredentials(self::TOKEN_URL, 'id', 'secret', $this->http([$response]));
+            $oauth = self::provider(self::TOKEN_URL, 'id', 'secret', $this->http([$response]));
             $this->expectException(\RuntimeException::class);
             $oauth->accessToken();
         }
@@ -172,7 +186,7 @@ final class OAuth2ClientCredentialsTest extends TestCase
             [self::TOKEN_URL, 'id', 'secret', ['bad scope']],
         ] as [$url, $id, $secret, $scopes]) {
             try {
-                new OAuth2ClientCredentials($url, $id, $secret, $http, $scopes);
+                self::provider($url, $id, $secret, $http, $scopes);
                 self::fail("Accepted $url");
             } catch (\InvalidArgumentException) {
                 self::assertTrue(true);
@@ -184,8 +198,8 @@ final class OAuth2ClientCredentialsTest extends TestCase
     {
         $store = new InMemoryTokenStore();
         $http = $this->http([self::token('t1')]);
-        $a = new OAuth2ClientCredentials(self::TOKEN_URL, 'id', 'secret', $http, store: $store);
-        $b = new OAuth2ClientCredentials(self::TOKEN_URL, 'id', 'secret', $http, store: $store);
+        $a = self::provider(self::TOKEN_URL, 'id', 'secret', $http, store: $store);
+        $b = self::provider(self::TOKEN_URL, 'id', 'secret', $http, store: $store);
 
         self::assertSame('t1', $a->accessToken());
         self::assertSame('t1', $b->accessToken());
@@ -201,7 +215,7 @@ final class OAuth2ClientCredentialsTest extends TestCase
 
     public function testAppliesProviderTokenToOAuth2AndBearerSchemes(): void
     {
-        $oauth = new OAuth2ClientCredentials(self::TOKEN_URL, 'id', 'secret', $this->http([self::token('t1')]));
+        $oauth = self::provider(self::TOKEN_URL, 'id', 'secret', $this->http([self::token('t1')]));
         $schemes = ['O' => ['type' => 'oauth2', 'scheme' => null, 'location' => null, 'parameterName' => null]];
         $headers = [];
         $query = [];
@@ -216,7 +230,7 @@ final class OAuth2ClientCredentialsTest extends TestCase
     public function testClientReplaysOnceAfter401WithRenewedToken(): void
     {
         $http = $this->http([self::token('old'), self::token('new')]);
-        $oauth = new OAuth2ClientCredentials(self::TOKEN_URL, 'id', 'secret', $http);
+        $oauth = self::provider(self::TOKEN_URL, 'id', 'secret', $http);
         $transport = new class implements TransportInterface {
             /** @var list<array<string,string>> */
             public array $headers = [];
@@ -237,7 +251,7 @@ final class OAuth2ClientCredentialsTest extends TestCase
     public function testClientDoesNotLoopWhenRenewedTokenIsAlsoRejected(): void
     {
         $http = $this->http([self::token('a'), self::token('b')]);
-        $oauth = new OAuth2ClientCredentials(self::TOKEN_URL, 'id', 'secret', $http);
+        $oauth = self::provider(self::TOKEN_URL, 'id', 'secret', $http);
         $transport = new class implements TransportInterface {
             public int $calls = 0;
             public function send(string $method, string $url, array $headers, ?string $body): HttpResponse
@@ -280,7 +294,7 @@ final class OAuth2ClientCredentialsTest extends TestCase
     public function testForgetDropsTheStoredToken(): void
     {
         $http = $this->http([self::token('t1'), self::token('t2')]);
-        $oauth = new OAuth2ClientCredentials(self::TOKEN_URL, 'id', 'secret', $http);
+        $oauth = self::provider(self::TOKEN_URL, 'id', 'secret', $http);
 
         self::assertSame('t1', $oauth->accessToken());
         $oauth->forget();
@@ -293,7 +307,7 @@ final class OAuth2ClientCredentialsTest extends TestCase
         // Unlike a user's token, a client can always authenticate again, so even a server error is not final.
         $now = 0;
         $http = $this->http([self::token('t1', 10, 'r1'), new Response(503, [], 'down'), self::token('t3', 10)]);
-        $oauth = new OAuth2ClientCredentials(self::TOKEN_URL, 'id', 'secret', $http, leeway: 0, clock: function () use (&$now): int {
+        $oauth = self::provider(self::TOKEN_URL, 'id', 'secret', $http, leeway: 0, clock: function () use (&$now): int {
             return $now;
         });
 
@@ -307,7 +321,7 @@ final class OAuth2ClientCredentialsTest extends TestCase
 
     public function testFailuresAreOAuth2ExceptionsCarryingTheHttpStatus(): void
     {
-        $oauth = new OAuth2ClientCredentials(self::TOKEN_URL, 'id', 'secret', $this->http([new Response(401, [], '{"error":"invalid_client"}')]));
+        $oauth = self::provider(self::TOKEN_URL, 'id', 'secret', $this->http([new Response(401, [], '{"error":"invalid_client"}')]));
 
         try {
             $oauth->accessToken();

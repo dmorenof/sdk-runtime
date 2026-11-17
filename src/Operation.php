@@ -8,7 +8,7 @@ namespace Dmorenof\SdkRuntime;
  * which statuses succeed and which types describe its response and errors.
  *
  * Generated code declares operations as arrays holding only what differs from DEFAULTS;
- * fromArray() turns that into this typed object and rejects keys it does not know.
+ * fromArray() is the only way to build one: it turns that array into this typed object and rejects keys it does not know.
  *
  * @phpstan-type Encoding 'json'|'text'|'binary'|'jsonl'|'json-seq'|'sse'
  * @phpstan-type Representation array{type:?string,schemaNullable:bool,rules?:array<string,mixed>,mediaType?:string,encoding?:Encoding}
@@ -98,7 +98,7 @@ final readonly class Operation
      * @param array<int|string,array<string,array{type:'string'|'integer'|'number'|'boolean'|'array',items?:'string'|'integer'|'number'|'boolean',required?:bool,rules?:array<string,mixed>}>> $responseHeaders Declared response headers by status, range or default.
      * @param list<array{url:string,name?:string,variables?:array<string,array{default:string,enum?:list<string>}>}> $servers Selectable servers for this operation (first is the default); URLs may be relative to the client base URL or templates. Mutually exclusive with $serverUrl.
      */
-    public function __construct(
+    private function __construct(
         public string $method,
         public string $path,
         ?string $label = null,

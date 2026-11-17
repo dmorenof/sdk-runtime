@@ -17,9 +17,9 @@ use Psr\Http\Message\ResponseInterface;
 
 final class ResponseSelectionTest extends TestCase {
     public function testExactRangeAndDefaultPrecedenceIncludesEmptyDeclarations(): void {
-        $operation = new Operation('GET', '/', success: ['2XX', 'default'],
-            errors: [400 => null, '4XX' => User::class, 'default' => Address::class],
-            responseTypes: [204 => ['type' => null, 'schemaNullable' => false], '2XX' => ['type' => User::class, 'schemaNullable' => false], 'default' => ['type' => Address::class, 'schemaNullable' => false]]);
+        $operation = Operation::fromArray(['method' => 'GET', 'path' => '/', 'success' => ['2XX', 'default'],
+            'errors' => [400 => null, '4XX' => User::class, 'default' => Address::class],
+            'responseTypes' => [204 => ['type' => null, 'schemaNullable' => false], '2XX' => ['type' => User::class, 'schemaNullable' => false], 'default' => ['type' => Address::class, 'schemaNullable' => false]]]);
         self::assertNull($operation->errorTypeFor(400));
         self::assertSame(User::class, $operation->errorTypeFor(404));
         self::assertSame(Address::class, $operation->errorTypeFor(500));

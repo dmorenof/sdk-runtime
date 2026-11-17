@@ -100,9 +100,9 @@ final class FormSerializationTest extends TestCase
         self::assertSame('display-name=Ada&codes=,x', FormSerializer::encode($body, ['ids' => 'multi', 'codes' => 'csv']));
     }
 
-    public function testOperationPositionalQueryArgumentRemainsCompatible(): void
+    public function testOperationReadsQuerySerializationFromItsArray(): void
     {
-        $operation = new \Dmorenof\SdkRuntime\Operation('POST', '/forms', null, [], [204], [], null, false, false, [], null, ['ids' => 'multi']);
+        $operation = \Dmorenof\SdkRuntime\Operation::fromArray(['method' => 'POST', 'path' => '/forms', 'success' => [204], 'querySerialization' => ['ids' => 'multi']]);
         self::assertSame(['ids' => 'multi'], $operation->querySerialization);
         self::assertSame('application/json', $operation->requestMediaType);
         self::assertSame([], $operation->bodySerialization);

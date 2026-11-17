@@ -24,7 +24,11 @@ final class AdditionalPropertyStore
     {
         $values = self::all($dto);
         $values[$name] = $value;
-        self::$values ??= new \WeakMap();
+        if (self::$values === null) {
+            /** @var \WeakMap<DTO, array<string, mixed>> $created */
+            $created = new \WeakMap();
+            self::$values = $created;
+        }
         self::$values[$dto] = $values;
     }
 }

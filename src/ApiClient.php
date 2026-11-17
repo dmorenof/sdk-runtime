@@ -18,7 +18,6 @@ use Dmorenof\SdkRuntime\Transport\ResponseInfo;
 use Dmorenof\SdkRuntime\Transport\TransportInterface;
 use GuzzleHttp\Psr7\Request as PsrRequest;
 use GuzzleHttp\Psr7\Response as PsrResponse;
-use GuzzleHttp\Psr7\Utils;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\StreamInterface;
 
@@ -199,30 +198,30 @@ abstract class ApiClient
         for ($attempt = 0;; $attempt++) {
             $security = SecurityApplier::apply($this->securityCredentials, $spec->security, static::SECURITY_SCHEMES);
             $url = $this->requestUrl($spec, $request, $security->query, $baseUrl);
-            $raw = $this->exchange($spec, $url, CookieHeader::merge($request->headers, $security->headers), $request->body);
-            $status = $raw instanceof ResponseInterface ? $raw->getStatusCode() : $raw->status;
-            if ($attempt === 0 && $security->providers !== [] && $replayable && $status === 401 && !$spec->succeeded(401)) {
+            $response = $this->exchange($spec, $url, CookieHeader::merge($request->headers, $security->headers), $request->body);
+            if ($attempt === 0 && $security->providers !== [] && $replayable && $response->getStatusCode() === 401 && !$spec->succeeded(401)) {
                 foreach ($security->providers as $provider) {
                     $provider->invalidate();
                 }
                 continue;
             }
-            $this->recordResponse($spec, $raw);
-            return self::outcome($spec, $raw);
+            $this->recordResponse($spec, $response);
+            return self::outcome($spec, $response);
         }
     }
 
     /**
-     * One round trip. The PSR-18 transport answers with PSR-7; a custom transport answers with a buffered HttpResponse.
+     * One round trip, answered as PSR-7. A custom transport answers with a buffered HttpResponse, which is wrapped.
      *
      * @param array<string, string> $headers
      */
-    private function exchange(Operation $spec, string $url, array $headers, string|StreamInterface|null $body): ResponseInterface|HttpResponse
+    private function exchange(Operation $spec, string $url, array $headers, string|StreamInterface|null $body): ResponseInterface
     {
         if ($this->transport instanceof Psr18Transport) {
             return $this->transport->sendResponse(new PsrRequest($spec->method, $url, $headers, $body ?? ''), $spec->streamsResponse());
         }
-        return $this->transport->send($spec->method, $url, $headers, $body instanceof StreamInterface ? (string) $body : $body);
+        $buffered = $this->transport->send($spec->method, $url, $headers, $body instanceof StreamInterface ? (string) $body : $body);
+        return new PsrResponse($buffered->status, $buffered->headers, $buffered->body);
     }
 
     /**
@@ -231,20 +230,19 @@ abstract class ApiClient
      *
      * @return \Generator<int, mixed>|ResponseInterface|HttpResponse
      */
-    private static function outcome(Operation $spec, ResponseInterface|HttpResponse $raw): \Generator|ResponseInterface|HttpResponse
+    private static function outcome(Operation $spec, ResponseInterface $response): \Generator|ResponseInterface|HttpResponse
     {
-        $status = $raw instanceof ResponseInterface ? $raw->getStatusCode() : $raw->status;
+        $status = $response->getStatusCode();
         if (Operation::allowsResponseBody($spec->method, $status) && $spec->succeeded($status)) {
-            $contentType = $raw instanceof ResponseInterface ? $raw->getHeaderLine('Content-Type') : $raw->header('Content-Type');
-            $entry = ResponseDecoder::entry($spec, $status, $contentType);
+            $entry = ResponseDecoder::entry($spec, $status, $response->getHeaderLine('Content-Type'));
             if ($spec->streamsResponse() && Operation::isStreamingEncoding($entry['encoding'] ?? 'json')) {
-                return StreamDecoder::iterate($raw instanceof ResponseInterface ? $raw->getBody() : Utils::streamFor($raw->body), $entry, $spec->label . ' response');
+                return StreamDecoder::iterate($response->getBody(), $entry, $spec->label . ' response');
             }
             if (ltrim((string) $entry['type'], '\\') === ResponseInterface::class) {
-                return $raw instanceof ResponseInterface ? $raw : new PsrResponse($status, $raw->headers, $raw->body);
+                return $response;
             }
         }
-        return $raw instanceof ResponseInterface ? HttpResponse::fromPsr($raw) : $raw;
+        return HttpResponse::fromPsr($response);
     }
 
     /**
@@ -268,10 +266,9 @@ abstract class ApiClient
         return $encodedQuery === '' ? $url : $url . '?' . $encodedQuery;
     }
 
-    private function recordResponse(Operation $spec, ResponseInterface|HttpResponse $raw): void
+    private function recordResponse(Operation $spec, ResponseInterface $response): void
     {
-        $status = $raw instanceof ResponseInterface ? $raw->getStatusCode() : $raw->status;
-        $headers = $raw instanceof ResponseInterface ? $raw->getHeaders() : $raw->headers;
-        $this->lastResponse = new ResponseInfo($status, new ResponseHeaders($headers, $spec->responseHeadersFor($status)), $spec->label);
+        $status = $response->getStatusCode();
+        $this->lastResponse = new ResponseInfo($status, new ResponseHeaders($response->getHeaders(), $spec->responseHeadersFor($status)), $spec->label);
     }
 }

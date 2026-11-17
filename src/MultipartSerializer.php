@@ -35,51 +35,75 @@ final class MultipartSerializer
                 throw new \UnexpectedValueException('Multipart array fields must be lists.');
             }
             foreach ($values as $item) {
-                $part = $parts[$name];
-                if ($item instanceof \BackedEnum) {
-                    $item = $item->value;
-                }
-                if ($part['json'] ?? false) {
-                    if ($item instanceof UploadedFileInterface) {
-                        throw new \UnexpectedValueException('Uploaded files cannot be encoded as JSON parts.');
-                    }
-                    $contents = json_encode($item, JSON_THROW_ON_ERROR);
-                } elseif ($item instanceof UploadedFileInterface) {
-                    if (!isset($part['filename']) || $item->getError() !== UPLOAD_ERR_OK) {
-                        throw new \UnexpectedValueException('Uploaded file requires a binary field and a successful upload.');
-                    }
-                    $part['filename'] = $item->getClientFilename() ?? $part['filename'];
-                    $mime = $item->getClientMediaType();
-                    if ($part['contentType'] !== null && $mime !== null && strcasecmp($mime, $part['contentType']) !== 0) {
-                        throw new \UnexpectedValueException('Uploaded file content type conflicts with the declared encoding.');
-                    }
-                    $part['contentType'] ??= $mime ?? 'application/octet-stream';
-                    self::assertPart((string) $name, $part);
-                    $contents = $item->getStream();
-                    if (!$contents->isReadable() || !$contents->isSeekable()) {
-                        throw new \UnexpectedValueException('Uploaded file streams must be readable and seekable.');
-                    }
-                    $streamId = spl_object_id($contents);
-                    if (isset($usedStreams[$streamId])) {
-                        throw new \UnexpectedValueException('Multipart file parts must use independent stream cursors.');
-                    }
-                    $usedStreams[$streamId] = true;
-                } else {
-                    if (!is_scalar($item) || (is_float($item) && !is_finite($item))
-                        || (isset($part['filename']) && !is_string($item))) {
-                        throw new \UnexpectedValueException('Unsupported multipart field value.');
-                    }
-                    $contents = is_bool($item) ? ($item ? 'true' : 'false') : (string) $item;
-                }
-                $element = ['name' => (string) $name, 'contents' => $contents,
-                    'headers' => ['Content-Type' => $part['contentType'] ?? 'application/octet-stream']];
-                if (isset($part['filename'])) {
-                    $element['filename'] = $part['filename'];
-                }
-                $elements[] = $element;
+                $elements[] = self::element((string) $name, $item, $parts[$name], $usedStreams);
             }
         }
         return new MultipartStream($elements);
+    }
+
+    /**
+     * One multipart element for a value: a JSON part, an uploaded file, or a scalar field.
+     *
+     * @param array{contentType:?string,filename?:string,json?:bool} $part
+     * @param array<int, true> $usedStreams Stream ids already in use, so no two file parts share a cursor.
+     * @return array{name: string, contents: string|\Psr\Http\Message\StreamInterface, headers: array<string, string>, filename?: string}
+     */
+    private static function element(string $name, mixed $item, array $part, array &$usedStreams): array
+    {
+        if ($item instanceof \BackedEnum) {
+            $item = $item->value;
+        }
+        if ($part['json'] ?? false) {
+            if ($item instanceof UploadedFileInterface) {
+                throw new \UnexpectedValueException('Uploaded files cannot be encoded as JSON parts.');
+            }
+            $contents = json_encode($item, JSON_THROW_ON_ERROR);
+        } elseif ($item instanceof UploadedFileInterface) {
+            [$contents, $part] = self::uploadedFile($name, $item, $part, $usedStreams);
+        } else {
+            if (!is_scalar($item) || (is_float($item) && !is_finite($item))
+                || (isset($part['filename']) && !is_string($item))) {
+                throw new \UnexpectedValueException('Unsupported multipart field value.');
+            }
+            $contents = is_bool($item) ? ($item ? 'true' : 'false') : (string) $item;
+        }
+        $element = ['name' => $name, 'contents' => $contents,
+            'headers' => ['Content-Type' => $part['contentType'] ?? 'application/octet-stream']];
+        if (isset($part['filename'])) {
+            $element['filename'] = $part['filename'];
+        }
+        return $element;
+    }
+
+    /**
+     * Checks an uploaded file against its declared part and completes the part from the file's own name and type.
+     *
+     * @param array{contentType:?string,filename?:string,json?:bool} $part
+     * @param array<int, true> $usedStreams
+     * @return array{\Psr\Http\Message\StreamInterface, array{contentType:?string,filename?:string,json?:bool}}
+     */
+    private static function uploadedFile(string $name, UploadedFileInterface $file, array $part, array &$usedStreams): array
+    {
+        if (!isset($part['filename']) || $file->getError() !== UPLOAD_ERR_OK) {
+            throw new \UnexpectedValueException('Uploaded file requires a binary field and a successful upload.');
+        }
+        $part['filename'] = $file->getClientFilename() ?? $part['filename'];
+        $mime = $file->getClientMediaType();
+        if ($part['contentType'] !== null && $mime !== null && strcasecmp($mime, $part['contentType']) !== 0) {
+            throw new \UnexpectedValueException('Uploaded file content type conflicts with the declared encoding.');
+        }
+        $part['contentType'] ??= $mime ?? 'application/octet-stream';
+        self::assertPart($name, $part);
+        $stream = $file->getStream();
+        if (!$stream->isReadable() || !$stream->isSeekable()) {
+            throw new \UnexpectedValueException('Uploaded file streams must be readable and seekable.');
+        }
+        $streamId = spl_object_id($stream);
+        if (isset($usedStreams[$streamId])) {
+            throw new \UnexpectedValueException('Multipart file parts must use independent stream cursors.');
+        }
+        $usedStreams[$streamId] = true;
+        return [$stream, $part];
     }
 
     /** @param array{contentType:?string,filename?:string,json?:mixed} $part */

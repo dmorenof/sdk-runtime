@@ -35,8 +35,9 @@ $user->profile;             // nested model
 
 Rules that surprise people:
 
-- **Required fields have no default.** Reading one that was never set throws `Error` (uninitialized typed property). Check what you assign, not what you read.
+- **Properties start uninitialized.** Reading one that was never set (required or not) throws `Error`. Test with `isset($model->nickname)`, or read only what the API always returns.
 - **Unknown fields are rejected.** If the API returns a field its schema does not declare, hydration throws `InvalidArgumentException: Unknown JSON property …`. See [Unknown properties](#unknown-properties).
+- **Dates and times are strings.** A `date-time` field is a `string` in the model; formats can be checked (see [Validation](validation.md#formats)) but are never converted to `DateTimeImmutable`.
 - **Models know their own rules.** Calling `$model->validate()` checks required fields and every declared rule (`minLength`, `pattern`, `enum`, formats…). Sending a request validates the body first.
 
 ### Creating and reading models
@@ -120,5 +121,7 @@ $info->status;                       // 200
 $info->operation;                    // "GET /users/{id}"
 $info->headers->get('X-Rate-Limit'); // int when the operation declares it, else string
 ```
+
+Clients are synchronous. Reuse one client for sequential calls; do not share one instance between concurrent tasks (fibers, workers), because `lastResponse()` belongs to the instance.
 
 A client and its resources each keep their own `lastResponse()`: calling through `$users` does not update `$client->lastResponse()`. See [Responses](responses.md#headers).

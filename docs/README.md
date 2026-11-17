@@ -13,6 +13,7 @@ Pick your starting point.
 | Reading responses (errors, headers, files, streams) | [Responses](responses.md) |
 | Looking up validation rules and formats | [Validation](validation.md) |
 | Writing or changing a generator | [Operation metadata](operation-metadata.md) |
+| Decoding an error message | [Troubleshooting](troubleshooting.md) |
 | Looking for a class or method | [API reference](api-reference.md) |
 | Wondering what may change between versions | [Public API and versioning](PUBLIC_API.md) |
 | Moving from 1.0.0 | [Migrating to 2.0.0](MIGRATING.md) |

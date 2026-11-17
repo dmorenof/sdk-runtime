@@ -21,7 +21,7 @@ Until the packages are on Packagist, declare the GitHub repositories in your pro
 
 ## Your first call
 
-A generated SDK offers two equivalent ways to call it. Use whichever reads better in your code.
+A generated SDK offers two equivalent ways to call it. Use whichever reads better in your code. (Both use a class called `Users` in this example: the one in `Acme\Accounts` is the static facade, the one in `Acme\Accounts\Resources` is the instance you get from a client.)
 
 ### 1. Static facade (configure once, call anywhere)
 
@@ -98,6 +98,13 @@ A client takes a snapshot of its configuration when you connect and never change
 
 Details and the full list: [Errors](using-an-sdk.md#errors).
 
+## Finding your way
+
+Operations are grouped by route: `GET /users/{id}` is `Users::getById()`, `POST /users` is `Users::post()`. Each method's doc comment shows the HTTP route and the API's `operationId`, and every model, parameter object and enum is a normal PHP class your IDE can complete.
+
 ## Next
 
-[Using an SDK](using-an-sdk.md) covers models, parameters, errors and validation.
+- [Using an SDK](using-an-sdk.md): models, errors and validation.
+- [Sending data](sending-data.md): parameters, bodies, file uploads, cookies.
+- [Authentication](authentication.md): API keys, bearer tokens, OAuth2.
+- [Transport and servers](transport.md): timeouts, retries, middleware, testing without a network.

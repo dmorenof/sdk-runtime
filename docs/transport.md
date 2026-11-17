@@ -66,6 +66,27 @@ final class RequestId implements HttpMiddlewareInterface
 $config->middleware = [new RequestId()];     // run in this order
 ```
 
+A middleware that logs each call (never log `Authorization` or `Cookie`):
+
+```php
+final class LogCalls implements HttpMiddlewareInterface
+{
+    public function __construct(private \Psr\Log\LoggerInterface $logger) {}
+
+    public function beforeRequest(RequestInterface $request): RequestInterface
+    {
+        $this->logger->info('api request', ['method' => $request->getMethod(), 'uri' => (string) $request->getUri()]);
+        return $request;
+    }
+
+    public function afterResponse(RequestInterface $request, ResponseInterface $response): ResponseInterface
+    {
+        $this->logger->info('api response', ['status' => $response->getStatusCode()]);
+        return $response;
+    }
+}
+```
+
 Middleware must not read a streaming response body (`jsonl`, `sse`): it would consume it. If you prefer, a Guzzle `HandlerStack` on your own `httpClient` does the same job.
 
 ## Retries (opt-in)

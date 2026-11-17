@@ -461,7 +461,7 @@ final class OAuth2AuthorizationCodeTest extends TestCase
                 return $headers['Authorization'] === 'Bearer new' ? new HttpResponse(200, '{"id":1,"name":"Ada"}') : new HttpResponse(401, '{}');
             }
         };
-        $client = TestClient::connect('https://api.example.com', securityCredentials: new SecurityCredentials(['Bearer' => $flow]), transport: $transport);
+        $client = TestClient::connect(\Dmorenof\SdkRuntime\Tests\Support\Cfg::make('https://api.example.com', securityCredentials: new SecurityCredentials(['Bearer' => $flow]), transport: $transport));
 
         self::assertSame('Ada', $client->getUser(1)->name);
         self::assertSame(['Bearer old', 'Bearer new'], $transport->authorization);

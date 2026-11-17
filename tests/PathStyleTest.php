@@ -35,7 +35,7 @@ final class PathStyleTest extends TestCase {
   try {
    stream_set_timeout($pipes[1],10);$port=trim((string)fgets($pipes[1]));
    self::assertMatchesRegularExpression('/^[0-9]+$/',$port);
-   $client=new class('http://127.0.0.1:'.$port) extends \Dmorenof\SdkRuntime\ApiClient {
+   $client=new class(\Dmorenof\SdkRuntime\Tests\Support\Cfg::make('http://127.0.0.1:'.$port)) extends \Dmorenof\SdkRuntime\ApiClient {
     public function target(string $format): string {
      return $this->executeOperation(['method'=>'GET','path'=>'/items/{id}','responseType'=>'string','pathSerialization'=>['id'=>$format]], new \Dmorenof\SdkRuntime\RequestInput(path: ['id'=>'']));
     }

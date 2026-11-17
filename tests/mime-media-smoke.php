@@ -8,7 +8,7 @@ try {
     $input = new class((object) ['value' => 7]) extends \Dmorenof\SdkRuntime\DTO { public const array REQUIRED_FIELDS = ['value']; public int $value; };
     $ok = new class((object) ['ok' => true]) extends \Dmorenof\SdkRuntime\DTO { public const array REQUIRED_FIELDS = ['ok']; public bool $ok; };
     $detail = new class((object) ['code' => 400]) extends \Dmorenof\SdkRuntime\DTO { public const array REQUIRED_FIELDS = ['code']; public int $code; };
-    $client = new class('http://127.0.0.1:' . $port) extends \Dmorenof\SdkRuntime\ApiClient {
+    $client = new class(\Dmorenof\SdkRuntime\Tests\Support\Cfg::make('http://127.0.0.1:' . $port)) extends \Dmorenof\SdkRuntime\ApiClient {
         public string $inputType; public string $okType; public string $detailType;
         public function csv(string $body): mixed {
             return $this->executeBody(['method' => 'POST', 'path' => '/csv', 'responseType' => 'string', 'responseMediaType' => 'text/csv; charset=utf-8', 'responseEncoding' => 'text', 'responseValidation' => ['minLength' => 2],

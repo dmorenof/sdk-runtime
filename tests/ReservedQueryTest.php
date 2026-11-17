@@ -61,7 +61,7 @@ final class ReservedQueryTest extends TestCase {
     public function testBothTransportsKeepCredentialsHeadersAndJsonBodyNormallyEncoded(): void {
         $params = new ReservedQueryParams((object) ['q' => 'a/b%26c?x', 'queryBody' => 'query/body', 'trace' => 'h/x', 'body' => (object) ['name' => 'body/x']]);
         $legacy = new FakeTransport(new HttpResponse(204, ''));
-        $client = new ReservedQueryClient('https://example.test', securityCredentials: new SecurityCredentials(['Key' => '%2F']), transport: $legacy);
+        $client = new ReservedQueryClient(\Dmorenof\SdkRuntime\Tests\Support\Cfg::make('https://example.test', securityCredentials: new SecurityCredentials(['Key' => '%2F']), transport: $legacy));
         $client->call($params);
         self::assertSame('https://example.test/items?q=a/b%26c?x&body=query/body&k=%252F', $legacy->sent[0]['url']);
         self::assertSame('{"name":"body\/x"}', $legacy->sent[0]['body']);
@@ -72,7 +72,7 @@ final class ReservedQueryTest extends TestCase {
                 ++$this->calls; TestCase::assertSame('https://example.test/items?q=a/b%26c?x&body=query/body&k=%252F', (string) $request->getUri()); return new \GuzzleHttp\Psr7\Response(204);
             }
         };
-        $client = new ReservedQueryClient('https://example.test', httpClient: $http, securityCredentials: new SecurityCredentials(['Key' => '%2F'])); $client->call($params);
+        $client = new ReservedQueryClient(\Dmorenof\SdkRuntime\Tests\Support\Cfg::make('https://example.test', httpClient: $http, securityCredentials: new SecurityCredentials(['Key' => '%2F']))); $client->call($params);
         $params->q = 'bad&injected=value';
         try { $client->call($params); self::fail('Unsafe data reached HTTP.'); } catch (\UnexpectedValueException) { self::assertSame(1, $http->calls); }
     }

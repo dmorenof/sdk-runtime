@@ -95,7 +95,7 @@ final class ObjectParameterTest extends TestCase {
         };
         foreach ([false, true] as $psr) {
             $transport = new FakeTransport(new HttpResponse(204, ''));
-            $client = FlatParameterClient::connect('https://example.test', httpClient: $http, transport: $psr ? null : $transport);
+            $client = FlatParameterClient::connect(\Dmorenof\SdkRuntime\Tests\Support\Cfg::make('https://example.test', httpClient: $http, transport: $psr ? null : $transport));
             $path = new FlatParameterPath((object) ['selector' => (object) ['code' => 'a,b', 'active' => false, 'server' => 'hidden']]);
             $params = new FlatParameterPayload((object) ['filter' => (object) ['code' => 'safe', 'active' => false, 'server' => 'hidden'], 'queryBody' => 'query body', 'body' => (object) ['name' => 'Ada']]);
             $client->submit($path, $params);

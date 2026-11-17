@@ -20,7 +20,7 @@ try {
     $list = new class([1]) extends \Dmorenof\SdkRuntime\TypedArray {
         protected string $expected_type = 'integer'; protected const array ITEM_VALIDATION = ['minimum' => 0];
     };
-    $resource = new class('http://127.0.0.1:' . $port) extends \Dmorenof\SdkRuntime\ApiClient {
+    $resource = new class(\Dmorenof\SdkRuntime\Tests\Support\Cfg::make('http://127.0.0.1:' . $port)) extends \Dmorenof\SdkRuntime\ApiClient {
         public array $descriptors;
         public function getById(int $id, \Dmorenof\SdkRuntime\DTO $params): mixed {
             return $this->executeArguments(['method' => 'GET', 'path' => '/errors/{id}', 'responseType' => 'mixed',

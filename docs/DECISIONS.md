@@ -55,3 +55,16 @@ The code was moved, not rewritten; the existing 499 tests and 19 smoke scripts a
 - `executeOperation($operation, RequestInput $input = new RequestInput())`
 
 `$path` is an array of path values or a parameter object that declares them, which replaces `identifier` + `identifierName`. "Body present" is no longer a flag: a method that sends an optional body calls `executeBody()` when it has one and `executeArguments()` when it does not. `RequestInput` is a configuration object (R2) with five named options.
+
+### D7. A client is configured once, through `Configuration`, and never changes
+`ApiClient::__construct` and `connect()` took six loose arguments, and five methods (`withMiddleware`, `withRetryPolicy`, `withRedirectPolicy`, `useServer`, `withServerVariables`) changed a client that other code might share. They lied twice: `with…` suggests a copy, and a policy set on a client silently reached every resource built from it, even earlier ones.
+
+Now `connect(Configuration|string $configuration)` is the only way in (a string is shorthand for a base URL with the defaults) and `Configuration` carries every option: base URL, HTTP client, headers, credentials, transport, middleware, retry and redirect policies, server choice and variables, server overrides. After connecting, nothing changes; to use other options, connect another client, which is cheap. `resource()` hands the new resource the same transport and server choice. Options that need the default PSR-18 transport are rejected up front when a custom transport is given, instead of failing later.
+
+`Configuration` is a bag of public properties set by name, not a constructor with eleven arguments (R2 is about constructors).
+
+### D8. Security is applied by returning a value
+`SecurityApplier::apply` took six arguments, three of them by reference to receive results, and one method did four things. It now takes three (`credentials`, `requirements`, `schemes`) and returns an `AppliedSecurity` (headers, query, token providers); the work is split into choosing a satisfiable requirement and building its headers and query. Outputs by reference are hard to follow and impossible to test without scaffolding.
+
+### D9. `Psr18Transport` is configured by the client, and sends a PSR-7 request
+Its constructor lost the retry and redirect policies (the client sets them from `Configuration`), leaving `(client, defaultHeaders, sleeper)`. `sendResponse` takes a `RequestInterface` instead of method, URL, headers and body: the request already is the object that groups those four values.

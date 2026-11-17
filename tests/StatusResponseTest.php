@@ -46,8 +46,8 @@ final class StatusResponseTest extends TestCase
                 return new Response($this->status, [], $this->body);
             }
         };
-        return StatusResponseClient::connect('https://example.test', httpClient: $http,
-            transport: $psr ? null : new FakeTransport(new HttpResponse($status, $body)));
+        return StatusResponseClient::connect(\Dmorenof\SdkRuntime\Tests\Support\Cfg::make('https://example.test', httpClient: $http,
+            transport: $psr ? null : new FakeTransport(new HttpResponse($status, $body))));
     }
     public function testStatusChoosesTheExactHydratorInBothTransportPaths(): void
     {

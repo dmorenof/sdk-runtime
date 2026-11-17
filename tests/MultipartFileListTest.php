@@ -68,7 +68,7 @@ final class MultipartFileListTest extends TestCase
             }
         }
         $transport = new FakeTransport(new HttpResponse(204, ''));
-        $client = FileListProbeClient::connect('https://example.test', transport: $transport);
+        $client = FileListProbeClient::connect(\Dmorenof\SdkRuntime\Tests\Support\Cfg::make('https://example.test', transport: $transport));
         $body = new FileListPayload((object) ['upload-files' => [self::upload()]]);
         $body->files[] = null;
         try {
@@ -89,7 +89,7 @@ final class MultipartFileListTest extends TestCase
     public function testEachFileChecksMimeUploadStatusAndIndependentCursorBeforeTransport(): void
     {
         $transport = new FakeTransport(new HttpResponse(204, ''));
-        $client = FileListProbeClient::connect('https://example.test', transport: $transport);
+        $client = FileListProbeClient::connect(\Dmorenof\SdkRuntime\Tests\Support\Cfg::make('https://example.test', transport: $transport));
         $first = self::upload();
         foreach ([self::upload('pdf', 'report.pdf', 'application/pdf'), new UploadedFile(null, null, UPLOAD_ERR_PARTIAL), $first] as $second) {
             try {

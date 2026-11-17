@@ -41,14 +41,14 @@ final class SharedExecutionTest extends TestCase
     {
         $transport = new FakeTransport(new HttpResponse(204, ''));
         $params = new SharedParameters((object) ['queryBody' => 'query +', 'trace' => 'trace', 'body' => (object) ['name' => 'body name']]);
-        SharedProbe::connect('https://api.example.test/v1', transport: $transport)->submit($params);
+        SharedProbe::connect(\Dmorenof\SdkRuntime\Tests\Support\Cfg::make('https://api.example.test/v1', transport: $transport))->submit($params);
         self::assertSame('https://api.example.test/v1/items/7?body=query%20%2B', $transport->sent[0]['url']);
         self::assertSame('name=body+name', $transport->sent[0]['body']);
         self::assertSame('trace', $transport->sent[0]['headers']['X-Trace']);
         self::assertSame('application/x-www-form-urlencoded', $transport->sent[0]['headers']['Content-Type']);
         $params->body->name = '';
         try {
-            SharedProbe::connect('https://api.example.test/v1', transport: $transport)->submit($params);
+            SharedProbe::connect(\Dmorenof\SdkRuntime\Tests\Support\Cfg::make('https://api.example.test/v1', transport: $transport))->submit($params);
             self::fail('Invalid inherited body mutation reached HTTP.');
         } catch (\UnexpectedValueException) {
             self::assertCount(1, $transport->sent);

@@ -60,7 +60,7 @@ final class ParameterContentTest extends TestCase {
         $params->labels = new Tags(['x/y', '']); $params->text = '100% / ñ'; $params->raw = 'caller=ok'; $params->session = 'a+/b=='; $params->theme = 'a/b';
         $json = '{"name":"a\/b","age":0}';
         $expected = 'https://example.test/items/' . rawurlencode($json) . '?body=' . rawurlencode($json) . '&labels=' . rawurlencode('["x\/y",""]') . '&text=100%25%20%2F%20%C3%B1';
-        $legacy = new FakeTransport(new HttpResponse(204, '')); $client = new ContentClient('https://example.test', transport: $legacy); $client->call($path, $params);
+        $legacy = new FakeTransport(new HttpResponse(204, '')); $client = new ContentClient(\Dmorenof\SdkRuntime\Tests\Support\Cfg::make('https://example.test', transport: $legacy)); $client->call($path, $params);
         self::assertSame($expected, $legacy->sent[0]['url']); self::assertSame($json, $legacy->sent[0]['headers']['X-Filter']); self::assertSame($json, $legacy->sent[0]['body']);
         self::assertSame('caller=ok; session=a+/b==; theme=a%2Fb', $legacy->sent[0]['headers']['Cookie']);
         $http = new class($expected, $json) implements \Psr\Http\Client\ClientInterface {
@@ -71,12 +71,12 @@ final class ParameterContentTest extends TestCase {
                 TestCase::assertSame('default=base; caller=ok; session=a+/b==; theme=a%2Fb', $request->getHeaderLine('Cookie')); return new \GuzzleHttp\Psr7\Response(204);
             }
         };
-        $client = new ContentClient('https://example.test', httpClient: $http, headers: ['COOKIE' => 'default=base']); $client->call($path, $params);
+        $client = new ContentClient(\Dmorenof\SdkRuntime\Tests\Support\Cfg::make('https://example.test', httpClient: $http, headers: ['COOKIE' => 'default=base'])); $client->call($path, $params);
         $params->session = 'bad;cookie'; try { $client->call($path, $params); self::fail('Invalid cookie reached HTTP.'); } catch (\UnexpectedValueException) { self::assertSame(1, $http->calls); }
         try { $client->scalar(''); self::fail('Serialization bypassed logical path validation.'); } catch (\UnexpectedValueException) { self::assertSame(1, $http->calls); }
     }
     public function testConflictingOrUnsupportedMetadataCannotReachTransport(): void {
-        $legacy = new FakeTransport(new HttpResponse(204, '')); $client = new ContentClient('https://example.test', transport: $legacy);
+        $legacy = new FakeTransport(new HttpResponse(204, '')); $client = new ContentClient(\Dmorenof\SdkRuntime\Tests\Support\Cfg::make('https://example.test', transport: $legacy));
         foreach ([['parameterContent' => ['unknown' => []]], ['parameterContent' => ['query' => 'bad']], ['parameterContent' => ['query' => ['q' => 'application/xml']]], ['parameterContent' => ['cookie' => ['q' => 'application/json']]],
             ['parameterContent' => ['query' => ['q' => 'application/json']], 'querySerialization' => ['q' => 'multi']], ['parameterContent' => ['query' => ['q' => 'application/json']], 'queryAllowReserved' => ['q']]] as $metadata) {
             try { $client->raw($metadata); self::fail('Invalid metadata reached HTTP.'); } catch (\InvalidArgumentException) { self::assertSame([], $legacy->sent); }

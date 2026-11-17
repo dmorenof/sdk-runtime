@@ -53,7 +53,7 @@ final class RetryPolicyTest extends TestCase
     private function transport(ClientInterface $http, ?RetryPolicy $policy, ?array &$sleeps = null): array
     {
         $sleeps = [];
-        $transport = new Psr18Transport($http, [], $policy, static function (int $ms) use (&$sleeps): void {
+        $transport = \Dmorenof\SdkRuntime\Tests\Support\Wire::transport($http, [], $policy, static function (int $ms) use (&$sleeps): void {
             $sleeps[] = $ms;
         });
         return [$transport, $sleeps];
@@ -64,7 +64,7 @@ final class RetryPolicyTest extends TestCase
         $http = $this->http([new Response(503), new Response(429), new Response(200, [], 'ok')]);
         [$transport] = $this->transport($http, new RetryPolicy(baseDelayMs: 0, maxDelayMs: 0), $sleeps);
 
-        $response = $transport->sendResponse('GET', 'https://api.example.com/x', [], null);
+        $response = \Dmorenof\SdkRuntime\Tests\Support\Wire::send($transport, 'GET', 'https://api.example.com/x', [], null);
 
         self::assertSame(200, $response->getStatusCode());
         self::assertCount(3, $http->requests);
@@ -76,7 +76,7 @@ final class RetryPolicyTest extends TestCase
         $http = $this->http([new Response(503), new Response(503)]);
         [$transport] = $this->transport($http, new RetryPolicy(maxAttempts: 2, baseDelayMs: 0, maxDelayMs: 0), $sleeps);
 
-        self::assertSame(503, $transport->sendResponse('GET', 'https://api.example.com/x', [], null)->getStatusCode());
+        self::assertSame(503, \Dmorenof\SdkRuntime\Tests\Support\Wire::send($transport, 'GET', 'https://api.example.com/x', [], null)->getStatusCode());
         self::assertCount(2, $http->requests);
     }
 
@@ -85,7 +85,7 @@ final class RetryPolicyTest extends TestCase
         $http = $this->http([new Response(429, ['Retry-After' => '3']), new Response(429, ['Retry-After' => '999']), new Response(200)]);
         [$transport] = $this->transport($http, new RetryPolicy(maxDelayMs: 5000), $sleeps);
 
-        $transport->sendResponse('GET', 'https://api.example.com/x', [], null);
+        \Dmorenof\SdkRuntime\Tests\Support\Wire::send($transport, 'GET', 'https://api.example.com/x', [], null);
 
         self::assertSame([3000, 5000], $sleeps);
     }
@@ -117,12 +117,12 @@ final class RetryPolicyTest extends TestCase
     {
         $http = $this->http([new Response(503)]);
         [$transport] = $this->transport($http, new RetryPolicy(baseDelayMs: 0, maxDelayMs: 0), $sleeps);
-        self::assertSame(503, $transport->sendResponse('POST', 'https://api.example.com/x', [], '{}')->getStatusCode());
+        self::assertSame(503, \Dmorenof\SdkRuntime\Tests\Support\Wire::send($transport, 'POST', 'https://api.example.com/x', [], '{}')->getStatusCode());
         self::assertCount(1, $http->requests);
 
         $http = $this->http([new Response(503), new Response(201)]);
         [$transport] = $this->transport($http, new RetryPolicy(methods: ['POST'], baseDelayMs: 0, maxDelayMs: 0), $sleeps);
-        self::assertSame(201, $transport->sendResponse('POST', 'https://api.example.com/x', [], '{"a":1}')->getStatusCode());
+        self::assertSame(201, \Dmorenof\SdkRuntime\Tests\Support\Wire::send($transport, 'POST', 'https://api.example.com/x', [], '{"a":1}')->getStatusCode());
         self::assertCount(2, $http->requests);
         self::assertSame('{"a":1}', (string) $http->requests[1]->getBody(), 'body is resent from its start');
     }
@@ -132,7 +132,7 @@ final class RetryPolicyTest extends TestCase
         $http = $this->http([new Response(503)]);
         [$transport] = $this->transport($http, null, $sleeps);
 
-        self::assertSame(503, $transport->sendResponse('GET', 'https://api.example.com/x', [], null)->getStatusCode());
+        self::assertSame(503, \Dmorenof\SdkRuntime\Tests\Support\Wire::send($transport, 'GET', 'https://api.example.com/x', [], null)->getStatusCode());
         self::assertSame([], $sleeps);
     }
 
@@ -140,12 +140,12 @@ final class RetryPolicyTest extends TestCase
     {
         $http = $this->http([self::networkError(), new Response(200)]);
         [$transport] = $this->transport($http, new RetryPolicy(baseDelayMs: 0, maxDelayMs: 0), $sleeps);
-        self::assertSame(200, $transport->sendResponse('GET', 'https://api.example.com/x', [], null)->getStatusCode());
+        self::assertSame(200, \Dmorenof\SdkRuntime\Tests\Support\Wire::send($transport, 'GET', 'https://api.example.com/x', [], null)->getStatusCode());
 
         $http = $this->http([self::networkError(), self::networkError()]);
         [$transport] = $this->transport($http, new RetryPolicy(maxAttempts: 2, baseDelayMs: 0, maxDelayMs: 0), $sleeps);
         $this->expectException(NetworkExceptionInterface::class);
-        $transport->sendResponse('GET', 'https://api.example.com/x', [], null);
+        \Dmorenof\SdkRuntime\Tests\Support\Wire::send($transport, 'GET', 'https://api.example.com/x', [], null);
     }
 
     public function testNetworkErrorRetryCanBeDisabled(): void
@@ -154,7 +154,7 @@ final class RetryPolicyTest extends TestCase
         [$transport] = $this->transport($http, new RetryPolicy(retryNetworkErrors: false), $sleeps);
 
         $this->expectException(NetworkExceptionInterface::class);
-        $transport->sendResponse('GET', 'https://api.example.com/x', [], null);
+        \Dmorenof\SdkRuntime\Tests\Support\Wire::send($transport, 'GET', 'https://api.example.com/x', [], null);
     }
 
     public function testNonSeekableBodyIsNeverReplayed(): void
@@ -169,7 +169,7 @@ final class RetryPolicyTest extends TestCase
         $http = $this->http([new Response(503)]);
         [$transport] = $this->transport($http, new RetryPolicy(methods: ['PUT'], baseDelayMs: 0, maxDelayMs: 0), $sleeps);
 
-        self::assertSame(503, $transport->sendResponse('PUT', 'https://api.example.com/x', [], $nonSeekable)->getStatusCode());
+        self::assertSame(503, \Dmorenof\SdkRuntime\Tests\Support\Wire::send($transport, 'PUT', 'https://api.example.com/x', [], $nonSeekable)->getStatusCode());
         self::assertCount(1, $http->requests);
         self::assertNotNull($stream);
     }
@@ -180,11 +180,10 @@ final class RetryPolicyTest extends TestCase
         new RetryPolicy(maxAttempts: 0);
     }
 
-    public function testApiClientOptsInThroughWithRetryPolicy(): void
+    public function testApiClientOptsInThroughTheConfiguration(): void
     {
         $http = $this->http([new Response(503), new Response(200, [], '')]);
-        $client = TestClient::connect('https://api.example.com', httpClient: $http);
-        $client->withRetryPolicy(new RetryPolicy(baseDelayMs: 0, maxDelayMs: 0));
+        $client = TestClient::connect(\Dmorenof\SdkRuntime\Tests\Support\Cfg::make('https://api.example.com', httpClient: $http, retryPolicy: new RetryPolicy(baseDelayMs: 0, maxDelayMs: 0)));
 
         $client->ping();
 
@@ -194,7 +193,7 @@ final class RetryPolicyTest extends TestCase
     public function testApiClientWithoutPolicyStillFailsOnFirst503(): void
     {
         $http = $this->http([new Response(503, [], '{}')]);
-        $client = TestClient::connect('https://api.example.com', httpClient: $http);
+        $client = TestClient::connect(\Dmorenof\SdkRuntime\Tests\Support\Cfg::make('https://api.example.com', httpClient: $http));
 
         $this->expectException(ApiException::class);
         try {

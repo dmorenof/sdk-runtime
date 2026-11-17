@@ -12,7 +12,7 @@ try {
         protected const array VALIDATION = ['id' => ['minimum' => 0], 'value' => ['schema' => ['type' => ['string', 'integer', 'boolean', 'null'], 'minLength' => 2, 'minimum' => 0]], 'open' => ['schema' => true], 'rejected' => ['schema' => false], 'items' => ['schema' => ['type' => 'array', 'items' => ['type' => ['string', 'integer', 'null']]]], 'empty_' => ['schema' => ['type' => 'array', 'items' => false]]];
         public int $id; public string|int|bool|null $value; public mixed $open; public mixed $rejected; public null $nullOnly; public array $items; public array $empty_;
     };
-    $client = new class('http://127.0.0.1:' . $port) extends \Dmorenof\SdkRuntime\ApiClient {
+    $client = new class(\Dmorenof\SdkRuntime\Tests\Support\Cfg::make('http://127.0.0.1:' . $port)) extends \Dmorenof\SdkRuntime\ApiClient {
         public string $recordType;
         public function record(?\Dmorenof\SdkRuntime\DTO $body = null): mixed {
             return $this->executeOperation(['method' => $body === null ? 'GET' : 'POST', 'path' => '/native', 'responseType' => $this->recordType], new \Dmorenof\SdkRuntime\RequestInput(body: $body));

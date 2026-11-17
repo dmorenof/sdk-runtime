@@ -68,7 +68,7 @@ final class UploadedFileTest extends TestCase
     public function testClientMetadataAndBinaryBytesUseGuzzleWithDirectionalFiltering(): void
     {
         $transport = new FakeTransport(new HttpResponse(204, ''));
-        $client = UploadProbeClient::connect('https://example.test', transport: $transport);
+        $client = UploadProbeClient::connect(\Dmorenof\SdkRuntime\Tests\Support\Cfg::make('https://example.test', transport: $transport));
         $body = new UploadPayload((object) ['upload-file' => self::upload(), 'optional' => null]);
         $body->internal = new UploadedFile(null, null, UPLOAD_ERR_PARTIAL);
         $client->submit($body);
@@ -83,7 +83,7 @@ final class UploadedFileTest extends TestCase
     public function testReplayRewindsSeekableStreamsAndReadsNewAssignments(): void
     {
         $transport = new FakeTransport(new HttpResponse(204, ''));
-        $client = UploadProbeClient::connect('https://example.test', transport: $transport);
+        $client = UploadProbeClient::connect(\Dmorenof\SdkRuntime\Tests\Support\Cfg::make('https://example.test', transport: $transport));
         $upload = self::upload();
         $upload->getStream()->read(2);
         $body = new UploadPayload((object) ['upload-file' => $upload]);
@@ -120,7 +120,7 @@ final class UploadedFileTest extends TestCase
     public function testDeclaredMimeIsEnforcedAndUnsafeOrFailedUploadsNeverReachHttp(): void
     {
         $transport = new FakeTransport(new HttpResponse(204, ''));
-        $client = UploadProbeClient::connect('https://example.test', transport: $transport);
+        $client = UploadProbeClient::connect(\Dmorenof\SdkRuntime\Tests\Support\Cfg::make('https://example.test', transport: $transport));
         $client->submit(new UploadPayload((object) ['upload-file' => self::upload()]), 'image/png');
         self::assertCount(1, $transport->sent);
         foreach ([self::upload('bytes', 'photo.jpg', 'image/jpeg'), self::upload('bytes', 'a"b', 'image/png'),
@@ -161,7 +161,7 @@ final class UploadedFileTest extends TestCase
         }
         $transport = new FakeTransport(new HttpResponse(204, ''));
         try {
-            UploadProbeClient::connect('https://example.test', transport: $transport)->submit($body, media: 'application/json');
+            UploadProbeClient::connect(\Dmorenof\SdkRuntime\Tests\Support\Cfg::make('https://example.test', transport: $transport))->submit($body, media: 'application/json');
             self::fail('Uploaded file sent as JSON.');
         } catch (\UnexpectedValueException) {
             self::assertSame([], $transport->sent);

@@ -172,9 +172,9 @@ final class ResponseHeadersTest extends TestCase
 
     public function testLastResponseExposesTypedHeadersThroughPsr18(): void
     {
-        $client = ResponseHeadersProbe::connect('https://api.example.com', $this->psrClient(new Response(200, [
+        $client = ResponseHeadersProbe::connect(\Dmorenof\SdkRuntime\Tests\Support\Cfg::make('https://api.example.com', $this->psrClient(new Response(200, [
             'X-Rate-Limit' => '12', 'X-Tags' => ['a', 'b'], 'Set-Cookie' => ['a=1', 'b=2'],
-        ], '')));
+        ], ''))));
 
         self::assertNull($client->lastResponse());
         $client->list();
@@ -191,7 +191,7 @@ final class ResponseHeadersTest extends TestCase
 
     public function testLastResponseIsRecordedForErrorsWithTheirOwnDeclarations(): void
     {
-        $client = ResponseHeadersProbe::connect('https://api.example.com', $this->psrClient(new Response(503, ['X-Request-Id' => 'r-9'], '{}')));
+        $client = ResponseHeadersProbe::connect(\Dmorenof\SdkRuntime\Tests\Support\Cfg::make('https://api.example.com', $this->psrClient(new Response(503, ['X-Request-Id' => 'r-9'], '{}'))));
 
         try {
             $client->list();
@@ -210,7 +210,7 @@ final class ResponseHeadersTest extends TestCase
                 return new HttpResponse(200, '', ['x-rate-limit' => '5']);
             }
         };
-        $client = ResponseHeadersProbe::connect('https://api.example.com', transport: $transport);
+        $client = ResponseHeadersProbe::connect(\Dmorenof\SdkRuntime\Tests\Support\Cfg::make('https://api.example.com', transport: $transport));
 
         $client->list();
 
@@ -219,7 +219,7 @@ final class ResponseHeadersTest extends TestCase
 
     public function testMissingRequiredDeclaredHeaderFailsOnlyWhenRead(): void
     {
-        $client = ResponseHeadersProbe::connect('https://api.example.com', $this->psrClient(new Response(200, [], '')));
+        $client = ResponseHeadersProbe::connect(\Dmorenof\SdkRuntime\Tests\Support\Cfg::make('https://api.example.com', $this->psrClient(new Response(200, [], ''))));
 
         $client->list(); // the call itself succeeds
         $this->expectException(\UnexpectedValueException::class);

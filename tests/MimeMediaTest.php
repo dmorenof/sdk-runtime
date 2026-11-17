@@ -13,7 +13,7 @@ final class MimeMediaTest extends TestCase {
             public array $calls = []; public \Psr\Http\Message\ResponseInterface $reply;
             public function sendRequest(\Psr\Http\Message\RequestInterface $request): \Psr\Http\Message\ResponseInterface { $this->calls[] = $request; return $this->reply; }
         };
-        $client = new class('https://example.test', httpClient: $http) extends ApiClient {
+        $client = new class(\Dmorenof\SdkRuntime\Tests\Support\Cfg::make('https://example.test', httpClient: $http)) extends ApiClient {
             public function post(array $spec, mixed $body): mixed { return $this->executeBody(['method' => 'POST', 'path' => '/media'] + $spec, $body); }
             public function get(array $spec): mixed { return $this->executeOperation(['method' => 'GET', 'path' => '/media'] + $spec); }
         };

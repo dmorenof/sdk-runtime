@@ -16,7 +16,7 @@ final class RawMediaTest extends TestCase {
             public array $calls = []; public int $status = 200; public string $response = 'reply';
             public function sendRequest(\Psr\Http\Message\RequestInterface $request): \Psr\Http\Message\ResponseInterface { $this->calls[] = $request; return new Response($this->status, [], $this->response); }
         };
-        $client = new class('https://example.test', httpClient: $http) extends ApiClient {
+        $client = new class(\Dmorenof\SdkRuntime\Tests\Support\Cfg::make('https://example.test', httpClient: $http)) extends ApiClient {
             public function post(string $encoding, mixed $value, bool $present = true, ?DTO $params = null): mixed {
                 $spec = ['method' => 'POST', 'path' => '/raw', 'responseType' => 'string', 'responseMediaType' => 'text/plain',
                     'requestMediaType' => $encoding === 'text' ? 'text/plain' : 'application/octet-stream',

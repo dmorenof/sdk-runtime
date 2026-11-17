@@ -69,7 +69,7 @@ final class SimpleParameterTest extends TestCase {
         };
         foreach ([false, true] as $psr) {
             $transport = new FakeTransport(new HttpResponse(204, ''));
-            $client = SimpleParameterClient::connect('https://example.test', httpClient: $http, transport: $psr ? null : $transport);
+            $client = SimpleParameterClient::connect(\Dmorenof\SdkRuntime\Tests\Support\Cfg::make('https://example.test', httpClient: $http, transport: $psr ? null : $transport));
             $path = new SimplePathParams((object) ['ids' => ['a,b', 'c/d', '%2F', 'ñ']]);
             $params = new SimplePayload((object) ['queryBody' => 'query body', 'q' => [2, false], 'codes' => ['alpha', 'beta'], 'body' => (object) ['name' => 'Ada']]);
             $client->submit($path, $params);
@@ -96,7 +96,7 @@ final class SimpleParameterTest extends TestCase {
         };
         foreach ([false, true] as $psr) {
             $transport = new FakeTransport(new HttpResponse(204, ''));
-            $client = new class('https://example.test', httpClient: $http, transport: $psr ? null : $transport) extends ApiClient {
+            $client = new class(\Dmorenof\SdkRuntime\Tests\Support\Cfg::make('https://example.test', httpClient: $http, transport: $psr ? null : $transport)) extends ApiClient {
                 public function numeric(): void {
                     $this->executeOperation(['method' => 'GET', 'path' => '/numeric/{0}', 'success' => [204],
                         'pathSerialization' => ['0' => 'csv'], 'headerSerialization' => ['0' => 'csv']], new \Dmorenof\SdkRuntime\RequestInput(path: ['0' => ['a,b', 'c/d']], headers: ['0' => ['alpha', 'beta']]));
@@ -114,7 +114,7 @@ final class SimpleParameterTest extends TestCase {
             self::assertSame('a%2Fb' . $encoded . '%252F' . $encoded . '%C3%B1', QuerySerializer::path(['a/b', '%2F', 'ñ'], 'ids', $format));
             self::assertSame('alpha' . $raw . 'beta', QuerySerializer::simple(['alpha', 'beta'], 'X-Ids', $format, true));
             $transport = new FakeTransport(new HttpResponse(204, ''));
-            $client = SimpleParameterClient::connect('https://example.test', transport: $transport);
+            $client = SimpleParameterClient::connect(\Dmorenof\SdkRuntime\Tests\Support\Cfg::make('https://example.test', transport: $transport));
             $client->raw(['ids' => ['a/b', '%2F']], ['X-Ids' => ['alpha', 'beta']],
                 ['pathSerialization' => ['ids' => $format], 'headerSerialization' => ['X-Ids' => $format]]);
             self::assertSame('https://example.test/items/a%2Fb' . $encoded . '%252F', $transport->sent[0]['url']);
@@ -140,7 +140,7 @@ final class SimpleParameterTest extends TestCase {
     }
     public function testMissingNullUndeclaredAndUnsupportedFormatsFailBeforeTransport(): void {
         $transport = new FakeTransport(new HttpResponse(204, ''));
-        $client = SimpleParameterClient::connect('https://example.test', transport: $transport);
+        $client = SimpleParameterClient::connect(\Dmorenof\SdkRuntime\Tests\Support\Cfg::make('https://example.test', transport: $transport));
         foreach ([[[], [], []], [['ids' => null], [], []], [['ids' => [1, 2]], [], []],
             [['ids' => 'one'], ['X-Ids' => [1, 2]], []], [['ids' => [1, 2]], [], ['pathSerialization' => ['ids' => 'multi']]]] as [$path, $headers, $metadata]) {
             try { $client->raw($path, $headers, $metadata); self::fail('Invalid metadata/input accepted.'); }

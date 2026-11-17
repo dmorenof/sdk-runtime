@@ -45,7 +45,7 @@ final class MultipartSerializationTest extends TestCase
         $transport = new FakeTransport(new HttpResponse(204, ''));
         $body = new MultipartPayload((object) ['display-name' => 'ñ +%~', 'file' => "\x00\xff\r\n", 'active' => false,
             'ids' => [1, 2], 'internal' => 'hidden', 'note' => null]);
-        MultipartProbeClient::connect('https://example.test', transport: $transport)->submit($body);
+        MultipartProbeClient::connect(\Dmorenof\SdkRuntime\Tests\Support\Cfg::make('https://example.test', transport: $transport))->submit($body);
         $request = $transport->sent[0];
         self::assertSame('https://example.test/files?body=query%20%2B', $request['url']);
         self::assertSame('trace', $request['headers']['X-Trace']);
@@ -67,7 +67,7 @@ final class MultipartSerializationTest extends TestCase
     public function testAbsentEmptyNullAndEmptyStringRemainDistinct(): void
     {
         $transport = new FakeTransport(new HttpResponse(204, ''));
-        $client = MultipartProbeClient::connect('https://example.test', transport: $transport);
+        $client = MultipartProbeClient::connect(\Dmorenof\SdkRuntime\Tests\Support\Cfg::make('https://example.test', transport: $transport));
         $client->submit(null);
         $client->submit(new DTO());
         $client->submit(new MultipartPayload((object) ['display-name' => 'Ada', 'file' => '', 'ids' => [], 'note' => '']));
@@ -82,7 +82,7 @@ final class MultipartSerializationTest extends TestCase
     public function testMutationsAndUnsupportedValuesFailBeforeTransport(): void
     {
         $transport = new FakeTransport(new HttpResponse(204, ''));
-        $client = MultipartProbeClient::connect('https://example.test', transport: $transport);
+        $client = MultipartProbeClient::connect(\Dmorenof\SdkRuntime\Tests\Support\Cfg::make('https://example.test', transport: $transport));
         $body = new MultipartPayload((object) ['display-name' => 'Ada', 'ids' => [1]]);
         $body->ids[] = 0;
         try {

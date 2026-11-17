@@ -52,7 +52,7 @@ final class FormSerializationTest extends TestCase
     public function testRuntimeKeepsQueryHeadersAndFormBodySeparate(): void
     {
         $transport = new FakeTransport(new HttpResponse(204, ''));
-        FormProbeClient::connect('https://api.example.test', transport: $transport)->submit(new FormPayload((object) ['display-name' => 'body value']));
+        FormProbeClient::connect(\Dmorenof\SdkRuntime\Tests\Support\Cfg::make('https://api.example.test', transport: $transport))->submit(new FormPayload((object) ['display-name' => 'body value']));
         self::assertSame('https://api.example.test/forms?name=query%20%2B', $transport->sent[0]['url']);
         self::assertSame('display-name=body+value', $transport->sent[0]['body']);
         self::assertSame(['Accept' => 'application/json', 'X-Trace' => 'trace', 'Content-Type' => 'application/x-www-form-urlencoded'], $transport->sent[0]['headers']);
@@ -61,7 +61,7 @@ final class FormSerializationTest extends TestCase
     public function testAbsentBodyAndPresentEmptyBodyAreDifferent(): void
     {
         $transport = new FakeTransport(new HttpResponse(204, ''));
-        $client = FormProbeClient::connect('https://api.example.test', transport: $transport);
+        $client = FormProbeClient::connect(\Dmorenof\SdkRuntime\Tests\Support\Cfg::make('https://api.example.test', transport: $transport));
         $client->submit(null);
         $client->submit(new DTO());
         self::assertNull($transport->sent[0]['body']);
@@ -73,7 +73,7 @@ final class FormSerializationTest extends TestCase
     public function testListMutationsAndUndefinedShapesAreRejectedBeforeHttp(): void
     {
         $transport = new FakeTransport(new HttpResponse(204, ''));
-        $client = FormProbeClient::connect('https://api.example.test', transport: $transport);
+        $client = FormProbeClient::connect(\Dmorenof\SdkRuntime\Tests\Support\Cfg::make('https://api.example.test', transport: $transport));
         $body = new FormPayload((object) ['display-name' => 'Ada', 'ids' => [1]]);
         $body->ids[] = 'wrong';
         try {
@@ -112,7 +112,7 @@ final class FormSerializationTest extends TestCase
         foreach ([['multipart/form-data', []], ['application/json', ['ids' => 'multi']], ['application/x-www-form-urlencoded', ['ids' => 'unknown']]] as [$media, $formats]) {
             $transport = new FakeTransport(new HttpResponse(204, ''));
             try {
-                FormProbeClient::connect('https://api.example.test', transport: $transport)->submit(new FormPayload((object) ['display-name' => 'Ada']), $formats, $media);
+                FormProbeClient::connect(\Dmorenof\SdkRuntime\Tests\Support\Cfg::make('https://api.example.test', transport: $transport))->submit(new FormPayload((object) ['display-name' => 'Ada']), $formats, $media);
                 self::fail('Unsupported body metadata accepted.');
             } catch (\InvalidArgumentException) {
                 self::assertSame([], $transport->sent);

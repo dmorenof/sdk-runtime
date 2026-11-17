@@ -33,7 +33,7 @@ final class OperationServerTest extends TestCase
     public function testDeclaredOperationServerBuildsExactUrlIncludingPrefixAndEncoding(): void
     {
         $transport = new FakeTransport(new HttpResponse(200, ''));
-        $client = ServerRoutingClient::connect('https://root.test/v1', transport: $transport);
+        $client = ServerRoutingClient::connect(\Dmorenof\SdkRuntime\Tests\Support\Cfg::make('https://root.test/v1', transport: $transport));
         $client->routed();
         $client->root();
         self::assertSame('https://platform.example.test/v2/items/a%2Fb?q=a%20b', $transport->sent[0]['url']);
@@ -47,10 +47,10 @@ final class OperationServerTest extends TestCase
     {
         $first = new FakeTransport(new HttpResponse(200, ''));
         $second = new FakeTransport(new HttpResponse(200, ''));
-        $client = ServerRoutingClient::connect('https://root.test', transport: $first,
-            serverOverrides: ['https://platform.example.test/v2' => 'http://127.0.0.1:9090/mock/']);
-        $other = ServerRoutingClient::connect('https://root.test', transport: $second,
-            serverOverrides: ['https://platform.example.test/v2/' => 'https://staging.test/api']);
+        $client = ServerRoutingClient::connect(\Dmorenof\SdkRuntime\Tests\Support\Cfg::make('https://root.test', transport: $first,
+            serverOverrides: ['https://platform.example.test/v2' => 'http://127.0.0.1:9090/mock/']));
+        $other = ServerRoutingClient::connect(\Dmorenof\SdkRuntime\Tests\Support\Cfg::make('https://root.test', transport: $second,
+            serverOverrides: ['https://platform.example.test/v2/' => 'https://staging.test/api']));
         $client->resource(ServerRoutingClient::class)->routed();
         $other->resource(ServerRoutingClient::class)->routed();
         self::assertSame('http://127.0.0.1:9090/mock/items/a%2Fb?q=a%20b', $first->sent[0]['url']);
@@ -60,7 +60,7 @@ final class OperationServerTest extends TestCase
     public function testInvalidOperationServerFailsBeforeTransport(): void
     {
         $transport = new FakeTransport(new HttpResponse(200, ''));
-        $client = ServerRoutingClient::connect('https://root.test', transport: $transport);
+        $client = ServerRoutingClient::connect(\Dmorenof\SdkRuntime\Tests\Support\Cfg::make('https://root.test', transport: $transport));
         try {
             $client->invalid();
             self::fail('Expected unsupported server failure.');
@@ -72,8 +72,8 @@ final class OperationServerTest extends TestCase
     public function testInvalidEnvironmentOverrideIsRejected(): void
     {
         $this->expectException(\InvalidArgumentException::class);
-        ServerRoutingClient::connect('https://root.test', serverOverrides: [
+        ServerRoutingClient::connect(\Dmorenof\SdkRuntime\Tests\Support\Cfg::make('https://root.test', serverOverrides: [
             'https://platform.example.test/v2' => 'https://example.test/api?tenant=1',
-        ]);
+        ]));
     }
 }

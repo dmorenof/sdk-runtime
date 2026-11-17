@@ -66,8 +66,8 @@ final class QuerySerializationTest extends TestCase
     public function testDelimitedRuntimeOperationsKeepScalarSecurityAndValidateMutations(): void
     {
         $transport = new FakeTransport(new HttpResponse(204, ''));
-        $client = QueryListClient::connect('https://api.example.test', transport: $transport,
-            securityCredentials: new SecurityCredentials(['Key' => 'secret |']));
+        $client = QueryListClient::connect(\Dmorenof\SdkRuntime\Tests\Support\Cfg::make('https://api.example.test', transport: $transport,
+            securityCredentials: new SecurityCredentials(['Key' => 'secret |'])));
         $client->search(['ids' => [1, 2], 'tags' => ['ñ', '+']], ['ids' => 'ssv', 'tags' => 'pipes'], true);
         self::assertSame('https://api.example.test/search?ids=1%202&tags=%C3%B1%7C%2B&key=secret%20%7C', $transport->sent[0]['url']);
         $values = ['a', 'b'];
@@ -86,7 +86,7 @@ final class QuerySerializationTest extends TestCase
         foreach (['ssv' => 'a b', 'tsv' => "a\tb", 'pipes' => 'a|b'] as $format => $value) {
             $transport = new FakeTransport(new HttpResponse(204, ''));
             try {
-                QueryListClient::connect('https://api.example.test', transport: $transport)->search(['ids' => [$value]], ['ids' => $format]);
+                QueryListClient::connect(\Dmorenof\SdkRuntime\Tests\Support\Cfg::make('https://api.example.test', transport: $transport))->search(['ids' => [$value]], ['ids' => $format]);
                 self::fail('Ambiguous delimiter accepted.');
             } catch (\UnexpectedValueException $exception) {
                 self::assertStringContainsString('list delimiter', $exception->getMessage());
@@ -132,7 +132,7 @@ final class QuerySerializationTest extends TestCase
             (object) ['a' => INF], (object) ['a[b]' => 1], (object) ['' => 1], [], ['a' => 1], 'a'] as $value) {
             $transport = new FakeTransport(new HttpResponse(204, ''));
             try {
-                QueryListClient::connect('https://api.example.test', transport: $transport)->search(['filter' => $value], ['filter' => 'deepObject']);
+                QueryListClient::connect(\Dmorenof\SdkRuntime\Tests\Support\Cfg::make('https://api.example.test', transport: $transport))->search(['filter' => $value], ['filter' => 'deepObject']);
                 self::fail('Undefined deep value accepted.');
             } catch (\UnexpectedValueException) {
                 self::assertSame([], $transport->sent);
@@ -151,8 +151,8 @@ final class QuerySerializationTest extends TestCase
             }
         }
         $transport = new FakeTransport(new HttpResponse(204, ''));
-        $client = QueryListClient::connect('https://api.example.test', transport: $transport,
-            securityCredentials: new SecurityCredentials(['Key' => 'secret']));
+        $client = QueryListClient::connect(\Dmorenof\SdkRuntime\Tests\Support\Cfg::make('https://api.example.test', transport: $transport,
+            securityCredentials: new SecurityCredentials(['Key' => 'secret'])));
         $client->search(['key' => (object) ['name' => 'ignored'], 'filter' => (object) ['city' => 'Madrid']], ['key' => 'deepObject', 'filter' => 'deepObject'], true);
         self::assertSame('https://api.example.test/search?key=secret&filter%5Bcity%5D=Madrid', $transport->sent[0]['url']);
     }
@@ -182,8 +182,8 @@ final class QuerySerializationTest extends TestCase
     public function testRuntimeBuildsExactUrlAndKeepsSecurityQueryValuesScalar(): void
     {
         $transport = new FakeTransport(new HttpResponse(204, ''));
-        $client = QueryListClient::connect('https://api.example.test/v1', transport: $transport,
-            securityCredentials: new SecurityCredentials(['Key' => 'secret &+']));
+        $client = QueryListClient::connect(\Dmorenof\SdkRuntime\Tests\Support\Cfg::make('https://api.example.test/v1', transport: $transport,
+            securityCredentials: new SecurityCredentials(['Key' => 'secret &+'])));
         $client->search(['ids' => [1, 2], 'q' => 'a b'], ['ids' => 'multi'], true);
         $client->search(['key' => [1, 2], 'ids' => [3, 4]], ['key' => 'csv', 'ids' => 'csv'], true);
         self::assertSame('https://api.example.test/v1/search?ids=1&ids=2&q=a%20b&key=secret%20%26%2B', $transport->sent[0]['url']);
@@ -198,7 +198,7 @@ final class QuerySerializationTest extends TestCase
             [['ids' => 1], ['ids' => 'csv']]] as [$query, $formats]) {
             $transport = new FakeTransport(new HttpResponse(204, ''));
             try {
-                QueryListClient::connect('https://api.example.test', transport: $transport)->search($query, $formats);
+                QueryListClient::connect(\Dmorenof\SdkRuntime\Tests\Support\Cfg::make('https://api.example.test', transport: $transport))->search($query, $formats);
                 self::fail('Unsupported query data accepted.');
             } catch (\UnexpectedValueException|\InvalidArgumentException) {
                 self::assertSame([], $transport->sent);

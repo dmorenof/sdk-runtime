@@ -27,7 +27,7 @@ $http = $realHttp ? null : new class($bytes) implements \Psr\Http\Client\ClientI
         return new \GuzzleHttp\Psr7\Response(204);
     }
 };
-$client = new class($realHttp ? $argv[2] : 'https://example.test', httpClient: $http) extends \Dmorenof\SdkRuntime\ApiClient {
+$client = new class(\Dmorenof\SdkRuntime\Tests\Support\Cfg::make($realHttp ? $argv[2] : 'https://example.test', httpClient: $http)) extends \Dmorenof\SdkRuntime\ApiClient {
     public function submit(\Psr\Http\Message\UploadedFileInterface|array $file): void
     {
         $values = (object) ['file' => $file, 'name' => 'bounded'];

@@ -13,7 +13,7 @@ use PHPUnit\Framework\TestCase;
 
 final class RequestBodiesTest extends TestCase {
     private function client(FakeTransport $transport): ApiClient {
-        return new class('https://example.test', transport: $transport) extends ApiClient {
+        return new class(\Dmorenof\SdkRuntime\Tests\Support\Cfg::make('https://example.test', transport: $transport)) extends ApiClient {
             public function post(mixed $body, array $contract, bool $present = true, ?DTO $params = null): mixed {
                 $spec = ['method' => 'POST', 'path' => '/items/{id}', 'requestMediaType' => 'application/problem+json', 'requestBody' => $contract];
                 return $present ? $this->executeBody($spec, $body, ['id' => 7], $params) : $this->executeArguments($spec, ['id' => 7], $params);

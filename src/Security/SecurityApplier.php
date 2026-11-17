@@ -7,100 +7,99 @@ namespace Dmorenof\SdkRuntime\Security;
 final class SecurityApplier
 {
     /**
+     * Applies the first requirement the configured credentials can satisfy. An empty requirement means the
+     * operation may be called without credentials.
+     *
      * @param list<array<string, list<string>>> $requirements Alternatives are OR; schemes within one entry are AND.
      * @param array<string, array{type:string,scheme:?string,location:?string,parameterName:?string}> $schemes
-     * @param array<string, string> $headers
-     * @param array<string, string> $query
-     * @param list<TokenProviderInterface>|null $providers Receives the token providers used, so callers can invalidate them.
      */
-    public static function apply(
-        SecurityCredentials $credentials,
-        array $requirements,
-        array $schemes,
-        array &$headers,
-        array &$query,
-        ?array &$providers = null,
-    ): void {
-        if ($requirements === []) {
-            return;
-        }
-
+    public static function apply(SecurityCredentials $credentials, array $requirements, array $schemes): AppliedSecurity
+    {
         foreach ($requirements as $requirement) {
             if ($requirement === []) {
-                return;
+                return new AppliedSecurity();
             }
-            $selected = [];
-            $satisfied = true;
-            foreach ($requirement as $name => $_scopes) {
-                $credential = $credentials->forScheme($name);
-                if ($credential === null) {
-                    $satisfied = false;
-                    break;
-                }
-                $scheme = $schemes[$name] ?? null;
-                if ($scheme === null) {
-                    throw new \LogicException("Missing generated security scheme $name.");
-                }
-                $selected[] = [$name, $scheme, $credential];
+            $selected = self::satisfy($credentials, $requirement, $schemes);
+            if ($selected !== null) {
+                return self::build($selected);
             }
-            if (!$satisfied) {
-                continue;
-            }
-
-            $securityHeaders = [];
-            $securityQuery = [];
-            $usedProviders = [];
-            foreach ($selected as [$name, $scheme, $credential]) {
-                if (($scheme['type'] === 'http' && $scheme['scheme'] === 'bearer')
-                    || in_array($scheme['type'], ['oauth2', 'openIdConnect'], true)) {
-                    if ($credential instanceof TokenProviderInterface) {
-                        $usedProviders[] = $credential;
-                        $credential = $credential->accessToken();
-                    }
-                    if (!is_string($credential) || $credential === '') {
-                        throw new \InvalidArgumentException("Bearer credential $name must be a nonempty string or a token provider.");
-                    }
-                    self::addHeader($securityHeaders, 'Authorization', 'Bearer ' . $credential);
-                } elseif ($scheme['type'] === 'http' && $scheme['scheme'] === 'basic') {
-                    if (!$credential instanceof BasicAuthCredentials) {
-                        throw new \InvalidArgumentException("Basic credential $name must be BasicAuthCredentials.");
-                    }
-                    self::addHeader(
-                        $securityHeaders,
-                        'Authorization',
-                        'Basic ' . base64_encode($credential->username() . ':' . $credential->password()),
-                    );
-                } elseif ($scheme['type'] === 'apiKey') {
-                    if (!is_string($credential) || $credential === '') {
-                        throw new \InvalidArgumentException("API key credential $name must be a nonempty string.");
-                    }
-                    $parameterName = $scheme['parameterName']
-                        ?? throw new \LogicException("API key scheme $name declares no parameter name.");
-                    if ($scheme['location'] === 'header') {
-                        self::addHeader($securityHeaders, $parameterName, $credential);
-                    } elseif ($scheme['location'] === 'cookie') {
-                        $securityHeaders = \Dmorenof\SdkRuntime\CookieHeader::merge($securityHeaders,
-                            ['Cookie' => \Dmorenof\SdkRuntime\CookieHeader::pair($parameterName, $credential)]);
-                    } elseif ($scheme['location'] === 'query') {
-                        self::addQuery($securityQuery, $parameterName, $credential);
-                    } else {
-                        throw new \LogicException("Unsupported generated API key location for $name.");
-                    }
-                } else {
-                    throw new \LogicException("Unsupported generated security scheme $name.");
-                }
-            }
-            $providers = $usedProviders;
-            $headers = \Dmorenof\SdkRuntime\CookieHeader::merge($headers, $securityHeaders);
-            foreach ($securityQuery as $name => $value) {
-                $query[$name] = $value;
-            }
-            return;
         }
+        if ($requirements === []) {
+            return new AppliedSecurity();
+        }
+        throw new \InvalidArgumentException('No configured credentials satisfy this operation security requirement.');
+    }
 
-        throw new \InvalidArgumentException(
-            'No configured credentials satisfy this operation security requirement.',
-        );
+    /**
+     * Each scheme of a requirement with its definition and credential, or null when one has no credential.
+     *
+     * @param array<string, list<string>> $requirement
+     * @param array<string, array{type:string,scheme:?string,location:?string,parameterName:?string}> $schemes
+     * @return list<array{string, array{type:string,scheme:?string,location:?string,parameterName:?string}, string|BasicAuthCredentials|TokenProviderInterface}>|null
+     */
+    private static function satisfy(SecurityCredentials $credentials, array $requirement, array $schemes): ?array
+    {
+        $selected = [];
+        foreach ($requirement as $name => $_scopes) {
+            $credential = $credentials->forScheme($name);
+            if ($credential === null) {
+                return null;
+            }
+            $scheme = $schemes[$name] ?? throw new \LogicException("Missing generated security scheme $name.");
+            $selected[] = [$name, $scheme, $credential];
+        }
+        return $selected;
+    }
+
+    /**
+     * @param list<array{string, array{type:string,scheme:?string,location:?string,parameterName:?string}, string|BasicAuthCredentials|TokenProviderInterface}> $selected
+     */
+    private static function build(array $selected): AppliedSecurity
+    {
+        $headers = [];
+        $query = [];
+        $providers = [];
+        foreach ($selected as [$name, $scheme, $credential]) {
+            if (($scheme['type'] === 'http' && $scheme['scheme'] === 'bearer') || in_array($scheme['type'], ['oauth2', 'openIdConnect'], true)) {
+                if ($credential instanceof TokenProviderInterface) {
+                    $providers[] = $credential;
+                    $credential = $credential->accessToken();
+                }
+                if (!is_string($credential) || $credential === '') {
+                    throw new \InvalidArgumentException("Bearer credential $name must be a nonempty string or a token provider.");
+                }
+                self::addHeader($headers, 'Authorization', 'Bearer ' . $credential);
+            } elseif ($scheme['type'] === 'http' && $scheme['scheme'] === 'basic') {
+                if (!$credential instanceof BasicAuthCredentials) {
+                    throw new \InvalidArgumentException("Basic credential $name must be BasicAuthCredentials.");
+                }
+                self::addHeader($headers, 'Authorization', 'Basic ' . base64_encode($credential->username() . ':' . $credential->password()));
+            } elseif ($scheme['type'] === 'apiKey') {
+                self::applyApiKey($name, $scheme, $credential, $headers, $query);
+            } else {
+                throw new \LogicException("Unsupported generated security scheme $name.");
+            }
+        }
+        return new AppliedSecurity($headers, $query, $providers);
+    }
+
+    /**
+     * @param array{type:string,scheme:?string,location:?string,parameterName:?string} $scheme
+     * @param array<string, string> $headers
+     * @param array<string, string> $query
+     */
+    private static function applyApiKey(string $name, array $scheme, string|BasicAuthCredentials|TokenProviderInterface $credential, array &$headers, array &$query): void
+    {
+        if (!is_string($credential) || $credential === '') {
+            throw new \InvalidArgumentException("API key credential $name must be a nonempty string.");
+        }
+        $parameterName = $scheme['parameterName'] ?? throw new \LogicException("API key scheme $name declares no parameter name.");
+        match ($scheme['location']) {
+            'header' => self::addHeader($headers, $parameterName, $credential),
+            'cookie' => $headers = \Dmorenof\SdkRuntime\CookieHeader::merge($headers, ['Cookie' => \Dmorenof\SdkRuntime\CookieHeader::pair($parameterName, $credential)]),
+            'query' => self::addQuery($query, $parameterName, $credential),
+            default => throw new \LogicException("Unsupported generated API key location for $name."),
+        };
     }
 
     /** @param array<string, string> $headers */

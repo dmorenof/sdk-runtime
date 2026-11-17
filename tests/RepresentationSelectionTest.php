@@ -96,7 +96,7 @@ final class RepresentationSelectionTest extends TestCase
     private function legacy(int $status, string $body, ?string $contentType, ?FakeTransport &$transport = null): RepresentationProbe
     {
         $transport = new FakeTransport(new HttpResponse($status, $body, $contentType === null ? [] : ['content-type' => $contentType]));
-        return RepresentationProbe::connect('https://api.example.com', transport: $transport);
+        return RepresentationProbe::connect(\Dmorenof\SdkRuntime\Tests\Support\Cfg::make('https://api.example.com', transport: $transport));
     }
 
     public function testAcceptListsEveryAlternativeWithRangesLast(): void
@@ -167,7 +167,7 @@ final class RepresentationSelectionTest extends TestCase
                 return new Response(200, ['Content-Type' => 'text/csv; charset=utf-8'], 'x,y');
             }
         };
-        $client = RepresentationProbe::connect('https://api.example.com', $http);
+        $client = RepresentationProbe::connect(\Dmorenof\SdkRuntime\Tests\Support\Cfg::make('https://api.example.com', $http));
 
         self::assertSame('x,y', $client->export());
         self::assertSame('text/csv; charset=utf-8', $client->lastResponse()?->headers->first('content-type'));
@@ -182,7 +182,7 @@ final class RepresentationSelectionTest extends TestCase
             }
         };
 
-        $result = RepresentationProbe::connect('https://api.example.com', $http)->export();
+        $result = RepresentationProbe::connect(\Dmorenof\SdkRuntime\Tests\Support\Cfg::make('https://api.example.com', $http))->export();
 
         self::assertInstanceOf(ResponseInterface::class, $result);
         self::assertSame('RIFF', (string) $result->getBody());

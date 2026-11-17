@@ -6,7 +6,7 @@ if(!is_resource($process))throw new RuntimeException('Cannot start local HTTP se
 try{
  stream_set_timeout($pipes[1],10);$port=trim((string)fgets($pipes[1]));
  if(!ctype_digit($port))throw new RuntimeException('Missing server port.');
- $client=new class('http://127.0.0.1:'.$port) extends \Dmorenof\SdkRuntime\ApiClient {
+ $client=new class(\Dmorenof\SdkRuntime\Tests\Support\Cfg::make('http://127.0.0.1:'.$port)) extends \Dmorenof\SdkRuntime\ApiClient {
   public function target(string $format):string{return $this->executeOperation(['method'=>'GET','path'=>'/items/{id}','responseType'=>'string','pathSerialization'=>['id'=>$format]], new \Dmorenof\SdkRuntime\RequestInput(path: ['id'=>'']));}
  };
  if($client->target('label')!=='/items/.'||$client->target('matrix')!=='/items/;id')throw new RuntimeException('Transport changed the path expansion.');

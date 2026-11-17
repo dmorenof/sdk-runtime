@@ -27,7 +27,7 @@ $http = new class implements \Psr\Http\Client\ClientInterface {
         return new \GuzzleHttp\Psr7\Response($status, [], $body);
     }
 };
-$client = new class('https://example.test', httpClient: $http) extends \Dmorenof\SdkRuntime\ApiClient {
+$client = new class(\Dmorenof\SdkRuntime\Tests\Support\Cfg::make('https://example.test', httpClient: $http)) extends \Dmorenof\SdkRuntime\ApiClient {
     public function fetch(int $scenario, array $types): mixed
     {
         return $this->executeOperation(['method' => 'GET', 'path' => '/objects', 'success' => [200, 201, 202, 204],

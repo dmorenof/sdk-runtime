@@ -43,7 +43,7 @@ final class BinaryResponseTest extends TestCase
     {
         $stream = new NoSeekStream(Utils::streamFor("\x00\xff\r\n"));
         $response = new Response(206, ['X-Values' => ['one', 'two']], $stream);
-        $client = BinaryResponseClient::connect('https://example.test', httpClient: $this->http($response));
+        $client = BinaryResponseClient::connect(\Dmorenof\SdkRuntime\Tests\Support\Cfg::make('https://example.test', httpClient: $this->http($response)));
         self::assertSame($response, $client->download());
         self::assertSame(0, $stream->tell());
         self::assertSame(['one', 'two'], $response->getHeader('X-Values'));
@@ -52,15 +52,15 @@ final class BinaryResponseTest extends TestCase
     public function testRewindsSeekableBodyAfterMiddlewareInspection(): void
     {
         $response = new Response(200, [], 'original');
-        $client = BinaryResponseClient::connect('https://example.test', httpClient: $this->http($response));
-        $client->withMiddleware(new class implements HttpMiddlewareInterface {
+        $inspect = new class implements HttpMiddlewareInterface {
             public function beforeRequest(RequestInterface $request): RequestInterface { return $request; }
             public function afterResponse(RequestInterface $request, ResponseInterface $response): ResponseInterface
             {
                 $response->getBody()->read(3);
                 return $response->withHeader('X-Inspected', 'yes');
             }
-        });
+        };
+        $client = BinaryResponseClient::connect(\Dmorenof\SdkRuntime\Tests\Support\Cfg::make('https://example.test', httpClient: $this->http($response), middleware: [$inspect]));
         $result = $client->download();
         self::assertSame('yes', $result->getHeaderLine('X-Inspected'));
         self::assertSame('original', $result->getBody()->getContents());
@@ -69,7 +69,7 @@ final class BinaryResponseTest extends TestCase
     {
         foreach ([200, 204, 206] as $status) {
             $transport = new FakeTransport(new HttpResponse($status, '', ['X-Test' => 'legacy']));
-            $response = BinaryResponseClient::connect('https://example.test', transport: $transport)->download();
+            $response = BinaryResponseClient::connect(\Dmorenof\SdkRuntime\Tests\Support\Cfg::make('https://example.test', transport: $transport))->download();
             if ($status === 204) {
                 self::assertNull($response, 'a 204 carries no body, so there is no payload to hand over');
                 continue;
@@ -82,7 +82,7 @@ final class BinaryResponseTest extends TestCase
     public function testTypedJsonAndRawErrorsKeepTheirExistingContract(): void
     {
         foreach (['{"city":"Madrid"}', 'raw error'] as $body) {
-            $client = BinaryResponseClient::connect('https://example.test', httpClient: $this->http(new Response(404, [], $body)));
+            $client = BinaryResponseClient::connect(\Dmorenof\SdkRuntime\Tests\Support\Cfg::make('https://example.test', httpClient: $this->http(new Response(404, [], $body))));
             try { $client->download(); self::fail('Expected ApiException.'); }
             catch (ApiException $e) {
                 self::assertSame(404, $e->response->status);

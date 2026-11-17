@@ -221,7 +221,7 @@ final class OAuth2ClientCredentialsTest extends TestCase
         $query = [];
         $used = [];
 
-        SecurityApplier::apply(new SecurityCredentials(['O' => $oauth]), [['O' => ['read']]], $schemes, $headers, $query, $used);
+        \Dmorenof\SdkRuntime\Tests\Support\LegacySecurity::apply(new SecurityCredentials(['O' => $oauth]), [['O' => ['read']]], $schemes, $headers, $query, $used);
 
         self::assertSame(['Authorization' => 'Bearer t1'], $headers);
         self::assertSame([$oauth], $used);
@@ -242,7 +242,7 @@ final class OAuth2ClientCredentialsTest extends TestCase
                     : new HttpResponse(401, '{}');
             }
         };
-        $client = TestClient::connect('https://api.example.com', securityCredentials: new SecurityCredentials(['Bearer' => $oauth]), transport: $transport);
+        $client = TestClient::connect(\Dmorenof\SdkRuntime\Tests\Support\Cfg::make('https://api.example.com', securityCredentials: new SecurityCredentials(['Bearer' => $oauth]), transport: $transport));
 
         self::assertSame('Grace', $client->getUser(1)->name);
         self::assertSame(['Bearer old', 'Bearer new'], array_column($transport->headers, 'Authorization'));
@@ -260,7 +260,7 @@ final class OAuth2ClientCredentialsTest extends TestCase
                 return new HttpResponse(401, '{}');
             }
         };
-        $client = TestClient::connect('https://api.example.com', securityCredentials: new SecurityCredentials(['Bearer' => $oauth]), transport: $transport);
+        $client = TestClient::connect(\Dmorenof\SdkRuntime\Tests\Support\Cfg::make('https://api.example.com', securityCredentials: new SecurityCredentials(['Bearer' => $oauth]), transport: $transport));
 
         try {
             $client->getUser(1);
@@ -281,7 +281,7 @@ final class OAuth2ClientCredentialsTest extends TestCase
                 return new HttpResponse(401, '{}');
             }
         };
-        $client = TestClient::connect('https://api.example.com', securityCredentials: new SecurityCredentials(['Bearer' => 'static']), transport: $transport);
+        $client = TestClient::connect(\Dmorenof\SdkRuntime\Tests\Support\Cfg::make('https://api.example.com', securityCredentials: new SecurityCredentials(['Bearer' => 'static']), transport: $transport));
 
         try {
             $client->getUser(1);

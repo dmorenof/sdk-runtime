@@ -6,7 +6,7 @@ if (!is_resource($process)) { throw new RuntimeException('Cannot start server.')
 try {
     stream_set_timeout($pipes[1], 15); $port = trim((string) fgets($pipes[1]));
     if (!ctype_digit($port)) { throw new RuntimeException('Missing port.'); }
-    $client = new class('http://127.0.0.1:' . $port) extends \Dmorenof\SdkRuntime\ApiClient {
+    $client = new class(\Dmorenof\SdkRuntime\Tests\Support\Cfg::make('http://127.0.0.1:' . $port)) extends \Dmorenof\SdkRuntime\ApiClient {
         public function post(string $path, mixed $value, string $type = 'mixed', bool $present = true, ?\Dmorenof\SdkRuntime\DTO $params = null): mixed {
             $spec = ['method' => 'POST', 'path' => $path, 'success' => [204], 'requestBody' => ['type' => $type, 'required' => false, 'nullable' => true]];
             return $present ? $this->executeBody($spec, $value, ['id' => 7], $params) : $this->executeArguments($spec, ['id' => 7], $params);

@@ -10,7 +10,7 @@ $http = new class implements \Psr\Http\Client\ClientInterface {
         return new \GuzzleHttp\Psr7\Response(204);
     }
 };
-$client = new class('https://example.test', httpClient: $http) extends \Dmorenof\SdkRuntime\ApiClient {
+$client = new class(\Dmorenof\SdkRuntime\Tests\Support\Cfg::make('https://example.test', httpClient: $http)) extends \Dmorenof\SdkRuntime\ApiClient {
     public function submit(\Dmorenof\SdkRuntime\DTO $path, \Dmorenof\SdkRuntime\DTO $payload): void {
         $this->executeArguments(['method' => 'GET', 'path' => '/items/{selector}', 'success' => [204],
             'pathSerialization' => ['selector' => 'object'], 'headerSerialization' => ['X-Filter' => 'object-explode'],

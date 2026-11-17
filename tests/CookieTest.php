@@ -50,7 +50,7 @@ final class CookieTest extends TestCase
         $params = new CookieParams((object) ['theme' => 'a/b,ñ', 'enabled' => false, 'count' => 0, 'empty' => '', 'queryBody' => 'query body', 'raw' => 'caller=ok']);
         $expected = 'caller=ok; theme=a%2Fb%2C%C3%B1; enabled=false; count=0; empty=; session=a+/b==';
         $legacy = new FakeTransport(new HttpResponse(204, '', []));
-        $client = new CookieClient('https://example.test', securityCredentials: new SecurityCredentials(['Session' => 'a+/b==']), transport: $legacy);
+        $client = new CookieClient(\Dmorenof\SdkRuntime\Tests\Support\Cfg::make('https://example.test', securityCredentials: new SecurityCredentials(['Session' => 'a+/b==']), transport: $legacy));
         $client->call($params);
         self::assertSame('https://example.test/items?body=query%20body', $legacy->sent[0]['url']);
         self::assertSame($expected, $legacy->sent[0]['headers']['Cookie']);
@@ -63,7 +63,7 @@ final class CookieTest extends TestCase
                 return new \GuzzleHttp\Psr7\Response(204);
             }
         };
-        $client = new CookieClient('https://example.test', httpClient: $http, headers: ['COOKIE' => 'default=base'], securityCredentials: new SecurityCredentials(['Session' => 'a+/b==']));
+        $client = new CookieClient(\Dmorenof\SdkRuntime\Tests\Support\Cfg::make('https://example.test', httpClient: $http, headers: ['COOKIE' => 'default=base'], securityCredentials: new SecurityCredentials(['Session' => 'a+/b=='])));
         $client->call($params);
         $params->count = -1;
         try { $client->call($params); self::fail('Mutation reached HTTP.'); }
@@ -74,15 +74,15 @@ final class CookieTest extends TestCase
         $schemes = ['Session' => ['type' => 'apiKey', 'scheme' => null, 'location' => 'cookie', 'parameterName' => 'session'], 'Other' => ['type' => 'apiKey', 'scheme' => null, 'location' => 'cookie', 'parameterName' => 'session']];
         $query = [];
         $headers = ['cookie' => 'theme=dark'];
-        SecurityApplier::apply(new SecurityCredentials(['Session' => 'abc']), [['Other' => []], ['Session' => []]], $schemes, $headers, $query);
+        \Dmorenof\SdkRuntime\Tests\Support\LegacySecurity::apply(new SecurityCredentials(['Session' => 'abc']), [['Other' => []], ['Session' => []]], $schemes, $headers, $query);
         self::assertSame(['Cookie' => 'theme=dark; session=abc'], $headers);
         foreach ([['Session' => 'abc', 'Other' => 'different'], ['Session' => 'not;safe']] as $credentials) {
             $headers = ['Cookie' => 'theme=dark'];
-            try { SecurityApplier::apply(new SecurityCredentials($credentials), [array_fill_keys(array_keys($credentials), [])], $schemes, $headers, $query); self::fail('Invalid authentication accepted.'); }
+            try { \Dmorenof\SdkRuntime\Tests\Support\LegacySecurity::apply(new SecurityCredentials($credentials), [array_fill_keys(array_keys($credentials), [])], $schemes, $headers, $query); self::fail('Invalid authentication accepted.'); }
             catch (\UnexpectedValueException) { self::assertSame(['Cookie' => 'theme=dark'], $headers); }
         }
         $headers = ['Cookie' => 'session=other'];
         $this->expectException(\UnexpectedValueException::class);
-        SecurityApplier::apply(new SecurityCredentials(['Session' => 'abc']), [['Session' => []]], $schemes, $headers, $query);
+        \Dmorenof\SdkRuntime\Tests\Support\LegacySecurity::apply(new SecurityCredentials(['Session' => 'abc']), [['Session' => []]], $schemes, $headers, $query);
     }
 }

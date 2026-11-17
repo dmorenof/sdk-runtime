@@ -34,19 +34,14 @@ final class Psr18Transport implements TransportInterface
     private \Closure $sleeper;
 
     /**
-     * @param array<string, string> $defaultHeaders
+     * @param array<string, string> $defaultHeaders Sent with every request.
      * @param ?\Closure(int): void $sleeper Replaces the default millisecond sleep (useful in tests).
-     * @param ?RedirectPolicy $redirectPolicy Null never follows redirects: the 3xx response is returned. Guzzle's PSR-18 sendRequest() never follows them either, so this policy decides.
      */
     public function __construct(
         protected ClientInterface $client,
         private array $defaultHeaders = [],
-        ?RetryPolicy $retryPolicy = null,
         ?\Closure $sleeper = null,
-        ?RedirectPolicy $redirectPolicy = null,
     ) {
-        $this->retryPolicy = $retryPolicy;
-        $this->redirectPolicy = $redirectPolicy;
         $this->sleeper = $sleeper ?? static function (int $ms): void {
             usleep($ms * 1000);
         };
@@ -70,18 +65,20 @@ final class Psr18Transport implements TransportInterface
     /** @param array<string, string> $headers */
     public function send(string $method, string $url, array $headers, string|StreamInterface|null $body): HttpResponse
     {
-        return HttpResponse::fromPsr($this->sendResponse($method, $url, $headers, $body));
+        return HttpResponse::fromPsr($this->sendResponse(new Request($method, $url, $headers, $body ?? '')));
     }
 
     /**
-     * @param array<string, string> $headers
+     * Sends a request with the default headers added, applying middleware, retries and redirects.
+     *
      * @param bool $stream Do not buffer the response body: it is read incrementally from the returned stream.
      *                     Honored by Guzzle clients (which then use their stream handler); other PSR-18 clients
      *                     decide for themselves whether they buffer.
      */
-    public function sendResponse(string $method, string $url, array $headers, string|StreamInterface|null $body, bool $stream = false): ResponseInterface
+    public function sendResponse(RequestInterface $request, bool $stream = false): ResponseInterface
     {
-        $request = new Request($method, $url, \Dmorenof\SdkRuntime\CookieHeader::merge($this->defaultHeaders, $headers), $body ?? '');
+        $own = array_map(static fn (array $values): string => implode(', ', $values), $request->getHeaders());
+        $request = new Request($request->getMethod(), $request->getUri(), \Dmorenof\SdkRuntime\CookieHeader::merge($this->defaultHeaders, $own), $request->getBody());
         $policy = $this->redirectPolicy ?? RedirectPolicy::none();
         $origin = $request->getUri();
 

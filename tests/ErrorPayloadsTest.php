@@ -55,7 +55,7 @@ final class ErrorPayloadsTest extends TestCase {
     public function testExactRangeDefaultAndBodylessErrorsFollowOperationSelection(): void {
         foreach ([[400, 'invalid ignored body', null], [422, '7', 7], [503, 'false', false]] as [$status, $body, $expected]) {
             $transport = new FakeTransport(new HttpResponse($status, $body));
-            $client = new class('https://example.test', transport: $transport) extends ApiClient {
+            $client = new class(\Dmorenof\SdkRuntime\Tests\Support\Cfg::make('https://example.test', transport: $transport)) extends ApiClient {
                 public function get(): mixed { return $this->executeOperation(['method' => 'GET', 'path' => '/errors', 'errorResponses' => [
                     400 => ['type' => null, 'schemaNullable' => false], '4XX' => ['type' => 'int', 'schemaNullable' => false], 'default' => ['type' => 'bool', 'schemaNullable' => false]]]); }
             };

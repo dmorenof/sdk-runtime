@@ -48,10 +48,11 @@ final class ServersProbe extends ApiClient
 
 final class DynamicServersTest extends TestCase
 {
-    private function client(string $base = 'https://root.test/v1', array $overrides = []): array
+    /** @param array<string, string> $variables */
+    private function client(string $base = 'https://root.test/v1', array $overrides = [], int|string|null $server = null, array $variables = []): array
     {
         $transport = new FakeTransport(new HttpResponse(200, ''));
-        return [ServersProbe::connect($base, transport: $transport, serverOverrides: $overrides), $transport];
+        return [ServersProbe::connect(\Dmorenof\SdkRuntime\Tests\Support\Cfg::make($base, transport: $transport, serverOverrides: $overrides, server: $server, serverVariables: $variables)), $transport];
     }
 
     /** @return iterable<string, array{string, string}> */
@@ -118,21 +119,21 @@ final class DynamicServersTest extends TestCase
 
     public function testVariablesAreBoundByName(): void
     {
-        [$client, $transport] = $this->client();
-
-        $client->withServerVariables(['region' => 'us'])->selectable();
-        $client->withServerVariables(['version' => 'v2'])->selectable();
-
+        [$client, $transport] = $this->client(variables: ['region' => 'us']);
+        $client->selectable();
         self::assertSame('https://us.api.example.com/v1/ping', $transport->sent[0]['url']);
-        self::assertSame('https://us.api.example.com/v2/ping', $transport->sent[1]['url'], 'later calls merge with earlier values');
+
+        [$client, $transport] = $this->client(variables: ['region' => 'us', 'version' => 'v2']);
+        $client->selectable();
+        self::assertSame('https://us.api.example.com/v2/ping', $transport->sent[0]['url']);
     }
 
     public function testValueOutsideTheEnumFailsBeforeTransport(): void
     {
-        [$client, $transport] = $this->client();
+        [$client, $transport] = $this->client(variables: ['region' => 'asia']);
 
         try {
-            $client->withServerVariables(['region' => 'asia'])->selectable();
+            $client->selectable();
             self::fail('Expected enum failure.');
         } catch (\InvalidArgumentException $e) {
             self::assertStringContainsString('eu, us', $e->getMessage());
@@ -178,26 +179,19 @@ final class DynamicServersTest extends TestCase
 
     public function testServerCanBeSelectedByIndexOrNameAndRelativeServersResolve(): void
     {
-        [$client, $transport] = $this->client();
-
-        $client->useServer(1)->selectable();
-        $client->useServer('production')->selectable();
-        $client->useServer('sandbox')->selectable();
-        $client->useServer(null)->selectable();
-
-        self::assertSame('https://root.test/sandbox/ping', $transport->sent[0]['url']);
-        self::assertSame('https://eu.api.example.com/v1/ping', $transport->sent[1]['url']);
-        self::assertSame('https://root.test/sandbox/ping', $transport->sent[2]['url']);
-        self::assertSame('https://eu.api.example.com/v1/ping', $transport->sent[3]['url']);
+        foreach ([[1, 'https://root.test/sandbox/ping'], ['production', 'https://eu.api.example.com/v1/ping'], ['sandbox', 'https://root.test/sandbox/ping'], [null, 'https://eu.api.example.com/v1/ping']] as [$server, $expected]) {
+            [$client, $transport] = $this->client(server: $server);
+            $client->selectable();
+            self::assertSame($expected, $transport->sent[0]['url']);
+        }
     }
 
     public function testUnknownServerSelectionFailsBeforeTransport(): void
     {
-        [$client, $transport] = $this->client();
-
         foreach ([5, 'staging'] as $selection) {
+            [$client, $transport] = $this->client(server: $selection);
             try {
-                $client->useServer($selection)->selectable();
+                $client->selectable();
                 self::fail("Accepted $selection");
             } catch (\InvalidArgumentException) {
                 self::assertSame([], $transport->sent);
@@ -207,33 +201,30 @@ final class DynamicServersTest extends TestCase
 
     public function testSelectionDoesNotAffectOperationsWithoutServers(): void
     {
-        [$client, $transport] = $this->client();
+        [$client, $transport] = $this->client(server: 'sandbox', variables: ['region' => 'us']);
 
-        $client->useServer('sandbox')->withServerVariables(['region' => 'us'])->root();
+        $client->root();
 
         self::assertSame('https://root.test/v1/ping', $transport->sent[0]['url']);
     }
 
-    public function testResourcesInheritTheSelectionAndAreIndependentAfterwards(): void
+    public function testResourcesInheritTheSelection(): void
     {
-        [$client, $transport] = $this->client();
-        $client->useServer('production')->withServerVariables(['region' => 'us']);
+        [$client, $transport] = $this->client(server: 'production', variables: ['region' => 'us']);
 
-        $resource = $client->resource(ServersProbe::class);
-        $resource->withServerVariables(['region' => 'eu']);
-        $resource->selectable();
+        $client->resource(ServersProbe::class)->selectable();
         $client->selectable();
 
-        self::assertSame('https://eu.api.example.com/v1/ping', $transport->sent[0]['url']);
+        self::assertSame('https://us.api.example.com/v1/ping', $transport->sent[0]['url']);
         self::assertSame('https://us.api.example.com/v1/ping', $transport->sent[1]['url']);
     }
 
     public function testSeparateConnectionsKeepSeparateSelections(): void
     {
-        [$a, $ta] = $this->client();
+        [$a, $ta] = $this->client(variables: ['region' => 'us']);
         [$b, $tb] = $this->client();
 
-        $a->withServerVariables(['region' => 'us'])->selectable();
+        $a->selectable();
         $b->selectable();
 
         self::assertSame('https://us.api.example.com/v1/ping', $ta->sent[0]['url']);
@@ -275,7 +266,7 @@ final class DynamicServersTest extends TestCase
     public function testConnectedClientUsesTheHelperResult(): void
     {
         $transport = new FakeTransport(new HttpResponse(200, ''));
-        $client = ServersProbe::connect(ServersProbe::serverUrl('production', ['region' => 'us']), transport: $transport);
+        $client = ServersProbe::connect(\Dmorenof\SdkRuntime\Tests\Support\Cfg::make(ServersProbe::serverUrl('production', ['region' => 'us']), transport: $transport));
 
         $client->root();
 
@@ -284,10 +275,8 @@ final class DynamicServersTest extends TestCase
 
     public function testServerVariableMapIsValidated(): void
     {
-        [$client] = $this->client();
-
         $this->expectException(\InvalidArgumentException::class);
-        $client->withServerVariables(['region' => 1]);
+        $this->client(variables: ['region' => 1]);
     }
 
     /** @return iterable<string, array{string, bool}> */

@@ -40,7 +40,7 @@ final class ResponseSelectionTest extends TestCase {
                         return $this->response;
                     }
                 };
-                $client = new class('https://example.test', httpClient: $http, transport: $psr ? null : new FakeTransport(new HttpResponse($status, $body, ['X-Test' => 'preserved']))) extends ApiClient {
+                $client = new class(\Dmorenof\SdkRuntime\Tests\Support\Cfg::make('https://example.test', httpClient: $http, transport: $psr ? null : new FakeTransport(new HttpResponse($status, $body, ['X-Test' => 'preserved'])))) extends ApiClient {
                     public function fetch(): mixed {
                         return $this->executeOperation(['method' => 'GET', 'path' => '/', 'success' => ['2XX'],
                             'responseTypes' => [201 => ['type' => ResponseInterface::class, 'schemaNullable' => false], 204 => ['type' => null, 'schemaNullable' => false], '2XX' => ['type' => User::class, 'schemaNullable' => false]],

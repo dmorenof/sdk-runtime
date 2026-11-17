@@ -72,7 +72,7 @@ final class StreamingMultipartTest extends TestCase
         };
         $upload = new UploadedFile($tracked, 9, UPLOAD_ERR_OK, 'original.bin', 'application/octet-stream');
         $body = new StreamingPayload((object) ['file' => $upload]);
-        $client = StreamingProbeClient::connect('https://example.test', $http);
+        $client = StreamingProbeClient::connect(\Dmorenof\SdkRuntime\Tests\Support\Cfg::make('https://example.test', $http));
         $client->submit($body);
         $client->submit($body);
         self::assertSame(0, $http->entryReads[0]);
@@ -96,7 +96,7 @@ final class StreamingMultipartTest extends TestCase
                 return new Response(200, [], 'ok');
             }
         };
-        $transport = new Psr18Transport($http);
+        $transport = \Dmorenof\SdkRuntime\Tests\Support\Wire::transport($http);
         $transport->addMiddleware(new class($replacement) implements HttpMiddlewareInterface {
             public function __construct(private \Psr\Http\Message\StreamInterface $replacement) {}
             public function beforeRequest(RequestInterface $request): RequestInterface
@@ -119,7 +119,7 @@ final class StreamingMultipartTest extends TestCase
     public function testLegacyCustomTransportsStillReceiveCompleteStringBodies(): void
     {
         $transport = new FakeTransport(new HttpResponse(204, ''));
-        $client = StreamingProbeClient::connect('https://example.test', transport: $transport);
+        $client = StreamingProbeClient::connect(\Dmorenof\SdkRuntime\Tests\Support\Cfg::make('https://example.test', transport: $transport));
         $client->submit(new StreamingPayload((object) ['file' => new UploadedFile(Utils::streamFor("\x00\xff"), 2, UPLOAD_ERR_OK)]));
         $client->submit(null);
         $client->submit(new DTO());
@@ -135,7 +135,7 @@ final class StreamingMultipartTest extends TestCase
         $transport = new FakeTransport(new HttpResponse(204, ''));
         $file = new UploadedFile(Utils::streamFor('bytes'), 5, UPLOAD_ERR_OK);
         try {
-            StreamingProbeClient::connect('https://example.test', transport: $transport)->submit(
+            StreamingProbeClient::connect(\Dmorenof\SdkRuntime\Tests\Support\Cfg::make('https://example.test', transport: $transport))->submit(
                 new StreamingPayload((object) ['file' => $file, 'second' => $file]));
             self::fail('Shared stream cursor accepted.');
         } catch (\UnexpectedValueException) {

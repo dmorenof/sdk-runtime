@@ -246,7 +246,7 @@ final class StreamingResponseTest extends TestCase
     private function legacy(string $body, string $contentType, int $status = 200, ?FakeTransport &$transport = null): StreamingProbe
     {
         $transport = new FakeTransport(new HttpResponse($status, $body, ['content-type' => $contentType]));
-        return StreamingProbe::connect('https://api.example.com', transport: $transport);
+        return StreamingProbe::connect(\Dmorenof\SdkRuntime\Tests\Support\Cfg::make('https://api.example.com', transport: $transport));
     }
 
     public function testOperationReturnsALazyGeneratorOfItems(): void
@@ -305,7 +305,7 @@ final class StreamingResponseTest extends TestCase
     public function testBodylessStatusesReturnNullInsteadOfAnEmptyStream(): void
     {
         $transport = new FakeTransport(new HttpResponse(204, '', []));
-        $client = new class ('https://api.example.com', transport: $transport) extends ApiClient {
+        $client = new class (\Dmorenof\SdkRuntime\Tests\Support\Cfg::make('https://api.example.com', transport: $transport)) extends ApiClient {
             public function go(): mixed
             {
                 return $this->executeOperation(['method' => 'GET', 'path' => '/e', 'success' => [200, 204], 'responseTypes' => [
@@ -377,7 +377,7 @@ final class StreamingResponseTest extends TestCase
     public function testGuzzleClientsAreAskedNotToBufferStreamingResponses(): void
     {
         $guzzle = $this->guzzleLike(new Response(200, ['Content-Type' => 'text/event-stream'], "data: a\n\ndata: b\n\n"));
-        $client = StreamingProbe::connect('https://api.example.com', $guzzle);
+        $client = StreamingProbe::connect(\Dmorenof\SdkRuntime\Tests\Support\Cfg::make('https://api.example.com', $guzzle));
 
         $events = $client->events();
 
@@ -390,7 +390,7 @@ final class StreamingResponseTest extends TestCase
     public function testNonStreamingOperationsKeepUsingPlainPsr18(): void
     {
         $guzzle = $this->guzzleLike(new Response(200, ['Content-Type' => 'application/json'], '{"id":1,"name":"Ada"}'));
-        $client = StreamingProbe::connect('https://api.example.com', $guzzle);
+        $client = StreamingProbe::connect(\Dmorenof\SdkRuntime\Tests\Support\Cfg::make('https://api.example.com', $guzzle));
 
         self::assertSame('Ada', $client->plain()->name);
         self::assertSame(1, $guzzle->psrCalls);

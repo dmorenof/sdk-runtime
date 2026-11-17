@@ -20,7 +20,7 @@ final class SecurityTest extends TestCase
     {
         $headers = [];
         $query = [];
-        SecurityApplier::apply(
+        \Dmorenof\SdkRuntime\Tests\Support\LegacySecurity::apply(
             new SecurityCredentials(['Key' => 'abc']),
             [['Basic' => []], ['Key' => []]],
             self::SCHEMES,
@@ -36,7 +36,7 @@ final class SecurityTest extends TestCase
     {
         $headers = [];
         $query = [];
-        SecurityApplier::apply(
+        \Dmorenof\SdkRuntime\Tests\Support\LegacySecurity::apply(
             new SecurityCredentials(['Basic' => new BasicAuthCredentials('u', 'p'), 'Q' => 'z']),
             [['Basic' => [], 'Q' => []]],
             self::SCHEMES,
@@ -53,14 +53,14 @@ final class SecurityTest extends TestCase
         $headers = [];
         $query = [];
         $this->expectException(\InvalidArgumentException::class);
-        SecurityApplier::apply(new SecurityCredentials(), [['Key' => []]], self::SCHEMES, $headers, $query);
+        \Dmorenof\SdkRuntime\Tests\Support\LegacySecurity::apply(new SecurityCredentials(), [['Key' => []]], self::SCHEMES, $headers, $query);
     }
 
     public function testOptionalSecurityNeedsNoCredentials(): void
     {
         $headers = [];
         $query = [];
-        SecurityApplier::apply(new SecurityCredentials(), [[]], self::SCHEMES, $headers, $query);
+        \Dmorenof\SdkRuntime\Tests\Support\LegacySecurity::apply(new SecurityCredentials(), [[]], self::SCHEMES, $headers, $query);
         self::assertSame([], $headers);
     }
 

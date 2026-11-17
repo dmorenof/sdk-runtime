@@ -6,7 +6,7 @@ if (!is_resource($process)) { throw new RuntimeException('Cannot start HTTP serv
 try {
     stream_set_timeout($pipes[1], 15); $port = trim((string) fgets($pipes[1]));
     if (!ctype_digit($port)) { throw new RuntimeException('Missing HTTP port.'); }
-    $client = new class('http://127.0.0.1:' . $port, securityCredentials: new \Dmorenof\SdkRuntime\Security\SecurityCredentials(['Key' => '%2F'])) extends \Dmorenof\SdkRuntime\ApiClient {
+    $client = new class(\Dmorenof\SdkRuntime\Tests\Support\Cfg::make('http://127.0.0.1:' . $port, securityCredentials: new \Dmorenof\SdkRuntime\Security\SecurityCredentials(['Key' => '%2F']))) extends \Dmorenof\SdkRuntime\ApiClient {
         protected const array SECURITY_SCHEMES = ['Key' => ['type' => 'apiKey', 'scheme' => null, 'location' => 'query', 'parameterName' => 'k']];
         public function call(string $method, ?\Dmorenof\SdkRuntime\DTO $body = null): void {
             $this->executeOperation(['method' => $method, 'path' => '/items', 'success' => [204], 'security' => [['Key' => []]], 'queryAllowReserved' => ['q', 'body', 'labels', 'filter', 'k'], 'querySerialization' => ['labels' => 'multi', 'filter' => 'deepObject']], new \Dmorenof\SdkRuntime\RequestInput(query: ['q' => 'a/b%26c?x', 'body' => 'query/body', 'labels' => ['a/b', 'c?d'], 'filter' => (object) ['code' => 'x/y'], 'plain' => 'a/b', 'k' => 'ignored/value'], headers: ['X-Trace' => 'h/x', 'Cookie' => 'theme=a%2Fb'], body: $body));

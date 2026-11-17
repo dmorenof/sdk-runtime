@@ -50,7 +50,7 @@ final class RedirectPolicyTest extends TestCase
 
     private function send(object $http, string $method, string $url, array $headers = [], mixed $body = null, ?RedirectPolicy $policy = null): ResponseInterface
     {
-        return (new Psr18Transport($http, [], redirectPolicy: $policy ?? new RedirectPolicy()))->sendResponse($method, $url, $headers, $body);
+        return \Dmorenof\SdkRuntime\Tests\Support\Wire::send(\Dmorenof\SdkRuntime\Tests\Support\Wire::transport($http, [], redirectPolicy: $policy ?? new RedirectPolicy()), $method, $url, $headers, $body);
     }
 
     public function testFollowsRelativeAndAbsoluteLocations(): void
@@ -244,10 +244,10 @@ final class RedirectPolicyTest extends TestCase
                 return $response;
             }
         };
-        $transport = new Psr18Transport($http, redirectPolicy: new RedirectPolicy());
+        $transport = \Dmorenof\SdkRuntime\Tests\Support\Wire::transport($http, redirectPolicy: new RedirectPolicy());
         $transport->addMiddleware($middleware);
 
-        $transport->sendResponse('GET', 'https://api.example.com/a', [], null);
+        \Dmorenof\SdkRuntime\Tests\Support\Wire::send($transport, 'GET', 'https://api.example.com/a', [], null);
 
         self::assertSame([2, 2], [$middleware->before, $middleware->after]);
     }
@@ -261,7 +261,7 @@ final class RedirectPolicyTest extends TestCase
     public function testRedirectsAreNotFollowedUnlessEnabled(): void
     {
         $http = $this->http([self::redirect(302, '/pong')]);
-        $client = TestClient::connect('https://api.example.com', httpClient: $http);
+        $client = TestClient::connect(\Dmorenof\SdkRuntime\Tests\Support\Cfg::make('https://api.example.com', httpClient: $http));
         try {
             $client->ping();
             self::fail('Expected ApiException.');
@@ -271,14 +271,14 @@ final class RedirectPolicyTest extends TestCase
             self::assertSame('/pong', $client->lastResponse()->headers->first('Location'));
         }
 
-        $transport = new Psr18Transport($this->http([self::redirect(302, '/x')]));
-        self::assertSame(302, $transport->sendResponse('GET', 'https://api.example.com/a', [], null)->getStatusCode());
+        $transport = \Dmorenof\SdkRuntime\Tests\Support\Wire::transport($this->http([self::redirect(302, '/x')]));
+        self::assertSame(302, \Dmorenof\SdkRuntime\Tests\Support\Wire::send($transport, 'GET', 'https://api.example.com/a', [], null)->getStatusCode());
     }
 
     public function testApiClientFollowsRedirectsWhenOptedIn(): void
     {
         $http = $this->http([self::redirect(302, '/pong'), new Response(200, [], '')]);
-        $client = TestClient::connect('https://api.example.com', httpClient: $http)->withRedirectPolicy(new RedirectPolicy());
+        $client = TestClient::connect(\Dmorenof\SdkRuntime\Tests\Support\Cfg::make('https://api.example.com', httpClient: $http, redirectPolicy: new RedirectPolicy()));
 
         $client->ping();
 
@@ -334,10 +334,10 @@ final class RedirectPolicyTest extends TestCase
             }
         };
         $http = $this->http([self::redirect(302, 'https://cdn.other.test/f'), new Response(200)]);
-        $transport = new Psr18Transport($http, redirectPolicy: new RedirectPolicy());
+        $transport = \Dmorenof\SdkRuntime\Tests\Support\Wire::transport($http, redirectPolicy: new RedirectPolicy());
         $transport->addMiddleware($addsAuthorization);
 
-        $transport->sendResponse('GET', 'https://api.example.com/a', [], null);
+        \Dmorenof\SdkRuntime\Tests\Support\Wire::send($transport, 'GET', 'https://api.example.com/a', [], null);
 
         self::assertSame('Bearer from-middleware', $http->requests[0]->getHeaderLine('Authorization'), 'the original origin gets it');
         self::assertFalse($http->requests[1]->hasHeader('Authorization'), 'another origin never does');
@@ -357,10 +357,10 @@ final class RedirectPolicyTest extends TestCase
             }
         };
         $http = $this->http([self::redirect(302, '/next'), new Response(200)]);
-        $transport = new Psr18Transport($http, redirectPolicy: new RedirectPolicy());
+        $transport = \Dmorenof\SdkRuntime\Tests\Support\Wire::transport($http, redirectPolicy: new RedirectPolicy());
         $transport->addMiddleware($addsAuthorization);
 
-        $transport->sendResponse('GET', 'https://api.example.com/a', [], null);
+        \Dmorenof\SdkRuntime\Tests\Support\Wire::send($transport, 'GET', 'https://api.example.com/a', [], null);
 
         self::assertSame('Bearer from-middleware', $http->requests[1]->getHeaderLine('Authorization'));
     }

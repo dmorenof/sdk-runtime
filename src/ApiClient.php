@@ -3,20 +3,23 @@ declare(strict_types=1);
 
 namespace Dmorenof\SdkRuntime;
 
-use Dmorenof\SdkRuntime\Streaming\StreamDecoder;
-use Dmorenof\SdkRuntime\Transport\HttpResponse;
-use Dmorenof\SdkRuntime\Transport\TransportInterface;
-use GuzzleHttp\Psr7\Response as PsrResponse;
-use GuzzleHttp\Psr7\Utils;
-use Psr\Http\Message\ResponseInterface;
-use Dmorenof\SdkRuntime\Transport\Psr18Transport;
-use Dmorenof\SdkRuntime\Transport\HttpMiddlewareInterface;
 use Dmorenof\SdkRuntime\Execution\InputBuilder;
 use Dmorenof\SdkRuntime\Execution\PreparedRequest;
 use Dmorenof\SdkRuntime\Execution\RequestBuilder;
 use Dmorenof\SdkRuntime\Execution\ResponseDecoder;
+use Dmorenof\SdkRuntime\Execution\ServerSelection;
 use Dmorenof\SdkRuntime\Security\SecurityApplier;
 use Dmorenof\SdkRuntime\Security\SecurityCredentials;
+use Dmorenof\SdkRuntime\Streaming\StreamDecoder;
+use Dmorenof\SdkRuntime\Transport\HttpResponse;
+use Dmorenof\SdkRuntime\Transport\Psr18Transport;
+use Dmorenof\SdkRuntime\Transport\ResponseHeaders;
+use Dmorenof\SdkRuntime\Transport\ResponseInfo;
+use Dmorenof\SdkRuntime\Transport\TransportInterface;
+use GuzzleHttp\Psr7\Request as PsrRequest;
+use GuzzleHttp\Psr7\Response as PsrResponse;
+use GuzzleHttp\Psr7\Utils;
+use Psr\Http\Message\ResponseInterface;
 
 /**
  * Shared endpoint-client infrastructure; derived API classes only emit typed operations.
@@ -42,55 +45,40 @@ abstract class ApiClient
 
     protected TransportInterface $transport;
 
-    private ?\Dmorenof\SdkRuntime\Transport\ResponseInfo $lastResponse = null;
+    private Configuration $configuration;
 
-    private int|string|null $serverSelection = null;
+    private ServerSelection $servers;
 
-    /** @var array<string,string> */
-    private array $serverVariables = [];
+    private ?ResponseInfo $lastResponse = null;
 
-    /**
-     * @param array<string, string> $headers
-     * @param array<string, string> $serverOverrides Declared server URL => environment URL.
-     */
-    final public function __construct(
-        protected string $baseUrl,
-        ?\Psr\Http\Client\ClientInterface $httpClient = null,
-        array $headers = [],
-        ?SecurityCredentials $securityCredentials = null,
-        ?TransportInterface $transport = null,
-        protected array $serverOverrides = [],
-    ) {
-        $normalized = [];
-        foreach ($serverOverrides as $declared => $replacement) {
-            $normalized[ServerUrl::normalize($declared)] = ServerUrl::normalize($replacement);
+    /** Build a client from its configuration. Prefer connect(). */
+    final public function __construct(Configuration $configuration)
+    {
+        $this->servers = new ServerSelection($configuration);
+        $this->configuration = $configuration;
+        $this->securityCredentials = $configuration->securityCredentials ?? new SecurityCredentials();
+        $this->transport = $configuration->transport ?? self::defaultTransport($configuration);
+        if ($configuration->transport !== null && ($configuration->middleware !== [] || $configuration->retryPolicy !== null || $configuration->redirectPolicy !== null)) {
+            throw new \LogicException('Middleware, retry and redirect policies need the default PSR-18 transport.');
         }
-        $this->serverOverrides = $normalized;
-        $this->securityCredentials = $securityCredentials ?? new SecurityCredentials();
-        $this->transport = $transport ?? new Psr18Transport(
-            $httpClient ?? new \GuzzleHttp\Client(['http_errors' => false,
-                'curl' => defined('CURLOPT_PATH_AS_IS') ? [CURLOPT_PATH_AS_IS => true] : []]),
-            $headers,
-        );
     }
 
     /**
-     * @param array<string, string> $headers
-     * @param array<string, string> $serverOverrides Declared server URL => environment URL.
+     * Connect a client. A string is a base URL with every other option at its default.
+     *
+     * @return static
      */
-    public static function connect(
-        string $baseUrl,
-        ?\Psr\Http\Client\ClientInterface $httpClient = null,
-        array $headers = [],
-        ?SecurityCredentials $securityCredentials = null,
-        ?TransportInterface $transport = null,
-        array $serverOverrides = [],
-    ): static {
-        return new static($baseUrl, $httpClient, $headers, $securityCredentials, $transport, $serverOverrides);
+    public static function connect(Configuration|string $configuration): static
+    {
+        if (is_string($configuration)) {
+            $configuration = self::configurationFor($configuration);
+        }
+        return new static($configuration);
     }
 
     /**
-     * Share this client's transport, credentials and middleware with a typed resource.
+     * A client for one resource class (a group of routes), sharing this client's transport, credentials and server choice.
+     *
      * @template T of ApiClient
      * @param class-string<T> $type
      * @return T
@@ -100,11 +88,12 @@ abstract class ApiClient
         if (!is_a($type, static::class, true)) {
             throw new \InvalidArgumentException('Resource must belong to this SDK: ' . $type);
         }
-        $resource = new $type($this->baseUrl, securityCredentials: $this->securityCredentials,
-            transport: $this->transport, serverOverrides: $this->serverOverrides);
-        $resource->serverSelection = $this->serverSelection;
-        $resource->serverVariables = $this->serverVariables;
-        return $resource;
+        $shared = clone $this->configuration;
+        $shared->transport = $this->transport;
+        $shared->middleware = [];
+        $shared->retryPolicy = null;
+        $shared->redirectPolicy = null;
+        return new $type($shared);
     }
 
     /**
@@ -116,117 +105,38 @@ abstract class ApiClient
      */
     public static function serverUrl(int|string $server = 0, array $variables = []): string
     {
-        $declared = self::selectServer(static::SERVERS, $server, static::class);
-        $unknown = array_diff(array_keys($variables), array_keys($declared['variables'] ?? []));
-        if ($unknown !== []) {
-            throw new \InvalidArgumentException('Unknown server variable(s): ' . implode(', ', $unknown) . '.');
-        }
-        $url = ServerUrl::expand($declared, $variables);
-        if (!ServerUrl::isAbsolute($url)) {
-            throw new \InvalidArgumentException('A root server must be an absolute URL; relative servers resolve against a base URL.');
-        }
-        return ServerUrl::normalize($url);
-    }
-
-    /**
-     * Choose which declared server operations use (by index or `name`); null restores the first one.
-     * Applies to operations that declare `servers`; operations without them keep using the base URL.
-     * Resources created afterwards inherit the choice.
-     */
-    public function useServer(int|string|null $server): static
-    {
-        $this->serverSelection = $server;
-        return $this;
-    }
-
-    /**
-     * Values for server template variables, merged with earlier ones. A server ignores variables it does not
-     * declare, and each value is checked against the declared enum when the request is built.
-     *
-     * @param array<mixed> $values Checked at runtime: names must be nonempty strings and values strings.
-     */
-    public function withServerVariables(array $values): static
-    {
-        foreach ($values as $name => $value) {
-            if (!is_string($name) || $name === '' || !is_string($value)) {
-                throw new \InvalidArgumentException('Server variables map nonempty names to string values.');
-            }
-        }
-        /** @var array<string,string> $values */
-        $this->serverVariables = $values + $this->serverVariables;
-        return $this;
-    }
-
-    /**
-     * @param list<array{url:string,name?:string,variables?:array<string,array{default:string,enum?:list<string>}>}> $servers
-     * @return array{url:string,name?:string,variables?:array<string,array{default:string,enum?:list<string>}>}
-     */
-    private static function selectServer(array $servers, int|string|null $selection, string $where): array
-    {
-        $selection ??= 0;
-        if (is_int($selection)) {
-            return $servers[$selection] ?? throw new \InvalidArgumentException("$where declares no server #$selection.");
-        }
-        foreach ($servers as $server) {
-            if (($server['name'] ?? null) === $selection) {
-                return $server;
-            }
-        }
-        throw new \InvalidArgumentException("$where declares no server named '$selection'.");
-    }
-
-    private function baseUrlFor(Operation $spec): string
-    {
-        if ($spec->servers !== []) {
-            $declared = ServerUrl::resolve(
-                ServerUrl::expand(self::selectServer($spec->servers, $this->serverSelection, $spec->label), $this->serverVariables),
-                $this->baseUrl,
-            );
-        } elseif ($spec->serverUrl !== null) {
-            $declared = ServerUrl::resolve($spec->serverUrl, $this->baseUrl);
-        } else {
-            return $this->baseUrl;
-        }
-        return $this->serverOverrides[$declared] ?? $declared;
-    }
-
-    /** Attach an SDK-level interceptor when using the default PSR-18 adapter. */
-    public function withMiddleware(HttpMiddlewareInterface $middleware): static
-    {
-        if (!$this->transport instanceof Psr18Transport) {
-            throw new \LogicException('SDK middleware requires the PSR-18 adapter.');
-        }
-        $this->transport->addMiddleware($middleware);
-        return $this;
+        return ServerSelection::rootUrl(static::SERVERS, $server, $variables, static::class);
     }
 
     /**
      * Status and headers of the last response this client instance received, including error
      * statuses; null before the first request. Headers are typed when the operation declares them.
      */
-    public function lastResponse(): ?\Dmorenof\SdkRuntime\Transport\ResponseInfo
+    public function lastResponse(): ?ResponseInfo
     {
         return $this->lastResponse;
     }
 
-    /** Opt in to following 3xx responses, with safe cross-origin rules; by default they are returned as they arrive. */
-    public function withRedirectPolicy(?\Dmorenof\SdkRuntime\Transport\RedirectPolicy $policy): static
+    private static function configurationFor(string $baseUrl): Configuration
     {
-        if (!$this->transport instanceof Psr18Transport) {
-            throw new \LogicException('Redirect policy requires the PSR-18 adapter.');
-        }
-        $this->transport->setRedirectPolicy($policy);
-        return $this;
+        $configuration = new Configuration();
+        $configuration->baseUrl = $baseUrl;
+        return $configuration;
     }
 
-    /** Opt in to retrying transient failures when using the default PSR-18 adapter. */
-    public function withRetryPolicy(?\Dmorenof\SdkRuntime\Transport\RetryPolicy $policy): static
+    private static function defaultTransport(Configuration $configuration): Psr18Transport
     {
-        if (!$this->transport instanceof Psr18Transport) {
-            throw new \LogicException('Retry policy requires the PSR-18 adapter.');
+        $transport = new Psr18Transport(
+            $configuration->httpClient ?? new \GuzzleHttp\Client(['http_errors' => false,
+                'curl' => defined('CURLOPT_PATH_AS_IS') ? [CURLOPT_PATH_AS_IS => true] : []]),
+            $configuration->headers,
+        );
+        $transport->setRetryPolicy($configuration->retryPolicy);
+        $transport->setRedirectPolicy($configuration->redirectPolicy);
+        foreach ($configuration->middleware as $middleware) {
+            $transport->addMiddleware($middleware);
         }
-        $this->transport->setRetryPolicy($policy);
-        return $this;
+        return $transport;
     }
 
     /**
@@ -288,16 +198,13 @@ abstract class ApiClient
         $streaming = $spec->streamsResponse();
         $baseUrl = null;
         for ($attempt = 0;; $attempt++) {
-            $attemptHeaders = $request->headers;
-            $securityQuery = [];
-            /** @var list<\Dmorenof\SdkRuntime\Security\TokenProviderInterface> $providers */
-            $providers = [];
-            SecurityApplier::apply($this->securityCredentials, $spec->security, static::SECURITY_SCHEMES, $attemptHeaders, $securityQuery, $providers);
-            $url = $this->requestUrl($spec, $request, $securityQuery, $baseUrl);
+            $security = SecurityApplier::apply($this->securityCredentials, $spec->security, static::SECURITY_SCHEMES);
+            $attemptHeaders = CookieHeader::merge($request->headers, $security->headers);
+            $url = $this->requestUrl($spec, $request, $security->query, $baseUrl);
 
             // The PSR-18 adapter answers with PSR-7; legacy transports answer with a buffered HttpResponse.
             if ($this->transport instanceof Psr18Transport) {
-                $raw = $this->transport->sendResponse($spec->method, $url, $attemptHeaders, $bodyBytes, $streaming);
+                $raw = $this->transport->sendResponse(new PsrRequest($spec->method, $url, $attemptHeaders, $bodyBytes ?? ''), $streaming);
                 $status = $raw->getStatusCode();
                 $wireHeaders = $raw->getHeaders();
                 $contentType = $raw->getHeaderLine('Content-Type');
@@ -308,8 +215,8 @@ abstract class ApiClient
                 $wireHeaders = $raw->headers;
                 $contentType = $raw->header('Content-Type');
             }
-            if ($attempt === 0 && $providers !== [] && $replayable && $status === 401 && !$spec->succeeded(401)) {
-                foreach ($providers ?? [] as $provider) {
+            if ($attempt === 0 && $security->providers !== [] && $replayable && $status === 401 && !$spec->succeeded(401)) {
+                foreach ($security->providers as $provider) {
                     $provider->invalidate();
                 }
                 continue;
@@ -345,7 +252,7 @@ abstract class ApiClient
         }
         $allowReserved = array_values(array_diff($spec->queryAllowReserved, array_keys($securityQuery)));
         $encodedQuery = QuerySerializer::encode($query, $formats, allowReserved: $allowReserved);
-        $baseUrl ??= $this->baseUrlFor($spec);
+        $baseUrl ??= $this->servers->urlFor($spec);
         $url = rtrim($baseUrl, '/') . $path;
         return $encodedQuery === '' ? $url : $url . '?' . $encodedQuery;
     }
@@ -353,9 +260,9 @@ abstract class ApiClient
     /** @param array<array-key, array<string>|string> $headers */
     private function recordResponse(Operation $spec, int $status, array $headers): void
     {
-        $this->lastResponse = new \Dmorenof\SdkRuntime\Transport\ResponseInfo(
+        $this->lastResponse = new ResponseInfo(
             $status,
-            new \Dmorenof\SdkRuntime\Transport\ResponseHeaders($headers, $spec->responseHeadersFor($status)),
+            new ResponseHeaders($headers, $spec->responseHeadersFor($status)),
             $spec->label,
         );
     }

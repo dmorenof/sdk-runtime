@@ -17,11 +17,11 @@ final class ApiClientTest extends TestCase
     private function client(int $status, string $body): array
     {
         $transport = new FakeTransport(new HttpResponse($status, $body));
-        $client = TestClient::connect(
+        $client = TestClient::connect(\Dmorenof\SdkRuntime\Tests\Support\Cfg::make(
             'https://api.example.com/',
             securityCredentials: new SecurityCredentials(['Bearer' => 'secret']),
             transport: $transport,
-        );
+        ));
         return [$client, $transport];
     }
 
@@ -52,7 +52,7 @@ final class ApiClientTest extends TestCase
     public function testRefusesToSendWithoutRequiredCredentials(): void
     {
         $transport = new FakeTransport(new HttpResponse(200, '{}'));
-        $client = TestClient::connect('https://api.example.com', transport: $transport);
+        $client = TestClient::connect(\Dmorenof\SdkRuntime\Tests\Support\Cfg::make('https://api.example.com', transport: $transport));
 
         try {
             $client->getUser(1);

@@ -15,20 +15,13 @@ abstract class Dmorenof\SdkRuntime\ApiClient
     method protected executeArguments(array $operation, Dmorenof\SdkRuntime\DTO|array $path = array ( ), ?Dmorenof\SdkRuntime\DTO $parameters = NULL, ?Dmorenof\SdkRuntime\DTO $body = NULL): mixed
     method protected executeBody(array $operation, mixed $body, Dmorenof\SdkRuntime\DTO|array $path = array ( ), ?Dmorenof\SdkRuntime\DTO $parameters = NULL): mixed
     method protected executeOperation(array $operation, Dmorenof\SdkRuntime\RequestInput $input = \Dmorenof\SdkRuntime\RequestInput::__set_state(array( 'bodyPresent' => false, 'path' => array ( ), 'query' => array ( ), 'headers' => array ( ), 'body' => NULL, ))): mixed
-    method public final __construct(string $baseUrl, ?Psr\Http\Client\ClientInterface $httpClient = NULL, array $headers = array ( ), ?Dmorenof\SdkRuntime\Security\SecurityCredentials $securityCredentials = NULL, ?Dmorenof\SdkRuntime\Transport\TransportInterface $transport = NULL, array $serverOverrides = array ( ))
+    method public final __construct(Dmorenof\SdkRuntime\Configuration $configuration)
     method public lastResponse(): ?Dmorenof\SdkRuntime\Transport\ResponseInfo
     method public resource(string $type): self
-    method public static connect(string $baseUrl, ?Psr\Http\Client\ClientInterface $httpClient = NULL, array $headers = array ( ), ?Dmorenof\SdkRuntime\Security\SecurityCredentials $securityCredentials = NULL, ?Dmorenof\SdkRuntime\Transport\TransportInterface $transport = NULL, array $serverOverrides = array ( )): static
+    method public static connect(Dmorenof\SdkRuntime\Configuration|string $configuration): static
     method public static serverUrl(string|int $server = 0, array $variables = array ( )): string
-    method public useServer(string|int|null $server): static
-    method public withMiddleware(Dmorenof\SdkRuntime\Transport\HttpMiddlewareInterface $middleware): static
-    method public withRedirectPolicy(?Dmorenof\SdkRuntime\Transport\RedirectPolicy $policy): static
-    method public withRetryPolicy(?Dmorenof\SdkRuntime\Transport\RetryPolicy $policy): static
-    method public withServerVariables(array $values): static
     property protected Dmorenof\SdkRuntime\Security\SecurityCredentials $securityCredentials
     property protected Dmorenof\SdkRuntime\Transport\TransportInterface $transport
-    property protected array $serverOverrides
-    property protected string $baseUrl
 
 class Dmorenof\SdkRuntime\ApiException extends RuntimeException
     method public __construct(Dmorenof\SdkRuntime\Transport\HttpResponse $response, string $operation, mixed $payload = NULL, ?Throwable $previous = NULL)
@@ -38,12 +31,16 @@ class Dmorenof\SdkRuntime\ApiException extends RuntimeException
 
 class Dmorenof\SdkRuntime\Configuration
     property public ?Dmorenof\SdkRuntime\Security\SecurityCredentials $securityCredentials
+    property public ?Dmorenof\SdkRuntime\Transport\RedirectPolicy $redirectPolicy
+    property public ?Dmorenof\SdkRuntime\Transport\RetryPolicy $retryPolicy
     property public ?Dmorenof\SdkRuntime\Transport\TransportInterface $transport
     property public ?Psr\Http\Client\ClientInterface $httpClient
     property public array $headers
     property public array $middleware
     property public array $serverOverrides
+    property public array $serverVariables
     property public string $baseUrl
+    property public string|int|null $server
 
 class Dmorenof\SdkRuntime\DTO implements JsonSerializable, Stringable
     const protected MODEL_VALIDATION
@@ -246,10 +243,10 @@ final readonly class Dmorenof\SdkRuntime\Transport\HttpResponse
     property public readonly string $body
 
 final class Dmorenof\SdkRuntime\Transport\Psr18Transport implements Dmorenof\SdkRuntime\Transport\TransportInterface
-    method public __construct(Psr\Http\Client\ClientInterface $client, array $defaultHeaders = array ( ), ?Dmorenof\SdkRuntime\Transport\RetryPolicy $retryPolicy = NULL, ?Closure $sleeper = NULL, ?Dmorenof\SdkRuntime\Transport\RedirectPolicy $redirectPolicy = NULL)
+    method public __construct(Psr\Http\Client\ClientInterface $client, array $defaultHeaders = array ( ), ?Closure $sleeper = NULL)
     method public addMiddleware(Dmorenof\SdkRuntime\Transport\HttpMiddlewareInterface $middleware): void
     method public send(string $method, string $url, array $headers, Psr\Http\Message\StreamInterface|string|null $body): Dmorenof\SdkRuntime\Transport\HttpResponse
-    method public sendResponse(string $method, string $url, array $headers, Psr\Http\Message\StreamInterface|string|null $body, bool $stream = false): Psr\Http\Message\ResponseInterface
+    method public sendResponse(Psr\Http\Message\RequestInterface $request, bool $stream = false): Psr\Http\Message\ResponseInterface
     method public setRedirectPolicy(?Dmorenof\SdkRuntime\Transport\RedirectPolicy $policy): void
     method public setRetryPolicy(?Dmorenof\SdkRuntime\Transport\RetryPolicy $policy): void
 

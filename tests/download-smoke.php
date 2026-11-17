@@ -12,7 +12,7 @@ $http = empty($argv[2]) ? new class($bytes) implements \Psr\Http\Client\ClientIn
             'Content-Disposition' => 'attachment; filename="large.bin"'], \GuzzleHttp\Psr7\Utils::streamFor($file));
     }
 } : null;
-$client = new class($argv[2] ?? 'https://example.test', httpClient: $http) extends \Dmorenof\SdkRuntime\ApiClient {
+$client = new class(\Dmorenof\SdkRuntime\Tests\Support\Cfg::make($argv[2] ?? 'https://example.test', httpClient: $http)) extends \Dmorenof\SdkRuntime\ApiClient {
     public function download(): \Psr\Http\Message\ResponseInterface
     {
         return $this->executeOperation(['method' => 'GET', 'path' => '/download',

@@ -16,7 +16,7 @@ $http = new class implements \Psr\Http\Client\ClientInterface {
         return new \GuzzleHttp\Psr7\Response(204);
     }
 };
-$client = new class('https://example.test', httpClient: $http) extends \Dmorenof\SdkRuntime\ApiClient {
+$client = new class(\Dmorenof\SdkRuntime\Tests\Support\Cfg::make('https://example.test', httpClient: $http)) extends \Dmorenof\SdkRuntime\ApiClient {
     public function numeric(): void {
         $this->executeOperation(['method' => 'GET', 'path' => '/numeric/{0}', 'success' => [204],
             'pathSerialization' => ['0' => 'csv'], 'headerSerialization' => ['0' => 'csv']], new \Dmorenof\SdkRuntime\RequestInput(path: ['0' => ['a,b', 'c/d']], headers: ['0' => ['alpha', 'beta']]));

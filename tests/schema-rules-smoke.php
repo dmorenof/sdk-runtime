@@ -6,7 +6,7 @@ if (!is_resource($process)) { throw new RuntimeException('Cannot start HTTP serv
 try {
     stream_set_timeout($pipes[1], 15); $port = trim((string) fgets($pipes[1]));
     if (!ctype_digit($port)) { throw new RuntimeException('Missing port.'); }
-    $client = new class('http://127.0.0.1:' . $port) extends \Dmorenof\SdkRuntime\ApiClient {
+    $client = new class(\Dmorenof\SdkRuntime\Tests\Support\Cfg::make('http://127.0.0.1:' . $port)) extends \Dmorenof\SdkRuntime\ApiClient {
         public function submit(\Dmorenof\SdkRuntime\DTO $body): mixed {
             return $this->executeOperation(['method' => 'POST', 'path' => '/rules', 'responseType' => $body::class,
                 'validation' => ['amount' => ['multipleOf' => 0.1]]], new \Dmorenof\SdkRuntime\RequestInput(query: ['amount' => 0.3], body: $body));

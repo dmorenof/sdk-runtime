@@ -66,7 +66,7 @@ final class SchemaRulesBlockTest extends TestCase {
     }
     public function testScalarResponseRulesUseStatusSpecificAndLegacyMetadata(): void {
         foreach ([false, true] as $statusMap) {
-            $client = new class('https://example.test', transport: new \Dmorenof\SdkRuntime\Tests\Fixtures\FakeTransport(new \Dmorenof\SdkRuntime\Transport\HttpResponse(200, '0.31'))) extends \Dmorenof\SdkRuntime\ApiClient {
+            $client = new class(\Dmorenof\SdkRuntime\Tests\Support\Cfg::make('https://example.test', transport: new \Dmorenof\SdkRuntime\Tests\Fixtures\FakeTransport(new \Dmorenof\SdkRuntime\Transport\HttpResponse(200, '0.31')))) extends \Dmorenof\SdkRuntime\ApiClient {
                 public function fetch(bool $statusMap): mixed {
                     return $this->executeOperation(['method' => 'GET', 'path' => '/', 'responseType' => 'float'] + ($statusMap
                         ? ['responseTypes' => [200 => ['type' => 'float', 'schemaNullable' => false, 'rules' => ['multipleOf' => 0.1]]]]

@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 namespace Dmorenof\SdkRuntime\Tests;
-use Dmorenof\SdkRuntime\QuerySerializer;
+use Dmorenof\SdkRuntime\ParameterStyles;
 use PHPUnit\Framework\TestCase;
 final class PathStyleTest extends TestCase {
  /** Examples from https://github.com/uri-templates/uritemplate-test (RFC 6570 sections 3.2.5/3.2.7). */
@@ -13,7 +13,7 @@ final class PathStyleTest extends TestCase {
     $value=$section->variables->{$m[3]}??null; if($value===null)continue;
     $kind=is_array($value)?'list':($value instanceof \stdClass?'object':'scalar');
     $format=($m[2]==='.'?'label':'matrix').($kind==='scalar'?'':'-'.$kind.(isset($m[4])?'-explode':''));
-    $actual=($m[1]??'').QuerySerializer::path($value,$m[3],$format);
+    $actual=($m[1]??'').ParameterStyles::path($value,$m[3],$format);
     if(is_array($expected))self::assertContains($actual,$expected,$template);else self::assertSame($expected,$actual,$template);
    }
   }
@@ -27,7 +27,7 @@ final class PathStyleTest extends TestCase {
    [(object)['a,b'=>'x/y','flag'=>false],'id','label-object-explode','.a%2Cb=x%2Fy.flag=false'],
    [(object)['a'=>''],'id','matrix-object-explode',';a'],
    [['a,b','%2F','ñ'],'id','label-list','.a%2Cb,%252F,%C3%B1'],
-  ] as [$value,$name,$format,$expected]) self::assertSame($expected,QuerySerializer::path($value,$name,$format));
+  ] as [$value,$name,$format,$expected]) self::assertSame($expected,ParameterStyles::path($value,$name,$format));
  }
  public function testDefaultTransportPreservesAnEmptyLabelOnTheActualWire(): void {
   $process=proc_open([PHP_BINARY,__DIR__.'/path-style-http-server.php'],[0=>['pipe','r'],1=>['pipe','w'],2=>['pipe','w']],$pipes);
@@ -46,7 +46,7 @@ final class PathStyleTest extends TestCase {
  }
  public function testUndeclaredFormatsAndUnsupportedValuesFail(): void {
   foreach([['x','bogus'],[[null],'matrix-list'],[(object)['nested'=>[]],'label-object'],[INF,'matrix']] as [$value,$format]) {
-   try{QuerySerializer::path($value,'id',$format);self::fail('Invalid value accepted.');}
+   try{ParameterStyles::path($value,'id',$format);self::fail('Invalid value accepted.');}
    catch(\UnexpectedValueException|\InvalidArgumentException){self::assertTrue(true);}
   }
  }

@@ -76,3 +76,17 @@ Left as they are on purpose: `StreamDecoder::sse` is a small state machine whose
 
 ### D11. `Operation` keeps a 28-parameter private constructor
 It is the one place where the length is honest: the object has 28 immutable properties, one per metadata key. The constructor is private (D1), so no caller sees it, and `fromArray()` is the only door. Replacing it with 28 setters or a builder would add code to hide a list that is already the specification of the format.
+
+### D12. `QuerySerializer` was three things and is now three classes
+At 357 lines it wrote query strings, wrote path and header styles (simple, label, matrix) and serialized parameters carried as media. They share only how to read a value, so it is now `QuerySerializer` (query strings), `ParameterStyles` (path, header and content parameters) and `ParameterValues` (finite scalars, flat objects, lists). Each can be read and changed without the others.
+
+### D13. `ApiClient` handles PSR-7 responses only
+It kept two code paths for the two kinds of transport (PSR-7 and a custom one answering a buffered `HttpResponse`), with the same `instanceof` test repeated five times. A custom transport's response is now wrapped into a PSR-7 response once, right after the round trip, and everything after that is a single path.
+
+### D14. Left open on purpose
+These came up in the review and were not changed, because each is a behavior change that deserves its own decision rather than a refactor:
+
+- **Unknown fields in a response are rejected** (`Unknown JSON property`). Strict reading is predictable but breaks older clients when an API adds a field. A tolerant default (ignore unknown fields in responses, keep rejecting them in requests) is the likely next step.
+- **Error types are not uniform** (`JsonException` for an empty body, `ValueError` for an enum, `UnexpectedValueException` for a type, `InvalidArgumentException` for an unknown field). A small family of runtime exceptions would be easier to catch.
+- **`lastResponse()` is instance state.** It is not safe to share one client between concurrent tasks. Returning the response metadata with the result would remove the state, at the cost of a different return type.
+- **`sdk-generator` rejects `oauth2` and `openIdConnect` security schemes.** The runtime implements OAuth2; the generator does not emit those scheme types yet.

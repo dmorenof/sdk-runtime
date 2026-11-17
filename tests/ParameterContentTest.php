@@ -4,7 +4,7 @@ namespace Dmorenof\SdkRuntime\Tests;
 use Dmorenof\SdkRuntime\ApiClient;
 use Dmorenof\SdkRuntime\DTO;
 use Dmorenof\SdkRuntime\Map;
-use Dmorenof\SdkRuntime\QuerySerializer;
+use Dmorenof\SdkRuntime\ParameterStyles;
 use Dmorenof\SdkRuntime\Tests\Fixtures\User;
 use Dmorenof\SdkRuntime\Tests\Fixtures\Tags;
 use Dmorenof\SdkRuntime\Tests\Fixtures\FakeTransport;
@@ -26,31 +26,31 @@ class ContentClient extends ApiClient {
 final class ParameterContentTest extends TestCase {
     public function testContentReusesRequestDirectionCollectionsAndNumericMapKeys(): void {
         $user = new User((object) ['name' => 'a/b', 'age' => 0, 'id' => 7]);
-        self::assertSame('{"name":"a\/b","age":0}', QuerySerializer::content($user, 'application/json'));
-        self::assertSame('["x\/y",""]', QuerySerializer::content(new Tags(['x/y', '']), 'application/json'));
-        self::assertSame('{"0":"value"}', QuerySerializer::content(new Map((object) ['0' => 'value']), 'application/json'));
-        self::assertSame('[]', QuerySerializer::content([], 'application/json'));
-        self::assertSame('false', QuerySerializer::content(false, 'application/json'));
-        self::assertSame('0', QuerySerializer::content(0, 'application/json'));
-        self::assertSame('""', QuerySerializer::content('', 'application/json'));
-        self::assertSame('a+/b==', QuerySerializer::content('a+/b==', 'text/plain'));
+        self::assertSame('{"name":"a\/b","age":0}', ParameterStyles::content($user, 'application/json'));
+        self::assertSame('["x\/y",""]', ParameterStyles::content(new Tags(['x/y', '']), 'application/json'));
+        self::assertSame('{"0":"value"}', ParameterStyles::content(new Map((object) ['0' => 'value']), 'application/json'));
+        self::assertSame('[]', ParameterStyles::content([], 'application/json'));
+        self::assertSame('false', ParameterStyles::content(false, 'application/json'));
+        self::assertSame('0', ParameterStyles::content(0, 'application/json'));
+        self::assertSame('""', ParameterStyles::content('', 'application/json'));
+        self::assertSame('a+/b==', ParameterStyles::content('a+/b==', 'text/plain'));
         $sparse = new Tags(['first', 'second']); unset($sparse[0]);
-        self::assertSame('["second"]', QuerySerializer::content($sparse, 'application/json'));
+        self::assertSame('["second"]', ParameterStyles::content($sparse, 'application/json'));
         $user->tags = $sparse;
-        self::assertSame('{"name":"a\/b","age":0,"tags":["second"]}', QuerySerializer::content($user, 'application/json'));
-        $user->age = -1; $this->expectException(\UnexpectedValueException::class); QuerySerializer::content($user, 'application/json');
+        self::assertSame('{"name":"a\/b","age":0,"tags":["second"]}', ParameterStyles::content($user, 'application/json'));
+        $user->age = -1; $this->expectException(\UnexpectedValueException::class); ParameterStyles::content($user, 'application/json');
     }
     public function testNativeJsonErrorsAndPlainHeaderOctetsFailBeforeTransport(): void {
         foreach (['null' => null, 'object' => new \stdClass()] as $value) {
-            try { QuerySerializer::content($value, 'application/json'); self::fail('Untyped or null content accepted.'); } catch (\UnexpectedValueException) { self::assertTrue(true); }
+            try { ParameterStyles::content($value, 'application/json'); self::fail('Untyped or null content accepted.'); } catch (\UnexpectedValueException) { self::assertTrue(true); }
         }
         foreach (["x\r\nX: bad", ' leading', 'trailing '] as $value) {
-            try { QuerySerializer::content($value, 'text/plain', true); self::fail('Header changed content bytes.'); } catch (\UnexpectedValueException) { self::assertTrue(true); }
+            try { ParameterStyles::content($value, 'text/plain', true); self::fail('Header changed content bytes.'); } catch (\UnexpectedValueException) { self::assertTrue(true); }
         }
-        self::assertSame('a,b=c', QuerySerializer::content('a,b=c', 'text/plain', true));
-        self::assertSame('"line\\nnext"', QuerySerializer::content("line\nnext", 'application/json', true));
+        self::assertSame('a,b=c', ParameterStyles::content('a,b=c', 'text/plain', true));
+        self::assertSame('"line\\nnext"', ParameterStyles::content("line\nnext", 'application/json', true));
         foreach ([INF, "\xFF"] as $value) {
-            try { QuerySerializer::content($value, 'application/json'); self::fail('Invalid JSON accepted.'); } catch (\JsonException) { self::assertTrue(true); }
+            try { ParameterStyles::content($value, 'application/json'); self::fail('Invalid JSON accepted.'); } catch (\JsonException) { self::assertTrue(true); }
         }
     }
     public function testBothTransportsEncodeContentOnceAndKeepBodyAndRawCookiesIndependent(): void {

@@ -10,6 +10,6 @@ try{
   public function target(string $format):string{return $this->executeOperation(['method'=>'GET','path'=>'/items/{id}','responseType'=>'string','pathSerialization'=>['id'=>$format]], new \Dmorenof\SdkRuntime\RequestInput(path: ['id'=>'']));}
  };
  if($client->target('label')!=='/items/.'||$client->target('matrix')!=='/items/;id')throw new RuntimeException('Transport changed the path expansion.');
- if(\Dmorenof\SdkRuntime\QuerySerializer::path((object)['0'=>'value'],'0','matrix-object-explode')!==';0=value')throw new RuntimeException('Numeric object key confused with a list.');
+ if(\Dmorenof\SdkRuntime\ParameterStyles::path((object)['0'=>'value'],'0','matrix-object-explode')!==';0=value')throw new RuntimeException('Numeric object key confused with a list.');
 }finally{foreach($pipes as $pipe)fclose($pipe);proc_terminate($process);proc_close($process);}
 echo 'PATH_STYLE_RUNTIME_HTTP_OK',PHP_EOL;

@@ -9,6 +9,7 @@ use Dmorenof\SdkRuntime\DTO;
 use Dmorenof\SdkRuntime\Map;
 use Dmorenof\SdkRuntime\Operation;
 use Dmorenof\SdkRuntime\QuerySerializer;
+use Dmorenof\SdkRuntime\ParameterStyles;
 use Dmorenof\SdkRuntime\RequestInput;
 use Dmorenof\SdkRuntime\TypedArray;
 
@@ -59,7 +60,7 @@ final class RequestParameters
                 throw new \UnexpectedValueException("Path parameter $name cannot be null.");
             }
             if (isset($spec->pathSerialization[$name])) {
-                $encoded = QuerySerializer::path($value, (string) $name, $spec->pathSerialization[$name]);
+                $encoded = ParameterStyles::path($value, (string) $name, $spec->pathSerialization[$name]);
             } elseif (is_array($value) || is_object($value)) {
                 throw new \UnexpectedValueException("Structured path parameter $name requires serialization metadata.");
             } else {
@@ -103,7 +104,7 @@ final class RequestParameters
     {
         foreach ($formats as $name => $media) {
             if (array_key_exists($name, $parameters) && $parameters[$name] !== null) {
-                $parameters[$name] = QuerySerializer::content($parameters[$name], $media, $header);
+                $parameters[$name] = ParameterStyles::content($parameters[$name], $media, $header);
             }
         }
         return $parameters;
@@ -120,7 +121,7 @@ final class RequestParameters
         foreach ($values as $name => $value) {
             if ($value !== null) {
                 if (isset($formats[$name])) {
-                    $result[$name] = QuerySerializer::simple($value, (string) $name, $formats[$name], header: true);
+                    $result[$name] = ParameterStyles::simple($value, (string) $name, $formats[$name], header: true);
                 } elseif (is_array($value) || is_object($value)) {
                     throw new \UnexpectedValueException("Structured header parameter $name requires serialization metadata.");
                 } else {
@@ -166,7 +167,7 @@ final class RequestParameters
         foreach ($content as $name => $media) {
             if ($media !== 'text/plain') { throw new \InvalidArgumentException('Cookie content supports only text/plain.'); }
             if (array_key_exists($name, $cookies) && $cookies[$name] !== null) {
-                $rawCookies[] = CookieHeader::pair((string) $name, QuerySerializer::content($cookies[$name], $media));
+                $rawCookies[] = CookieHeader::pair((string) $name, ParameterStyles::content($cookies[$name], $media));
             }
             unset($cookies[$name]);
         }

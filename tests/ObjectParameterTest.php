@@ -6,6 +6,7 @@ use Dmorenof\SdkRuntime\ApiClient;
 use Dmorenof\SdkRuntime\DTO;
 use Dmorenof\SdkRuntime\Map;
 use Dmorenof\SdkRuntime\QuerySerializer;
+use Dmorenof\SdkRuntime\ParameterStyles;
 use Dmorenof\SdkRuntime\Tests\Fixtures\FakeTransport;
 use Dmorenof\SdkRuntime\Tests\Fixtures\User;
 use Dmorenof\SdkRuntime\Transport\HttpResponse;
@@ -45,14 +46,14 @@ class FlatParameterClient extends ApiClient {
 final class ObjectParameterTest extends TestCase {
     public function testSimpleObjectsEncodeKeysAndValuesWithExplicitExplode(): void {
         $object = (object) ['co,de' => 'a,b/ñ', 'active' => false, 'count' => 0, 'percent' => '%2F'];
-        self::assertSame('co%2Cde,a%2Cb%2F%C3%B1,active,false,count,0,percent,%252F', QuerySerializer::simple($object, 'filter', 'object'));
-        self::assertSame('co%2Cde=a%2Cb%2F%C3%B1,active=false,count=0,percent=%252F', QuerySerializer::simple($object, 'filter', 'object-explode'));
-        self::assertSame('code=safe,active=false', QuerySerializer::simple((object) ['code' => 'safe', 'active' => false], 'X-Filter', 'object-explode', true));
-        self::assertSame('code,safe,active,false', QuerySerializer::simple((object) ['code' => 'safe', 'active' => false], 'X-Filter', 'object', true));
-        self::assertSame('x=a=b', QuerySerializer::simple((object) ['x' => 'a=b'], 'X-Filter', 'object-explode', true));
-        self::assertSame('0,value', QuerySerializer::simple((object) ['0' => 'value'], '0', 'object'));
-        self::assertSame('', QuerySerializer::simple(new \stdClass(), 'filter', 'object'));
-        self::assertSame('x%5By%5D,value', QuerySerializer::simple((object) ['x[y]' => 'value'], 'filter', 'object'));
+        self::assertSame('co%2Cde,a%2Cb%2F%C3%B1,active,false,count,0,percent,%252F', ParameterStyles::simple($object, 'filter', 'object'));
+        self::assertSame('co%2Cde=a%2Cb%2F%C3%B1,active=false,count=0,percent=%252F', ParameterStyles::simple($object, 'filter', 'object-explode'));
+        self::assertSame('code=safe,active=false', ParameterStyles::simple((object) ['code' => 'safe', 'active' => false], 'X-Filter', 'object-explode', true));
+        self::assertSame('code,safe,active,false', ParameterStyles::simple((object) ['code' => 'safe', 'active' => false], 'X-Filter', 'object', true));
+        self::assertSame('x=a=b', ParameterStyles::simple((object) ['x' => 'a=b'], 'X-Filter', 'object-explode', true));
+        self::assertSame('0,value', ParameterStyles::simple((object) ['0' => 'value'], '0', 'object'));
+        self::assertSame('', ParameterStyles::simple(new \stdClass(), 'filter', 'object'));
+        self::assertSame('x%5By%5D,value', ParameterStyles::simple((object) ['x[y]' => 'value'], 'filter', 'object'));
     }
     public function testQueryFormObjectsReuseTheChosenNativeEncoding(): void {
         $object = (object) ['city' => 'x y,ñ', 'active' => false];
@@ -73,12 +74,12 @@ final class ObjectParameterTest extends TestCase {
     public function testUndefinedNestingNullAndAmbiguousHeaderValuesAreRejected(): void {
         foreach ([(object) ['x' => null], (object) ['x' => [1]], (object) ['x' => new \stdClass()], (object) ['x' => INF],
             (object) ['' => 'value'], ['x' => 'value']] as $object) {
-            try { QuerySerializer::simple($object, 'filter', 'object'); self::fail('Invalid shape accepted.'); }
+            try { ParameterStyles::simple($object, 'filter', 'object'); self::fail('Invalid shape accepted.'); }
             catch (\UnexpectedValueException) { self::assertTrue(true); }
         }
         foreach ([(object) ['x' => 'a,b'], (object) ['x,y' => 'value'],
             (object) ['x=y' => 'value'], (object) ['x' => "a\r\nX: value"], (object) ['x' => ' value']] as $object) {
-            try { QuerySerializer::simple($object, 'X-Filter', 'object-explode', true); self::fail('Ambiguous header accepted.'); }
+            try { ParameterStyles::simple($object, 'X-Filter', 'object-explode', true); self::fail('Ambiguous header accepted.'); }
             catch (\UnexpectedValueException) { self::assertTrue(true); }
         }
     }

@@ -68,7 +68,7 @@ final class QuerySerializer
             if (is_array($value)) {
                 throw new \UnexpectedValueException("Query array $name requires declared serialization metadata.");
             }
-            $pairs[$encodedName] = $encodeValue(self::scalar($value));
+            $pairs[$encodedName] = $encodeValue(ParameterValues::scalar($value));
             return $pairs;
         }
         return match ($format) {
@@ -102,16 +102,16 @@ final class QuerySerializer
     private function addObject(array $pairs, int|string $name, mixed $value, string $format, \Closure $encodeValue): array
     {
         $items = [];
-        foreach (self::objectFields($value, (string) $name, deep: false) as $key => $item) {
+        foreach (ParameterValues::objectFields($value, (string) $name, deep: false) as $key => $item) {
             $encodedKey = $format === 'form-object' ? $encodeValue((string) $key) : ($this->encode)((string) $key);
             if ($format === 'form-object-explode') {
                 if (((string) $key !== (string) $name && array_key_exists($key, $this->parameters)) || array_key_exists($encodedKey, $pairs)) {
                     throw new \UnexpectedValueException("Expanded query property $key collides with another parameter.");
                 }
-                $pairs[$encodedKey] = $encodeValue(self::scalar($item));
+                $pairs[$encodedKey] = $encodeValue(ParameterValues::scalar($item));
             } else {
                 $items[] = $encodedKey;
-                $items[] = $encodeValue(self::scalar($item));
+                $items[] = $encodeValue(ParameterValues::scalar($item));
             }
         }
         if ($items !== []) {
@@ -127,12 +127,12 @@ final class QuerySerializer
      */
     private function addDeepObject(array $pairs, int|string $name, mixed $value, \Closure $encodeValue): array
     {
-        foreach (self::objectFields($value, (string) $name) as $key => $item) {
+        foreach (ParameterValues::objectFields($value, (string) $name) as $key => $item) {
             $expanded = $name . '[' . $key . ']';
             if (array_key_exists($expanded, $this->parameters)) {
                 throw new \UnexpectedValueException("Deep query parameter $expanded collides with another query parameter.");
             }
-            $pairs[($this->encode)($expanded)] = $encodeValue(self::scalar($item));
+            $pairs[($this->encode)($expanded)] = $encodeValue(ParameterValues::scalar($item));
         }
         return $pairs;
     }
@@ -145,104 +145,13 @@ final class QuerySerializer
     private function addList(array $pairs, int|string $name, mixed $value, string $format, \Closure $encodeValue): array
     {
         $delimiter = match ($format) { 'ssv' => ' ', 'tsv' => "\t", 'pipes' => '|', default => null };
-        $items = self::encodedList($value, (string) $name, $delimiter, $encodeValue);
+        $items = ParameterValues::encodedList($value, (string) $name, $delimiter, $encodeValue);
         if ($items === []) {
             return $pairs; // Empty list expansion has no URI-template members.
         }
         $encodedName = ($this->encode)((string) $name);
         $pairs[$encodedName] = $format === 'multi' ? $items : implode($delimiter === null ? ',' : ($this->encode)($delimiter), $items);
         return $pairs;
-    }
-
-    /** Serialize a parameter representation once, before its location's normal encoding. */
-    public static function content(mixed $value, string $media, bool $header = false): string
-    {
-        if ($media === 'text/plain') {
-            if (!is_string($value)) { throw new \UnexpectedValueException('text/plain parameters require strings.'); }
-            return $header ? self::headerText($value) : $value;
-        }
-        if ($media !== 'application/json') { throw new \InvalidArgumentException('Unsupported parameter media type.'); }
-        if ($value === null || (!is_scalar($value) && !is_array($value)
-            && !$value instanceof DTO && !$value instanceof Map && !$value instanceof TypedArray)) {
-            throw new \UnexpectedValueException('JSON parameters require typed models, collections or non-null scalar values.');
-        }
-        DTO::validateNestedValue($value, 'request');
-        $json = json_encode(Serializer::value($value, 'request'), JSON_THROW_ON_ERROR);
-        return $header ? self::headerText($json) : $json;
-    }
-
-    /** Primitive simple lists reuse the query list validation and native item encoding. */
-    public static function simpleList(mixed $value, string $name, bool $header = false): string
-    {
-        return self::simple($value, $name, 'csv', $header);
-    }
-
-    /** Existing metadata keeps csv; object forms use the same flat DTO/Map extraction. */
-    public static function simple(mixed $value, string $name, string $format, bool $header = false): string
-    {
-        if (in_array($format, ['csv', 'ssv', 'tsv', 'pipes'], true)) {
-            $delimiter = match ($format) { 'ssv' => ' ', 'tsv' => "\t", 'pipes' => '|', default => ',' };
-            $encode = $header ? self::headerText(...) : rawurlencode(...);
-            $items = self::encodedList($value, $name, $header || $format !== 'csv' ? $delimiter : null, $encode);
-            $text = implode($header || $format === 'csv' ? $delimiter : rawurlencode($delimiter), $items);
-            return $header ? self::headerText($text) : $text;
-        }
-        if (!in_array($format, ['object', 'object-explode'], true)) {
-            throw new \InvalidArgumentException('Unsupported simple parameter format.');
-        }
-        $explode = $format === 'object-explode';
-        $encode = $header ? self::headerText(...) : rawurlencode(...);
-        $items = [];
-        foreach (self::objectFields($value, $name, deep: false) as $key => $item) {
-            $key = (string) $key;
-            $text = self::scalar($item);
-            if ($header && (str_contains($key, ',') || str_contains($text, ',')
-                || ($explode && str_contains($key, '=')))) {
-                throw new \UnexpectedValueException('Simple header object contains its structural delimiter.');
-            }
-            if ($explode) {
-                $items[] = $encode($key) . '=' . $encode($text);
-            } else {
-                $items[] = $encode($key);
-                $items[] = $encode($text);
-            }
-        }
-        return implode(',', $items);
-    }
-
-    /** Expand one declared path parameter, not an arbitrary URI-template language. */
-    public static function path(mixed $value, string $name, string $format): string
-    {
-        if (in_array($format, ['csv', 'ssv', 'tsv', 'pipes', 'object', 'object-explode'], true)) {
-            return self::simple($value, $name, $format);
-        }
-        if (preg_match('/^(label|matrix)(?:-(list|object)(-explode)?)?$/D', $format, $matches) !== 1) {
-            throw new \InvalidArgumentException('Unsupported path parameter format.');
-        }
-        $label = $matches[1] === 'label';
-        $kind = $matches[2] ?? 'scalar';
-        $explode = isset($matches[3]);
-        $named = static fn (string $key, string $text): string => ';' . $key . ($text === '' ? '' : '=' . $text);
-        if ($kind === 'scalar') {
-            $text = rawurlencode(self::scalar($value));
-            return $label ? '.' . $text : $named(rawurlencode($name), $text);
-        }
-        if ($kind === 'list') {
-            $items = self::encodedList($value, $name, null, rawurlencode(...));
-            if ($items === []) { return ''; }
-            if ($label) { return '.' . implode($explode ? '.' : ',', $items); }
-            if (!$explode) { return $named(rawurlencode($name), implode(',', $items)); }
-            return implode('', array_map(static fn (string $item): string => $named(rawurlencode($name), $item), $items));
-        }
-        $items = [];
-        foreach (self::objectFields($value, $name, deep: false) as $key => $item) {
-            $key = rawurlencode((string) $key); $text = rawurlencode(self::scalar($item));
-            if (!$explode) { $items[] = $key; $items[] = $text; }
-            else { $items[] = $label ? $key . '=' . $text : $named($key, $text); }
-        }
-        if ($items === []) { return ''; }
-        if ($label) { return '.' . implode($explode ? '.' : ',', $items); }
-        return $explode ? implode('', $items) : $named(rawurlencode($name), implode(',', $items));
     }
 
     /**
@@ -277,22 +186,6 @@ final class QuerySerializer
             ?? throw new \LogicException('Reserved query encoding failed.');
     }
 
-    private static function headerText(string $text): string
-    {
-        if ($text !== trim($text, " \t") || preg_match('/^[\x09\x20-\x7E\x80-\xFF]*$/D', $text) !== 1) {
-            throw new \UnexpectedValueException('Simple header items must preserve HTTP field whitespace and contain valid header bytes.');
-        }
-        return $text;
-    }
-
-    private static function scalar(mixed $value): string
-    {
-        if (!is_scalar($value) || (is_float($value) && !is_finite($value))) {
-            throw new \UnexpectedValueException('Query values must be finite, non-null scalars.');
-        }
-        return is_bool($value) ? ($value ? 'true' : 'false') : (string) $value;
-    }
-
     private static function assertFormat(mixed $format, string $name): void
     {
         if (!in_array($format, ['multi', 'csv', 'ssv', 'tsv', 'pipes', 'deepObject', 'form-object', 'form-object-explode'], true)) {
@@ -300,58 +193,4 @@ final class QuerySerializer
         }
     }
 
-    /** @return array<array-key, scalar> */
-    private static function objectFields(mixed $value, string $name, bool $deep = true): array
-    {
-        self::assertObjectKey($name, $deep);
-        if ($value instanceof DTO) {
-            $value = $value->jsonSerializeForRequest();
-        }
-        if ($value instanceof Map) {
-            $value = $value->serializeForMode('request');
-        }
-        if (!$value instanceof \stdClass) {
-            throw new \UnexpectedValueException("Expected a flat object for deep query parameter $name.");
-        }
-        $fields = [];
-        foreach (get_object_vars($value) as $key => $item) {
-            self::assertObjectKey((string) $key, $deep);
-            if ($item instanceof \BackedEnum) {
-                $item = $item->value;
-            }
-            self::scalar($item); // Null, nested values and non-finite numbers have no supported expansion.
-            if (!is_scalar($item)) {
-                throw new \UnexpectedValueException("Expected a scalar property at $name.$key.");
-            }
-            $fields[$key] = $item;
-        }
-        return $fields;
-    }
-
-    private static function assertObjectKey(string $key, bool $deep = true): void
-    {
-        if ($key === '' || ($deep && strpbrk($key, '[]') !== false)) {
-            throw new \UnexpectedValueException('Deep query parameter and property names must be non-empty and contain no brackets.');
-        }
-    }
-
-    /**
-     * @param callable(string):string $encode
-     * @return list<string>
-     */
-    private static function encodedList(mixed $value, string $name, ?string $delimiter, callable $encode): array
-    {
-        if (!is_array($value) || !array_is_list($value)) {
-            throw new \UnexpectedValueException("Expected a list for query parameter $name.");
-        }
-        $items = [];
-        foreach ($value as $item) {
-            $text = self::scalar($item);
-            if ($delimiter !== null && str_contains($text, $delimiter)) {
-                throw new \UnexpectedValueException("Query parameter $name contains its list delimiter; use a different serialization.");
-            }
-            $items[] = $encode($text);
-        }
-        return $items;
-    }
 }

@@ -53,7 +53,7 @@ What this means for a developer:
 
 - Mistakes are caught on the client, before a network call, and the message names the field.
 - A bad answer is never silently coerced. One exception type (`InvalidResponseException`) covers every unreadable success body and keeps the raw response.
-- Typed properties, enums and collections work with IDE completion and static analysis (PHPStan max passes on generated code).
+- Typed properties, enums and collections work with IDE completion and static analysis.
 - Documentation is written once for every SDK (`docs/`) rather than generated per SDK, and every public name is covered by a snapshot test.
 
 Two weaknesses found by running these scenarios were fixed as a result: unknown response fields used to throw, and bad answers surfaced as four unrelated exception types ([D14](DECISIONS.md)).
@@ -61,8 +61,8 @@ Two weaknesses found by running these scenarios were fixed as a result: unknown 
 ## 3. Junk code
 
 - Generated SDKs carry no tests, CI files, `git_push.sh`, composer boilerplate or per-SDK docs: 13 files instead of 27 for the small specs; `src` only.
-- Runtime and generator were reviewed for dead code, over-long methods, over-long argument lists and duplicate logic ([DECISIONS.md](DECISIONS.md), R1–R5, D1–D13). `ApiClient` went from 797 to 363 lines; no public constructor takes more than 6 arguments (configuration objects only); the largest `Operation` constructor is private.
-- Superseded per-milestone documents and benchmark leftovers in `sdk-generator` were removed.
+- Runtime and generator were reviewed for dead code, over-long methods, over-long argument lists and duplicate logic ([DECISIONS.md](DECISIONS.md), R1–R5, D1–D13). `ApiClient` went from 797 to 363 lines; no public constructor takes more than 6 arguments (configuration objects only); the only long constructor (`Operation`, 28 properties) is private.
+- In `sdk-generator`, superseded milestone documents, the Spanish quickstart and the benchmarks of the old architecture were deleted. A dead-code sweep of the runtime and generator sources has not been done with a tool yet; that is still open.
 
 ## Where we are not better
 

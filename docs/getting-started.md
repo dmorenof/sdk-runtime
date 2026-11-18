@@ -8,12 +8,11 @@ PHP 8.3 or newer. A generated SDK already requires this package; install the SDK
 composer require acme/accounts-sdk
 ```
 
-Until the packages are on Packagist, declare the GitHub repositories in your project (Composer ignores repositories declared by dependencies):
+The runtime and the generator are on Packagist, so a generated SDK needs no extra repository entry. If you publish the SDK yourself and it is not on Packagist, declare its repository in the project that installs it (Composer ignores repositories declared by dependencies):
 
 ```json
 {
   "repositories": [
-    { "type": "vcs", "url": "https://github.com/dmorenof/sdk-runtime", "no-api": true },
     { "type": "vcs", "url": "https://github.com/your-org/accounts-sdk", "no-api": true }
   ]
 }

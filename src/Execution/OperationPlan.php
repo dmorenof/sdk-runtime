@@ -13,7 +13,7 @@ use Dmorenof\SdkRuntime\Operation;
  *
  * @internal Implementation detail: not covered by the backward-compatibility promise (see docs/PUBLIC_API.md).
  *
- * @phpstan-import-type ResponseEntry from Operation
+ * @phpstan-import-type Representation from Operation
  */
 final class OperationPlan
 {
@@ -28,7 +28,7 @@ final class OperationPlan
     /** @var array<int, array{bool, bool}> Status => [answer may carry a body, is a success]. */
     public array $statuses = [];
 
-    /** @var array<string, array{?array<string, mixed>, array<string, mixed>}> "status|content type" => [declared entry, entry used]. */
+    /** @var array<string, array{0: Representation|null, 1: array{type:?string,schemaNullable:bool,rules?:array<string,mixed>,mediaType?:string,encoding?:string}}> "status|content type" => [declared entry, entry used]. */
     public array $entries = [];
 
     private function __construct() {}

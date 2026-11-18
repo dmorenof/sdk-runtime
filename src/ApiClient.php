@@ -56,7 +56,7 @@ abstract class ApiClient
 
     private ?ResponseInfo $lastResponse = null;
 
-    /** @var array{int, array<string, list<string>>, Operation}|null The last answer, before lastResponse() builds its view. */
+    /** @var array{int, array<array-key, array<string>|string>, Operation}|null The last answer, before lastResponse() builds its view. */
     private ?array $received = null;
 
     /** Build a client from its configuration. Prefer connect(). */

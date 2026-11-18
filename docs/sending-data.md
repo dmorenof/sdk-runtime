@@ -22,6 +22,8 @@ $params->body = $form;          // the request body
 $items->post($params);
 ```
 
+A parameter whose schema lists its allowed values is an enum in the SDK (sdk-generator 1.5 and later): `getByState(StateEnum::Open)`, `$params->sort = SortEnum::Desc`. The request carries the case's value (`open`, `desc`), in the path, query string, headers and cookies alike, and a list of enum cases is sent as the list of their values. Older SDKs type these as plain strings or integers, and that keeps working.
+
 Properties you do not set are not sent. Names that are not valid PHP identifiers are mapped (`X-Trace` is `XTrace`, `city-name` is `cityName`); the wire name never changes.
 
 Everything is percent-encoded for you. Lists and objects in the query, path or headers are written in the style the API declares (comma-separated, space- or pipe-delimited, `deepObject`, label, matrix…); a list or object without a declared style is rejected instead of guessed.

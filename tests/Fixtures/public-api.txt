@@ -45,6 +45,7 @@ class Dmorenof\SdkRuntime\Configuration
 
 class Dmorenof\SdkRuntime\DTO implements JsonSerializable, Stringable
     const protected MODEL_VALIDATION
+    const protected REQUIRED_FIELDS
     const protected VALIDATION
     method public __construct(?object $json = NULL)
     method public __toString(): string

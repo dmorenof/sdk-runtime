@@ -11,6 +11,21 @@ namespace Dmorenof\SdkRuntime;
  */
 final class ParameterValues
 {
+    /**
+     * A parameter value as it travels: an enum case is its backing value, and so is each one in a list.
+     * Anything else is returned as it is, for the serializers to accept or refuse.
+     */
+    public static function plain(mixed $value): mixed
+    {
+        if ($value instanceof \BackedEnum) {
+            return $value->value;
+        }
+        if (is_array($value) && array_is_list($value)) {
+            return array_map(static fn (mixed $item): mixed => $item instanceof \BackedEnum ? $item->value : $item, $value);
+        }
+        return $value;
+    }
+
     public static function scalar(mixed $value): string
     {
         if (!is_scalar($value) || (is_float($value) && !is_finite($value))) {

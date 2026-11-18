@@ -11,6 +11,8 @@ namespace Dmorenof\SdkRuntime;
  */
 class DTO implements \JsonSerializable, \Stringable
 {
+    /** @var list<string> Field names that must be present. A model that requires none declares nothing. */
+    protected const array REQUIRED_FIELDS = [];
     /** @var array<string, array<string, mixed>> Field => rules (see Constraints). */
     protected const array VALIDATION = [];
     /** @var array<string,mixed> */
@@ -231,7 +233,7 @@ class DTO implements \JsonSerializable, \Stringable
     /** @param array<string, mixed> $defined The model's fields, declared and additional. */
     private function assertRequiredFields(array $defined, bool $request = false, bool $response = false): void
     {
-        $required = $this->declaredNames('REQUIRED_FIELDS');
+        $required = static::REQUIRED_FIELDS;
         if ($required === []) {
             return;
         }

@@ -26,12 +26,16 @@ final class RequestParameters
     public static function prepare(Operation $spec, RequestInput $input): array
     {
         self::validateParameters($spec, $input->path + $input->query + $input->headers);
-        self::assertParameterContent($spec->parameterContent, $spec);
+        $plan = OperationPlan::of($spec);
+        if (!$plan->parametersChecked) {
+            self::assertParameterContent($spec->parameterContent, $spec);
+            self::assertSimpleFormats($spec->pathSerialization, path: true);
+            self::assertSimpleFormats($spec->headerSerialization);
+            $plan->parametersChecked = true;
+        }
         $path = self::contentParameters($input->path, $spec->parameterContent['path'] ?? []);
         $query = self::contentParameters($input->query, $spec->parameterContent['query'] ?? []);
         $headers = self::contentParameters($input->headers, $spec->parameterContent['header'] ?? [], true);
-        self::assertSimpleFormats($spec->pathSerialization, path: true);
-        self::assertSimpleFormats($spec->headerSerialization);
 
         return [
             'path' => self::expandPath($spec, $path),

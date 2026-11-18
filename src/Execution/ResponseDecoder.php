@@ -26,6 +26,11 @@ final class ResponseDecoder
     /** The Accept header: every declared success and error representation, most preferred first. */
     public static function accept(Operation $spec): string
     {
+        return OperationPlan::of($spec)->accept ??= self::acceptFor($spec);
+    }
+
+    private static function acceptFor(Operation $spec): string
+    {
         $accepted = [];
         if ($spec->responseType !== null || Operation::isStreamingEncoding($spec->responseEncoding)) {
             $legacyBinary = $spec->responseType !== null && ltrim($spec->responseType, '\\') === \Psr\Http\Message\ResponseInterface::class;
@@ -66,16 +71,19 @@ final class ResponseDecoder
      */
     public static function decode(Operation $spec, HttpResponse $response): mixed
     {
-        if (!Operation::allowsResponseBody($spec->method, $response->status)) {
-            if (!$spec->succeeded($response->status)) { throw new ApiException($response, $spec->label); }
+        $plan = OperationPlan::of($spec);
+        [$allowsBody, $succeeded] = $plan->statuses[$response->status]
+            ??= [Operation::allowsResponseBody($spec->method, $response->status), $spec->succeeded($response->status)];
+        if (!$allowsBody) {
+            if (!$succeeded) { throw new ApiException($response, $spec->label); }
             return null;
         }
         $contentType = $response->header('Content-Type');
-        if (!$spec->succeeded($response->status)) {
+        if (!$succeeded) {
             throw self::failure($spec, $response, $contentType);
         }
-        $declared = $spec->responseTypeFor($response->status, $contentType);
-        $entry = self::entry($spec, $response->status, $contentType);
+        [$declared, $entry] = $plan->entries[$response->status . '|' . $contentType]
+            ??= [$spec->responseTypeFor($response->status, $contentType), self::entry($spec, $response->status, $contentType)];
         if ($entry['type'] === null || ($declared === null && $spec->noContentAllowed && $response->body === '')) {
             return null;
         }

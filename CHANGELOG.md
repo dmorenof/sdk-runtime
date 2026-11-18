@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.1.2] — 2026-11-18
+
+- Faster calls (about 20% less time per call than 1.0.0 on a mocked request): what the client works out about an operation (the `Accept` header, whether its parameter metadata was checked, which statuses succeed and which entry describes each answer) is computed once per operation and reused; `lastResponse()` builds its headers view only when it is asked for; enum fields are no longer walked when validating a model. No behavior change.
+
 ## [1.1.1] — 2026-11-18
 
 - Requires `typedarray/typedarray` `^1.1` (before `^1.0`). Version 1.1 of that package validates `exchangeArray()` and unserialization, accepts interfaces and union types, and is generic; the runtime's `TypedArray` now binds that generic parameter so PHPStan max passes against it.

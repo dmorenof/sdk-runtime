@@ -37,7 +37,10 @@ $transport = new class implements \Dmorenof\SdkRuntime\Transport\TransportInterf
         return new \Dmorenof\SdkRuntime\Transport\HttpResponse(204, '');
     }
 };
-$client = new class('https://example.test', transport: $transport) extends \Dmorenof\SdkRuntime\ApiClient {
+$configuration = new \Dmorenof\SdkRuntime\Configuration();
+$configuration->baseUrl = 'https://example.test';
+$configuration->transport = $transport;
+$client = new class($configuration) extends \Dmorenof\SdkRuntime\ApiClient {
     public function formProbe(): void
     {
         $body = new class((object) ['name' => 'ñ +~', 'ids' => [1, 2]]) extends \Dmorenof\SdkRuntime\DTO {
@@ -54,13 +57,13 @@ $client = new class('https://example.test', transport: $transport) extends \Dmor
         $params->body = $body;
         $this->executeArguments(['method' => 'POST', 'path' => '/forms', 'success' => [204],
             'requestMediaType' => 'application/x-www-form-urlencoded', 'bodySerialization' => ['ids' => 'multi']],
-            payload: $params);
+            parameters: $params);
     }
     public function probe(): void
     {
         $this->executeOperation(['method' => 'GET', 'path' => '/search', 'success' => [204],
             'querySerialization' => ['ids' => 'multi', 'codes' => 'csv', 'spaces' => 'ssv', 'pipes' => 'pipes', 'tabs' => 'tsv', 'filter' => 'deepObject']],
-            queryParameters: ['ids' => [1, 2], 'codes' => ['a,b', 'x y'], 'spaces' => [3, 4], 'pipes' => ['a', 'b'], 'tabs' => [5, 6], 'filter' => (object) ['city' => 'Madrid', 'active' => false]]);
+            new \Dmorenof\SdkRuntime\RequestInput(query: ['ids' => [1, 2], 'codes' => ['a,b', 'x y'], 'spaces' => [3, 4], 'pipes' => ['a', 'b'], 'tabs' => [5, 6], 'filter' => (object) ['city' => 'Madrid', 'active' => false]]));
     }
 };
 $client->probe();

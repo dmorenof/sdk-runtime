@@ -118,7 +118,7 @@ Generated models extend `DTO` and declare:
 
 | Constant | Meaning |
 | --- | --- |
-| `REQUIRED_FIELDS` | Field names that must be present. |
+| `REQUIRED_FIELDS` | Field names that must be present. Optional: `DTO` declares it empty, so a model with no required fields leaves it out. |
 | `VALIDATION` | Field → rules. |
 | `MODEL_VALIDATION` | Rules for the model as a whole. |
 | `OPERATION_FIELDS` | (Parameter objects only) `['path' => [...], 'query' => [...], 'header' => [...]]`, property → wire name. |

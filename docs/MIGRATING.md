@@ -1,10 +1,10 @@
-# Migrating from 1.0.0 to the next release
+# Migrating from 1.0.0 to 1.1.0
 
 This release changes how a client is created and configured and how OAuth2 providers are built. The HTTP behavior, models, validation and error types are unchanged. Regenerate generated SDKs with the matching sdk-generator.
 
 ## Creating and configuring a client
 
-| 1.0.0 | Next release |
+| 1.0.0 | 1.1.0 |
 | --- | --- |
 | `Client::connect($url)` | unchanged |
 | `Client::connect($url, $http, $headers, $credentials, $transport, $overrides)` | set the same names on a `Configuration`, then `Client::connect($configuration)` |

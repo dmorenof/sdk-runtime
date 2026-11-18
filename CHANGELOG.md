@@ -1,8 +1,8 @@
 # Changelog
 
-## [Unreleased — next 1.x release]
+## [1.1.0] — 2026-11-18
 
-This software has no users yet, so these changes ship as a 1.x release instead of a new major (see D15 in [docs/DECISIONS.md](docs/DECISIONS.md)). They follow the design review in [docs/DECISIONS.md](docs/DECISIONS.md): no function takes more than four arguments, options travel in configuration objects, and a client never changes after it is created. How to move from 1.0.0: [docs/MIGRATING.md](docs/MIGRATING.md). Generated SDKs need the matching sdk-generator release.
+This software has no users yet, so these changes ship as a minor release instead of a new major (see D15 in [docs/DECISIONS.md](docs/DECISIONS.md)). They follow the design review in [docs/DECISIONS.md](docs/DECISIONS.md): no function takes more than four arguments, options travel in configuration objects, and a client never changes after it is created. How to move from 1.0.0: [docs/MIGRATING.md](docs/MIGRATING.md). Generated SDKs need the matching sdk-generator release.
 
 - **Client**: `ApiClient::connect()` and the constructor take a `Configuration` (or a base URL string). `Configuration` gains `retryPolicy`, `redirectPolicy`, `server` and `serverVariables`. Removed: `withMiddleware()`, `withRetryPolicy()`, `withRedirectPolicy()`, `useServer()`, `withServerVariables()`, and the protected `$baseUrl` and `$serverOverrides`.
 - **Execution**: `executeArguments($operation, $path, $parameters, $body)`, `executeBody($operation, $body, $path, $parameters)` and `executeOperation($operation, RequestInput $input)` replace the 5- and 6-argument versions. New `RequestInput`.
@@ -11,6 +11,8 @@ This software has no users yet, so these changes ship as a 1.x release instead o
 - **Transport**: `new Psr18Transport($client, new Psr18Options(defaultHeaders:, middleware:, retryPolicy:, redirectPolicy:, sleeper:))`; the setters and `addMiddleware()` are gone; `sendResponse()` takes a PSR-7 request.
 - **Operation**: constructed only through `Operation::fromArray()`.
 - **Responses**: a field the schema does not declare is ignored when reading an answer (hand-built models stay strict); a success body that does not fit (empty, not JSON, wrong type, missing field, unknown enum value) throws one `InvalidResponseException` with the raw response and the original failure as its previous exception; response models are validated once instead of once per level.
+- **Operations**: generated code calls `self::operation(self::GET_BY_ID)`, which builds each `Operation` once per resource class and route; the execute methods also accept an `Operation`.
+- **Speed**: about 25% less time per call than 1.0.0 (class kinds and property types are looked up once per class, collection items are validated once, empty rule sets cost nothing). Memory is unchanged. See [docs/AUDIT.md](docs/AUDIT.md) for the comparison with OpenAPI Generator, including where it is still slower.
 - **Internals** (not public API): request building, response decoding and server choice moved out of `ApiClient` into `Execution\*`; `SecurityApplier::apply()` returns an `AppliedSecurity`; several long methods were split.
 
 ## [1.0.0] — 2026-11-11

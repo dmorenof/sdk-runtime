@@ -35,8 +35,11 @@ final class OperationPlan
 
     public static function of(Operation $spec): self
     {
-        /** @var \WeakMap<Operation, self> $plans */
-        $plans = self::$plans ??= new \WeakMap();
-        return $plans[$spec] ??= new self();
+        if (self::$plans === null) {
+            /** @var \WeakMap<Operation, self> $created */
+            $created = new \WeakMap();
+            self::$plans = $created;
+        }
+        return self::$plans[$spec] ??= new self();
     }
 }

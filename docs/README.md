@@ -16,7 +16,7 @@ Pick your starting point.
 | Decoding an error message | [Troubleshooting](troubleshooting.md) |
 | Looking for a class or method | [API reference](api-reference.md) |
 | Wondering what may change between versions | [Public API and versioning](PUBLIC_API.md) |
-| Moving from 1.0.0 | [Migrating to 2.0.0](MIGRATING.md) |
+| Moving from 1.0.0 | [Migrating from 1.0.0](MIGRATING.md) |
 | Wondering why it is designed this way | [Design decisions](DECISIONS.md) |
 
 ## The model in one minute

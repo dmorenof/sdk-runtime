@@ -1,8 +1,8 @@
 # Changelog
 
-## [2.0.0] — unreleased
+## [Unreleased — next 1.x release]
 
-Breaking release that follows the design review in [docs/DECISIONS.md](docs/DECISIONS.md): no function takes more than four arguments, options travel in configuration objects, and a client never changes after it is created. How to move from 1.0.0: [docs/MIGRATING.md](docs/MIGRATING.md). Generated SDKs need sdk-generator 2.0.0.
+This software has no users yet, so these changes ship as a 1.x release instead of a new major (see D15 in [docs/DECISIONS.md](docs/DECISIONS.md)). They follow the design review in [docs/DECISIONS.md](docs/DECISIONS.md): no function takes more than four arguments, options travel in configuration objects, and a client never changes after it is created. How to move from 1.0.0: [docs/MIGRATING.md](docs/MIGRATING.md). Generated SDKs need the matching sdk-generator release.
 
 - **Client**: `ApiClient::connect()` and the constructor take a `Configuration` (or a base URL string). `Configuration` gains `retryPolicy`, `redirectPolicy`, `server` and `serverVariables`. Removed: `withMiddleware()`, `withRetryPolicy()`, `withRedirectPolicy()`, `useServer()`, `withServerVariables()`, and the protected `$baseUrl` and `$serverOverrides`.
 - **Execution**: `executeArguments($operation, $path, $parameters, $body)`, `executeBody($operation, $body, $path, $parameters)` and `executeOperation($operation, RequestInput $input)` replace the 5- and 6-argument versions. New `RequestInput`.

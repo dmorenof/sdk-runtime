@@ -48,8 +48,8 @@ Application code and generated SDKs may rely on these classes: constructors, pub
 Generated SDKs describe each operation as an array that `Operation::fromArray()` turns into an `Operation`. This format is part of the contract between a generated SDK and the runtime:
 
 - Existing keys keep their name, type and meaning within a major version.
-- New keys always have a default, so an SDK generated for runtime 2.0 keeps working with every later 2.y.
-- Unknown keys are rejected, so an SDK that uses a newer key requires a runtime that knows it. Generated SDKs therefore require `^2.x` of the runtime version that introduced the keys they use.
+- New keys always have a default, so an SDK generated for a given 1.x runtime keeps working with every later 1.y.
+- Unknown keys are rejected, so an SDK that uses a newer key requires a runtime that knows it. Generated SDKs therefore require `^1.x` of the runtime version that introduced the keys they use.
 
 ## Tier 2: generator contract
 

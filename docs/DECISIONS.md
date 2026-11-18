@@ -1,6 +1,6 @@
 # Design decisions
 
-Decisions taken during the quality review that led to 2.0.0. Each entry says what was decided and why, so a later change can be judged against the reason and not only the result. Newest decisions go at the bottom.
+Decisions taken during the quality review that led to the next 1.x release. Each entry says what was decided and why, so a later change can be judged against the reason and not only the result. Newest decisions go at the bottom.
 
 ## Rules adopted
 
@@ -90,3 +90,6 @@ These came up in the review and were not changed, because each is a behavior cha
 - **Error types are not uniform** (`JsonException` for an empty body, `ValueError` for an enum, `UnexpectedValueException` for a type, `InvalidArgumentException` for an unknown field). A small family of runtime exceptions would be easier to catch.
 - **`lastResponse()` is instance state.** It is not safe to share one client between concurrent tasks. Returning the response metadata with the result would remove the state, at the cost of a different return type.
 - **`sdk-generator` rejects `oauth2` and `openIdConnect` security schemes.** The runtime implements OAuth2; the generator does not emit those scheme types yet.
+
+### D15. Versioning: the next release is a 1.x minor, not 2.0.0
+The software is new and has no users, and the 1.0.0 that exists was published before this review. A new major for the redesign would signal a compatibility history that does not exist. The changes in this review therefore ship as the next 1.x release, and the changelog and the migration guide say plainly what changed. Major versions are reserved for packages that other projects already depend on (the TypedArray library is one). When this software has real users, the Semantic Versioning promise in [PUBLIC_API.md](PUBLIC_API.md) applies as written.

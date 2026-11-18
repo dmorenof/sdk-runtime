@@ -1,10 +1,10 @@
-# Migrating from 1.0.0 to 2.0.0
+# Migrating from 1.0.0 to the next release
 
-2.0.0 changes how a client is created and configured and how OAuth2 providers are built. The HTTP behavior, models, validation and error types are unchanged. Generated SDKs need sdk-generator 2.0.0; regenerate them.
+This release changes how a client is created and configured and how OAuth2 providers are built. The HTTP behavior, models, validation and error types are unchanged. Regenerate generated SDKs with the matching sdk-generator.
 
 ## Creating and configuring a client
 
-| 1.0.0 | 2.0.0 |
+| 1.0.0 | Next release |
 | --- | --- |
 | `Client::connect($url)` | unchanged |
 | `Client::connect($url, $http, $headers, $credentials, $transport, $overrides)` | set the same names on a `Configuration`, then `Client::connect($configuration)` |
@@ -19,7 +19,7 @@
 $client = Client::connect('https://api.example.com', $http, securityCredentials: $credentials)
     ->withRetryPolicy(new RetryPolicy());
 
-// 2.0.0
+// next release
 $config = new Configuration();
 $config->baseUrl = 'https://api.example.com';
 $config->httpClient = $http;
@@ -38,7 +38,7 @@ A client now takes a snapshot of its configuration: changing the object afterwar
 // 1.0.0
 new OAuth2ClientCredentials($tokenUrl, $id, $secret, $http, scopes: ['read'], credentialsInBody: true);
 
-// 2.0.0
+// next release
 new OAuth2ClientCredentials(
     new OAuth2Endpoints($tokenUrl),
     new OAuth2Client($id, $secret, secretInBody: true),

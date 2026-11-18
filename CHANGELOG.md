@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.1.1] — 2026-11-18
+
+- Requires `typedarray/typedarray` `^1.1` (before `^1.0`). Version 1.1 of that package validates `exchangeArray()` and unserialization, accepts interfaces and union types, and is generic; the runtime's `TypedArray` now binds that generic parameter so PHPStan max passes against it.
+- The check that runs after a release uses the 1.1 client API.
+
 ## [1.1.0] — 2026-11-18
 
 This software has no users yet, so these changes ship as a minor release instead of a new major (see D15 in [docs/DECISIONS.md](docs/DECISIONS.md)). They follow the design review in [docs/DECISIONS.md](docs/DECISIONS.md): no function takes more than four arguments, options travel in configuration objects, and a client never changes after it is created. How to move from 1.0.0: [docs/MIGRATING.md](docs/MIGRATING.md). Generated SDKs need the matching sdk-generator release.

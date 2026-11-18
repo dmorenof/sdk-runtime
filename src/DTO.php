@@ -311,7 +311,7 @@ class DTO implements \JsonSerializable, \Stringable
             Constraints::validate($fields[$field], $rules, static::class . "::$field", $mode);
         }
         foreach ($fields as $value) {
-            if (is_object($value) || is_array($value)) {
+            if ((is_object($value) && !$value instanceof \UnitEnum) || is_array($value)) {
                 self::validateNestedValue($value, $mode);
             }
         }

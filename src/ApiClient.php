@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace Dmorenof\SdkRuntime;
 
 use Dmorenof\SdkRuntime\Execution\InputBuilder;
+use Dmorenof\SdkRuntime\Execution\OperationPlan;
 use Dmorenof\SdkRuntime\Execution\PreparedRequest;
 use Dmorenof\SdkRuntime\Execution\RequestBuilder;
 use Dmorenof\SdkRuntime\Execution\ResponseDecoder;
@@ -54,6 +55,9 @@ abstract class ApiClient
     private ServerSelection $servers;
 
     private ?ResponseInfo $lastResponse = null;
+
+    /** @var array{int, array<string, list<string>>, Operation}|null The last answer, before lastResponse() builds its view. */
+    private ?array $received = null;
 
     /** Build a client from its configuration. Prefer connect(). */
     final public function __construct(Configuration $configuration)
@@ -118,6 +122,10 @@ abstract class ApiClient
      */
     public function lastResponse(): ?ResponseInfo
     {
+        if ($this->lastResponse === null && $this->received !== null) {
+            [$status, $headers, $spec] = $this->received;
+            $this->lastResponse = new ResponseInfo($status, new ResponseHeaders($headers, $spec->responseHeadersFor($status)), $spec->label);
+        }
         return $this->lastResponse;
     }
 
@@ -242,8 +250,11 @@ abstract class ApiClient
     private static function outcome(Operation $spec, ResponseInterface $response): \Generator|ResponseInterface|HttpResponse
     {
         $status = $response->getStatusCode();
-        if (Operation::allowsResponseBody($spec->method, $status) && $spec->succeeded($status)) {
-            $entry = ResponseDecoder::entry($spec, $status, $response->getHeaderLine('Content-Type'));
+        $plan = OperationPlan::of($spec);
+        [$allowsBody, $succeeded] = $plan->statuses[$status] ??= [Operation::allowsResponseBody($spec->method, $status), $spec->succeeded($status)];
+        if ($allowsBody && $succeeded) {
+            $contentType = $response->getHeaderLine('Content-Type');
+            $entry = $plan->entries[$status . '|' . $contentType][1] ?? ResponseDecoder::entry($spec, $status, $contentType);
             if ($spec->streamsResponse() && Operation::isStreamingEncoding($entry['encoding'] ?? 'json')) {
                 return StreamDecoder::iterate($response->getBody(), $entry, $spec->label . ' response');
             }
@@ -275,9 +286,10 @@ abstract class ApiClient
         return $encodedQuery === '' ? $url : $url . '?' . $encodedQuery;
     }
 
+    /** Keeps what lastResponse() needs; the headers are only turned into a ResponseHeaders view if it is asked for. */
     private function recordResponse(Operation $spec, ResponseInterface $response): void
     {
-        $status = $response->getStatusCode();
-        $this->lastResponse = new ResponseInfo($status, new ResponseHeaders($response->getHeaders(), $spec->responseHeadersFor($status)), $spec->label);
+        $this->lastResponse = null;
+        $this->received = [$response->getStatusCode(), $response->getHeaders(), $spec];
     }
 }

@@ -1,6 +1,7 @@
 <?php
 declare(strict_types=1);
 require $argv[1] ?? throw new RuntimeException('Missing autoload path.');
+require_once __DIR__ . '/Support/Cfg.php'; // run from an installed copy, where the test autoloader is absent
 $http = new class implements \Psr\Http\Client\ClientInterface {
     public int $calls = 0;
     public function sendRequest(\Psr\Http\Message\RequestInterface $request): \Psr\Http\Message\ResponseInterface {

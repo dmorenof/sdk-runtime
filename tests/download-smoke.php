@@ -1,6 +1,7 @@
 <?php
 declare(strict_types=1);
 require $argv[1] ?? throw new RuntimeException('Missing autoload path.');
+require_once __DIR__ . '/Support/Cfg.php'; // run from an installed copy, where the test autoloader is absent
 $bytes = 32 * 1024 * 1024;
 $http = empty($argv[2]) ? new class($bytes) implements \Psr\Http\Client\ClientInterface {
     public function __construct(private int $bytes) {}

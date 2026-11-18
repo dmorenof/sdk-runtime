@@ -1,6 +1,7 @@
 <?php
 declare(strict_types=1);
 require $argv[1] ?? throw new RuntimeException('Missing autoload path.');
+require_once __DIR__ . '/Support/Cfg.php'; // run from an installed copy, where the test autoloader is absent
 $user = new class extends \Dmorenof\SdkRuntime\DTO {
     public const array REQUIRED_FIELDS = ['name'];
     public string $name;

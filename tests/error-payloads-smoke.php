@@ -1,6 +1,7 @@
 <?php
 declare(strict_types=1);
 require $argv[1] ?? throw new RuntimeException('Missing autoload.');
+require_once __DIR__ . '/Support/Cfg.php'; // run from an installed copy, where the test autoloader is absent
 require __DIR__ . '/Fixtures/ErrorPayloadHttpCode.php';
 require __DIR__ . '/Fixtures/ErrorPayloadHttpChoice.php';
 use Dmorenof\SdkRuntime\Tests\Fixtures\ErrorPayloadHttpCode;

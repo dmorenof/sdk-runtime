@@ -2,6 +2,7 @@
 declare(strict_types=1);
 
 require $argv[1] ?? throw new RuntimeException('Missing autoload path.');
+require_once __DIR__ . '/Support/Cfg.php'; // run from an installed copy, where the test autoloader is absent
 $bytes = 32 * 1024 * 1024;
 $list = ($argv[3] ?? '') === 'list';
 $realHttp = isset($argv[2]) && $argv[2] !== '';

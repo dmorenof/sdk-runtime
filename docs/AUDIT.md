@@ -2,7 +2,20 @@
 
 Question: is an SDK produced by this project clearly better than one produced by [OpenAPI Generator](https://openapi-generator.tech) (`-g php`, version 7.10.0) in **generated code**, **ease of use** and **junk code**?
 
-Short answer: yes on all three, with two honest exceptions: **speed** (about 2.4× slower per call) and **security scheme coverage** (`oauth2`/`openIdConnect` are not generated yet). Both are listed under [Where we are not better](#where-we-are-not-better).
+Short answer: yes on all three, with one honest exception: **speed** (about 1.5× slower per call). The other gap found, `oauth2`/`openIdConnect` schemes, was closed in generator 1.3.0. What is still open is listed under [Where we are not better](#where-we-are-not-better).
+
+State at the time of writing: sdk-runtime 1.1.1, sdk-generator 1.3.0 and typedarray 1.1.0, all on Packagist.
+
+## What the audit changed
+
+Running the same scenarios against both tools found weaknesses in ours, which were fixed and released:
+
+- A field the schema does not declare broke a call; answers now ignore it ([D14](DECISIONS.md)). Hand-built models stay strict.
+- Bad answers surfaced as four unrelated exception types; they are now one `InvalidResponseException` that keeps the raw response.
+- A call was about 25% slower than it needed to be; class kinds and property types are cached per class and collection items are validated once.
+- The generator rejected `oauth2` and `openIdConnect` schemes; it supports them since 1.3.0.
+- The typed-collection package had bugs (`exchangeArray()` skipped validation, interfaces were refused, `(string) $array` threw on PHP 8); typedarray 1.1.0 fixes them and adds union types.
+- Unreferenced code was removed from the generator (see [Junk code](#3-junk-code)).
 
 ## Method
 
@@ -67,10 +80,10 @@ Two weaknesses found by running these scenarios were fixed as a result: unknown 
 ## Where we are not better
 
 1. **Speed.** One mocked call (`audit/bench.php`, 20,000 iterations, PHP 8.3, profiled with Xdebug): OpenAPI Generator 69–92 µs, ours 117–130 µs (≈1.5×; 1.0.0 was 157–175 µs, so the runtime got about 25% faster during this audit). About 35 µs of each call is Guzzle, the same in both. Hydrating and validating the response model costs about 17 µs. The rest is what OpenAPI Generator does not do per call: request and response validation before and after the HTTP call, retry and redirect policies, security selection and error decoding. Init time (≈1–1.5 ms) and peak memory (2.93 MiB, equal to 1.0.0) are equal. We claim no performance advantage.
-2. **Security schemes.** OpenAPI Generator supports `oauth2` and `openIdConnect` in generated code; our generator rejects those schemes (the runtime has OAuth2 providers you can use by hand). Until the generator supports them, "any API" is not true for those APIs.
+2. **Security schemes: supported, with one limit.** Since generator 1.3.0 `oauth2` and `openIdConnect` schemes are validated and generated, and the runtime sends a token or a token provider (`OAuth2ClientCredentials`, `OAuth2AuthorizationCode`) as a Bearer token. The generated SDK does not carry the scheme's endpoints or scopes, so the provider is built by hand with them. Mutual TLS schemes are still not generated.
 3. **`lastResponse()` is instance state**, so one client instance must not be shared between concurrent tasks.
 4. **Other languages.** OpenAPI Generator targets dozens; we target PHP only.
 
 ## Conclusion
 
-On generated code (4–10× less, fully typed), ease of use (client-side validation, one exception for bad answers, decoded errors) and junk (nothing generated that is not needed), the claim holds and is measured. The claim does not hold for speed or for oauth2/openIdConnect specs; those stay on the list above.
+On generated code (4–10× less, fully typed), ease of use (client-side validation, one exception for bad answers, decoded errors) and junk (nothing generated that is not needed), the claim holds and is measured. The claim does not hold for speed, which stays on the list above. The generated-code numbers were measured before generator 1.3.0 and do not change for the three audited specs.

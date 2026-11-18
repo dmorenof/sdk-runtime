@@ -23,6 +23,7 @@ final class InputBuilder
      */
     public static function build(Operation $spec, array|DTO $path, ?DTO $parameters, mixed $body, bool $bodyPresent): RequestInput
     {
+        /** @var array<string, scalar|list<scalar>|DTO|Map|TypedArray|\stdClass|null> $pathValues */
         $pathValues = $path instanceof DTO ? self::operationFields($path)['path'] : array_map(ParameterValues::plain(...), $path);
         $query = [];
         $headers = [];

@@ -47,8 +47,10 @@ final class RequestBodiesTest extends TestCase {
             $client->post($body, ['type' => $type, 'nullable' => false, 'required' => true]);
             self::assertSame($expected, $transport->sent[array_key_last($transport->sent)]['body']);
         }
-        $tags = new Tags(['valid']); $tags->exchangeArray([false]);
+        $tags = new Tags(['valid']);
         $this->expectException(\TypeError::class);
+        // typedarray 1.1 refuses the bad item here; 1.0 accepted it and the body check below refuses it.
+        $tags->exchangeArray([false]);
         $client->post($tags, ['type' => Tags::class, 'nullable' => false, 'required' => true]);
     }
     public function testParameterDtoPresenceAndMutationsAreCheckedBeforeTransport(): void {

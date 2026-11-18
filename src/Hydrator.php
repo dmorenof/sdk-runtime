@@ -14,6 +14,14 @@ final class Hydrator
     /** @var array<class-string, array<string, \ReflectionNamedType|\ReflectionUnionType>> */
     private static array $propertyTypes = [];
 
+    /** @var array<class-string, array<string, array{string, bool}>> Property => [type name, nullable] of a plain (non-union) type. */
+    private static array $namedTypes = [];
+
+    /** @var array<string, string> Class name => what it hydrates as (see classKind()); asked once per class. */
+    private static array $classKinds = [];
+
+    private const array BUILTIN_KINDS = ['mixed' => true, 'int' => true, 'float' => true, 'string' => true, 'bool' => true, 'null' => true, 'array' => true];
+
     public static function hydrate(mixed $value, string $kind, bool $nullable, string $where): mixed
     {
         if ($kind === 'stream') {
@@ -37,6 +45,10 @@ final class Hydrator
     /** Hydrate a JSON value into the declared type of a public model property. */
     public static function hydrateProperty(DTO $model, string $property, mixed $value, string $where): mixed
     {
+        $named = self::$namedTypes[$model::class][$property] ?? null;
+        if ($named !== null) {
+            return self::convert($value, $named[0], $named[1], $where);
+        }
         $type = self::$propertyTypes[$model::class][$property] ?? null;
         if ($type === null) {
             $reflection = new \ReflectionProperty($model, $property);
@@ -48,6 +60,9 @@ final class Hydrator
                 throw new \InvalidArgumentException('Unsupported PHP property type at ' . $model::class . "::$property.");
             }
             self::$propertyTypes[$model::class][$property] = $type;
+            if ($type instanceof \ReflectionNamedType) {
+                self::$namedTypes[$model::class][$property] = [$type->getName(), $type->allowsNull()];
+            }
         }
         if ($type instanceof \ReflectionUnionType) {
             $names = [];
@@ -77,8 +92,8 @@ final class Hydrator
     /** A value for one named (non-union) type: a scalar, or an instance of a model, map, collection, enum or composition. */
     private static function convert(mixed $value, string $kind, bool $nullable, string $where): mixed
     {
-        $builtin = in_array($kind, ['mixed', 'int', 'float', 'string', 'bool', 'null', 'array'], true);
-        if (!$builtin && is_subclass_of($kind, AnyOf::class)) {
+        $builtin = isset(self::BUILTIN_KINDS[$kind]);
+        if (!$builtin && self::classKind($kind) === 'anyOf') {
             return $value instanceof $kind ? $value : $kind::fromValue($value);
         }
         if ($value === null) {
@@ -102,7 +117,8 @@ final class Hydrator
             if (!$value instanceof \stdClass) { throw new \UnexpectedValueException("Expected JSON object at $where."); }
             return $value;
         }
-        if (is_subclass_of($kind, Map::class)) {
+        $classKind = self::classKind($kind);
+        if ($classKind === 'map') {
             if ($value instanceof $kind) {
                 return $value;
             }
@@ -111,16 +127,25 @@ final class Hydrator
             }
             return new $kind($value);
         }
-        if (is_subclass_of($kind, \BackedEnum::class)) {
-            return self::enum($value, $kind, $where);
-        }
-        if (is_subclass_of($kind, TypedArray::class)) {
-            return self::collection($value, $kind, $where);
-        }
-        if (is_subclass_of($kind, DTO::class)) {
-            return self::model($value, $kind, $where);
-        }
-        throw new \UnexpectedValueException("Unsupported nested PHP type $kind at $where.");
+        return match ($classKind) {
+            'enum' => self::enum($value, $kind, $where),
+            'collection' => self::collection($value, $kind, $where),
+            'model' => self::model($value, $kind, $where),
+            default => throw new \UnexpectedValueException("Unsupported nested PHP type $kind at $where."),
+        };
+    }
+
+    /** What a class name hydrates as: anyOf, map, enum, collection, model, or other. Looked up once per class. */
+    private static function classKind(string $kind): string
+    {
+        return self::$classKinds[$kind] ??= match (true) {
+            is_subclass_of($kind, AnyOf::class) => 'anyOf',
+            is_subclass_of($kind, Map::class) => 'map',
+            is_subclass_of($kind, \BackedEnum::class) => 'enum',
+            is_subclass_of($kind, TypedArray::class) => 'collection',
+            is_subclass_of($kind, DTO::class) => 'model',
+            default => 'other',
+        };
     }
 
     /** @param class-string<\BackedEnum> $kind */
@@ -218,11 +243,11 @@ final class Hydrator
         if (!is_array($value) || !array_is_list($value)) {
             throw new \UnexpectedValueException("Expected a JSON array at $where.");
         }
-        $result = new $kind();
-        $expectedType = $result->getExpectedType();
+        $expectedType = (new $kind())->getExpectedType();
+        $items = [];
         foreach ($value as $index => $item) {
-            $result->append(self::hydrate($item, $expectedType, false, $where . "[$index]"));
+            $items[] = self::hydrate($item, $expectedType, false, $where . "[$index]");
         }
-        return $result;
+        return new $kind($items);
     }
 }

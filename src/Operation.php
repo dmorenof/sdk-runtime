@@ -258,6 +258,9 @@ final readonly class Operation
      */
     private static function select(array $entries, int $status): mixed
     {
+        if ($entries === []) {
+            return null;
+        }
         foreach ([$status, intdiv($status, 100) . 'XX', 'default'] as $key) {
             if (array_key_exists($key, $entries)) { return $entries[$key]; }
         }

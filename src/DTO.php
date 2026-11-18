@@ -59,6 +59,16 @@ class DTO implements \JsonSerializable, \Stringable
     }
 
     /**
+     * Whether a model or collection being built from an answer leaves its validation to the caller (see readingResponse()).
+     *
+     * @internal Used by the runtime itself; not covered by the backward-compatibility promise.
+     */
+    public static function isDeferred(): bool
+    {
+        return self::$deferred > 0;
+    }
+
+    /**
      * Runs $work reading an API's answer: validation is deferred (the caller validates the whole tree once, in the
      * direction it knows, instead of once per level while it is built) and a property the model does not declare
      * is ignored, so an API that adds a field does not break clients generated before it.
@@ -214,7 +224,8 @@ class DTO implements \JsonSerializable, \Stringable
     {
         /** @var array<string, mixed> $declared */
         $declared = get_object_vars($this);
-        return array_replace($declared, AdditionalPropertyStore::all($this));
+        $additional = AdditionalPropertyStore::all($this);
+        return $additional === [] ? $declared : array_replace($declared, $additional);
     }
 
     /** @param array<string, mixed> $defined The model's fields, declared and additional. */

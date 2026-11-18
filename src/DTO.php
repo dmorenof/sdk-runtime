@@ -19,6 +19,9 @@ class DTO implements \JsonSerializable, \Stringable
     /** @var array<class-string, array<string, mixed>> */
     private static array $declared = [];
 
+    /** @var array<class-string, bool> Whether the class is a subtype that must agree with its discriminator. */
+    private static array $discriminated = [];
+
     /** While above zero, constructing a model from JSON skips its own validation: the caller validates the whole tree once. */
     private static int $deferred = 0;
 
@@ -269,7 +272,7 @@ class DTO implements \JsonSerializable, \Stringable
         if (static::MODEL_VALIDATION !== []) {
             Constraints::validate($this->serializeValidated($mode), static::MODEL_VALIDATION, static::class, $mode);
         }
-        if (defined(static::class . '::DISCRIMINATOR_BASE') && constant(static::class . '::DISCRIMINATOR_BASE') !== static::class) {
+        if (self::$discriminated[static::class] ??= defined(static::class . '::DISCRIMINATOR_BASE') && constant(static::class . '::DISCRIMINATOR_BASE') !== static::class) {
             /** @var string $property */
             $property = constant(static::class . '::DISCRIMINATOR_PROPERTY');
             /** @var array<string, class-string> $mapping */
@@ -286,7 +289,7 @@ class DTO implements \JsonSerializable, \Stringable
                 Constraints::validate($value, $additionalRules, static::class . "::$name", $mode);
             }
         }
-        $skipped = $this->directionalFields($request, $response);
+        $skipped = static::VALIDATION === [] ? [] : $this->directionalFields($request, $response);
         foreach (static::VALIDATION as $field => $rules) {
             if (!property_exists($this, $field)) {
                 throw new \LogicException("Validation refers to an unknown field " . static::class . "::$field.");
@@ -296,7 +299,6 @@ class DTO implements \JsonSerializable, \Stringable
             }
             Constraints::validate($fields[$field], $rules, static::class . "::$field", $mode);
         }
-        $mode = $request ? 'request' : ($response ? 'response' : 'neutral');
         foreach ($fields as $value) {
             if (is_object($value) || is_array($value)) {
                 self::validateNestedValue($value, $mode);

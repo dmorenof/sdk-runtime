@@ -10,6 +10,9 @@ namespace Dmorenof\SdkRuntime;
  */
 final class Constraints
 {
+    /** Rules checked by the JSON Schema validator rather than by assert(). */
+    private const array JSON_SCHEMA_RULES = ['exclusiveMinimum' => 0, 'exclusiveMaximum' => 0, 'multipleOf' => 0, 'uniqueItems' => 0, 'minProperties' => 0, 'maxProperties' => 0, 'const' => 0, 'enum' => 0];
+
     private static ?\Opis\JsonSchema\Validator $jsonValidator = null;
     /** @var array<string,\Opis\JsonSchema\Schema> */
     private static array $jsonSchemas = [];
@@ -17,6 +20,9 @@ final class Constraints
     /** @param array<string, mixed> $rules */
     public static function validate(mixed $value, array $rules, string $where, string $mode = 'neutral'): void
     {
+        if ($rules === []) {
+            return; // Most fields and every untyped-rule item land here: nothing to check.
+        }
         if ($value instanceof \BackedEnum) {
             $value = $value->value;
         }
@@ -37,7 +43,7 @@ final class Constraints
         if (is_string($value)) {
             self::assertPlainStringRules($value, $rules, $where);
         }
-        $jsonRules = array_intersect_key($rules, array_flip(['exclusiveMinimum', 'exclusiveMaximum', 'multipleOf', 'uniqueItems', 'minProperties', 'maxProperties', 'const', 'enum']));
+        $jsonRules = array_intersect_key($rules, self::JSON_SCHEMA_RULES);
         $hasSchema = array_key_exists('schema', $rules);
         if ($jsonRules !== [] || $hasSchema) {
             $raw = $hasSchema ? $rules['schema'] : (object) $jsonRules;

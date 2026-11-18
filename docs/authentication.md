@@ -14,7 +14,7 @@ Users::configure($config);
 
 The scheme names are the ones in the API's specification (`components.securitySchemes`). A name the API does not use is ignored. If an operation requires credentials and none of its alternatives can be satisfied, nothing is sent and the call throws `InvalidArgumentException: No configured credentials satisfy this operation security requirement.` Operations the API leaves open (or marks as optionally authenticated) never need credentials.
 
-> **Current limit.** sdk-generator 1.0.0 only generates SDKs for APIs whose security schemes are `apiKey` (header, query, cookie), `http` `bearer` and `http` `basic`. A specification that declares an `oauth2` or `openIdConnect` scheme, or lists OAuth scopes in an operation, is **rejected** at generation time. The OAuth2 providers below are fully implemented in the runtime and work with any scheme the generator accepts as a bearer token; the generator does not yet emit `oauth2`/`openIdConnect` schemes.
+> **Generator support.** sdk-generator 1.3.0 and later generate SDKs for APIs that declare `oauth2` or `openIdConnect` schemes, besides `apiKey` (header, query, cookie) and `http` `basic` and `bearer`. Give the scheme's name a token or a token provider (below). The generator does not copy the scheme's endpoints or scopes into the SDK, so you build the provider with the URLs and scopes you need. Earlier generator versions reject those schemes.
 
 ## What each credential looks like
 

@@ -62,7 +62,7 @@ Two weaknesses found by running these scenarios were fixed as a result: unknown 
 
 - Generated SDKs carry no tests, CI files, `git_push.sh`, composer boilerplate or per-SDK docs: 13 files instead of 27 for the small specs; `src` only.
 - Runtime and generator were reviewed for dead code, over-long methods, over-long argument lists and duplicate logic ([DECISIONS.md](DECISIONS.md), R1–R5, D1–D13). `ApiClient` went from 797 to 363 lines; no public constructor takes more than 6 arguments (configuration objects only); the only long constructor (`Operation`, 28 properties) is private.
-- In `sdk-generator`, superseded milestone documents, the Spanish quickstart and the benchmarks of the old architecture were deleted. A dead-code sweep of the runtime and generator sources has not been done with a tool yet; that is still open.
+- In `sdk-generator`, superseded milestone documents, the Spanish quickstart and the benchmarks of the old architecture were deleted. A dead-code sweep checked every class, method and constant for a reference anywhere in `src`, `tests`, `ci` and the docs, and every property for a read. The runtime had nothing unreferenced (three public `DTO` methods are API for users). The generator had a class and five methods, all removed (generator PR #68). A coverage run of the runtime's 514 tests found 16 methods the suite never executes; all are reachable or public API, so they are untested, not dead. Three contract fields in the generator are stored but not read (`unparsedSchema`, `hasDefault`, `links`); they describe the parsed document and were kept.
 
 ## Where we are not better
 

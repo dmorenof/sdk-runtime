@@ -6,6 +6,7 @@ namespace Dmorenof\SdkRuntime\Execution;
 use Dmorenof\SdkRuntime\DTO;
 use Dmorenof\SdkRuntime\Map;
 use Dmorenof\SdkRuntime\Operation;
+use Dmorenof\SdkRuntime\ParameterValues;
 use Dmorenof\SdkRuntime\RequestInput;
 use Dmorenof\SdkRuntime\TypedArray;
 
@@ -22,7 +23,7 @@ final class InputBuilder
      */
     public static function build(Operation $spec, array|DTO $path, ?DTO $parameters, mixed $body, bool $bodyPresent): RequestInput
     {
-        $pathValues = $path instanceof DTO ? self::operationFields($path)['path'] : $path;
+        $pathValues = $path instanceof DTO ? self::operationFields($path)['path'] : array_map(ParameterValues::plain(...), $path);
         $query = [];
         $headers = [];
         if ($parameters !== null) {
@@ -68,7 +69,7 @@ final class InputBuilder
             }
             foreach ($properties as $wireName => $property) {
                 if (!array_key_exists($property, $values)) { continue; }
-                $value = $values[$property];
+                $value = ParameterValues::plain($values[$property]);
                 if ($value instanceof DTO || $value instanceof Map || $value instanceof TypedArray) {
                     if ($location === 'cookie') { throw new \UnexpectedValueException('Structured cookie parameters are unsupported.'); }
                 } elseif (is_array($value)) {

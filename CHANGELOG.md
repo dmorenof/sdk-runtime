@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.2.0] — 2026-11-18
+
+- **Enum parameters.** A path, query, header or cookie value may be a backed enum case, or a list of them; the request carries the backing value. Before, an enum case in a parameter was refused. sdk-generator 1.5 generates enums for parameters whose schema lists its values.
+- `DTO` declares `REQUIRED_FIELDS` as an empty list, like the other defaults, and reads it directly. A model that requires nothing leaves it out (sdk-generator 1.4 does); a model that requires fields declares it as `public const array`, as before.
+- Decision D16 recorded: generated code follows the contract, even where it looks wrong.
+
 ## [1.1.2] — 2026-11-18
 
 - Faster calls (about 20% less time per call than 1.0.0 on a mocked request): what the client works out about an operation (the `Accept` header, whether its parameter metadata was checked, which statuses succeed and which entry describes each answer) is computed once per operation and reused; `lastResponse()` builds its headers view only when it is asked for; enum fields are no longer walked when validating a model. No behavior change.

@@ -39,7 +39,7 @@ if ($client->fetch(200, $types)::class !== $user::class || $client->fetch(201, $
     throw new RuntimeException('Status-specific hydration failed.');
 }
 try { $client->fetch(0, $types); throw new RuntimeException('Empty 200 accepted because 204 exists.'); }
-catch (JsonException) {}
+catch (\Dmorenof\SdkRuntime\InvalidResponseException $e) { if (!$e->getPrevious() instanceof JsonException) { throw new RuntimeException('Empty body must report its JSON failure.'); } }
 try { $client->fetch(400, $types); throw new RuntimeException('Unexpected status accepted.'); }
 catch (\Dmorenof\SdkRuntime\ApiException $e) {
     if ($e->response->status !== 400 || $e->response->body !== 'error') { throw new RuntimeException('Error contract changed.'); }

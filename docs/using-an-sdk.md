@@ -36,7 +36,7 @@ $user->profile;             // nested model
 Rules that surprise people:
 
 - **Properties start uninitialized.** Reading one that was never set (required or not) throws `Error`. Test with `isset($model->nickname)`, or read only what the API always returns.
-- **Unknown fields are rejected.** If the API returns a field its schema does not declare, hydration throws `InvalidArgumentException: Unknown JSON property …`. See [Unknown properties](#unknown-properties).
+- **Unknown fields in an answer are ignored.** If the API adds a field its schema does not declare, clients generated before still work. A model you build by hand from JSON (`new NewUser((object) [...])`) rejects fields it does not declare. See [Unknown properties](#unknown-properties).
 - **Dates and times are strings.** A `date-time` field is a `string` in the model; formats can be checked (see [Validation](validation.md#formats)) but are never converted to `DateTimeImmutable`.
 - **Models know their own rules.** Calling `$model->validate()` checks required fields and every declared rule (`minLength`, `pattern`, `enum`, formats…). Sending a request validates the body first.
 
@@ -79,10 +79,10 @@ Every failure is a standard PHP exception, so you can catch as broadly or narrow
 | Exception | When | Useful members |
 | --- | --- | --- |
 | `Dmorenof\SdkRuntime\ApiException` | The API answered with a status the operation does not declare as success (4xx, 5xx…). | `$e->getCode()` (status), `$e->response->status/headers/body`, `$e->payload` (decoded error when documented), `$e->error` |
-| `UnexpectedValueException` | A model or response does not match its schema: missing required field, wrong scalar type, broken rule, undeclared media type. | message names the model and field |
-| `JsonException` | A success body is empty or is not valid JSON. | |
+| `Dmorenof\SdkRuntime\InvalidResponseException` | The API answered with a success status but a body that does not fit what the operation declares: empty, not JSON, a wrong type, a missing required field, a broken rule, an enum value the schema does not list. Extends `UnexpectedValueException`. | `$e->response` (raw), `$e->getPrevious()` (the original failure) |
+| `UnexpectedValueException` | A request model does not match its schema (missing required field, wrong scalar type, broken rule), or the response media type is not declared. | message names the model and field |
 | `InvalidArgumentException` | You passed something the SDK cannot send (unknown property, bad parameter, bad server variable), or the response has a field the schema does not declare. | |
-| `ValueError` | An enum field has a value that is not one of its cases. | |
+| `ValueError` | You assigned a value that is not one of an enum's cases. | |
 | `TypeError` | A typed collection received the wrong item type. | |
 | `Dmorenof\SdkRuntime\Transport\RedirectException` | A redirect policy refused a redirect (downgrade, too many, cross-origin). | `$e->response` |
 | `Dmorenof\SdkRuntime\Security\OAuth2Exception` / `ReauthorizationRequiredException` | Token endpoint failure / the user must sign in again. | `isRejection()` |
@@ -106,7 +106,7 @@ try {
 
 ## Unknown properties
 
-By default a field the schema does not declare makes hydration fail. That is strict and predictable, but an API that adds a field will break clients that were generated before it. Until the runtime offers a configurable policy, keep SDKs regenerated when the API changes. Schemas that declare `additionalProperties` accept extra fields: read them with `$model->additionalProperties()` or `getAdditionalProperty($name)`, write with `setAdditionalProperty($name, $value)`.
+When the API answers with a field the SDK's schema does not declare, the field is ignored: an API that adds a field never breaks a client generated before it. What you send is strict: a model built by hand from JSON rejects a field it does not declare (`InvalidArgumentException: Unknown JSON property …`). Schemas that declare `additionalProperties` accept extra fields: read them with `$model->additionalProperties()` or `getAdditionalProperty($name)`, write with `setAdditionalProperty($name, $value)`.
 
 ## Response metadata
 

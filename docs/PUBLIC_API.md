@@ -18,7 +18,7 @@ Application code and generated SDKs may rely on these classes: constructors, pub
 - `ApiClient`: `connect()`, `resource()`, `serverUrl()`, `lastResponse()`, and the protected `executeOperation()`, `executeArguments()`, `executeBody()`, `SECURITY_SCHEMES` and `SERVERS` for SDK authors. A client never changes after it is created: every option (middleware, retry and redirect policies, server choice) is set in `Configuration`.
 - `Configuration`: the connection options an SDK `Configuration` extends.
 - `Operation`: the operation metadata format (see [Operation metadata](#operation-metadata)); `RequestInput`: the values of one call, for `executeOperation()`.
-- `ApiException`: `response`, `error`, `payload` and the previous exception.
+- `ApiException`: `response`, `error`, `payload` and the previous exception. `InvalidResponseException`: `response` and the original failure as the previous exception.
 
 **Models and collections** (extension points for generated code)
 

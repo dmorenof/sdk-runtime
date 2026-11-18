@@ -92,7 +92,8 @@ A client takes a snapshot of its configuration when you connect and never change
 | You see | It means |
 | --- | --- |
 | `Dmorenof\SdkRuntime\ApiException` | The API answered with a status the operation does not declare as success. `$e->response` has status, headers and body; `$e->payload` has the decoded error when the API documents one. |
-| `UnexpectedValueException` | A request or response did not match the declared schema (missing required field, wrong type, rule broken). |
+| `InvalidResponseException` | The API answered with a success status but a body that does not fit what it declared. `$e->response` has the raw answer. |
+| `UnexpectedValueException` | A request did not match the declared schema (missing required field, wrong type, rule broken). |
 | `LogicException` | The facade was used before `configure()`, or `middleware`/`retryPolicy`/`redirectPolicy` were set together with a custom `transport`. |
 | A PSR-18 exception | The network failed. It is passed through untouched. |
 

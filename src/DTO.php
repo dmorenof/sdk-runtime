@@ -19,6 +19,12 @@ class DTO implements \JsonSerializable, \Stringable
     /** @var array<class-string, array<string, mixed>> */
     private static array $declared = [];
 
+    /** While above zero, constructing a model from JSON skips its own validation: the caller validates the whole tree once. */
+    private static int $deferred = 0;
+
+    /** While above zero, a JSON property the model does not declare is ignored instead of rejected. */
+    private static int $tolerant = 0;
+
     public function __construct(?object $json = null)
     {
         if ($json === null) {
@@ -35,7 +41,7 @@ class DTO implements \JsonSerializable, \Stringable
             $where = static::class . "::$name";
             if (property_exists($this, $propertyName)) {
                 $this->{$propertyName} = Hydrator::hydrateProperty($this, $propertyName, $value, $where);
-            } else {
+            } elseif (self::$tolerant === 0 || defined(static::class . '::ADDITIONAL_PROPERTIES_TYPE')) {
                 AdditionalPropertyStore::put($this, $name, $this->hydrateAdditional($value, $where));
             }
         }
@@ -44,7 +50,67 @@ class DTO implements \JsonSerializable, \Stringable
         // and again before encoding a manually created outbound DTO.
         // Legacy Request/Response subclasses can still override validate().
         // A neutral DTO does not infer direction from the PHP class name.
-        $this->validate();
+        if (self::$deferred === 0) {
+            $this->validate();
+        }
+    }
+
+    /**
+     * Runs $work reading an API's answer: validation is deferred (the caller validates the whole tree once, in the
+     * direction it knows, instead of once per level while it is built) and a property the model does not declare
+     * is ignored, so an API that adds a field does not break clients generated before it.
+     *
+     * @internal Used by the runtime itself; not covered by the backward-compatibility promise.
+     * @template T
+     * @param \Closure(): T $work
+     * @return T
+     */
+    public static function readingResponse(\Closure $work): mixed
+    {
+        self::$tolerant++;
+        try {
+            return self::deferringValidation($work);
+        } finally {
+            self::$tolerant--;
+        }
+    }
+
+    /**
+     * Runs $work with model validation deferred (see readingResponse()).
+     *
+     * @internal Used by the runtime itself; not covered by the backward-compatibility promise.
+     * @template T
+     * @param \Closure(): T $work
+     * @return T
+     */
+    public static function deferringValidation(\Closure $work): mixed
+    {
+        self::$deferred++;
+        try {
+            return $work();
+        } finally {
+            self::$deferred--;
+        }
+    }
+
+    /**
+     * Runs $work with validation on, whatever the caller deferred: choosing between alternative schemas needs a
+     * model that does not fit to fail as it is built.
+     *
+     * @internal Used by the runtime itself; not covered by the backward-compatibility promise.
+     * @template T
+     * @param \Closure(): T $work
+     * @return T
+     */
+    public static function validating(\Closure $work): mixed
+    {
+        $saved = self::$deferred;
+        self::$deferred = 0;
+        try {
+            return $work();
+        } finally {
+            self::$deferred = $saved;
+        }
     }
 
     /** Construct through the shared hydrator so a base model can dispatch to a subtype. */
@@ -148,13 +214,13 @@ class DTO implements \JsonSerializable, \Stringable
         return array_replace($declared, AdditionalPropertyStore::all($this));
     }
 
-    private function assertRequiredFields(bool $request = false, bool $response = false): void
+    /** @param array<string, mixed> $defined The model's fields, declared and additional. */
+    private function assertRequiredFields(array $defined, bool $request = false, bool $response = false): void
     {
         $required = $this->declaredNames('REQUIRED_FIELDS');
         if ($required === []) {
             return;
         }
-        $defined = $this->fields();
         // Neutral construction verifies common requirements immediately.
         // A field marked readOnly or writeOnly is required only when the
         // surrounding operation supplies its direction (response or request).
@@ -197,8 +263,8 @@ class DTO implements \JsonSerializable, \Stringable
 
     private function validateWithMode(bool $request = false, bool $response = false): void
     {
-        $this->assertRequiredFields($request, $response);
         $fields = $this->fields();
+        $this->assertRequiredFields($fields, $request, $response);
         $mode = $request ? 'request' : ($response ? 'response' : 'neutral');
         if (static::MODEL_VALIDATION !== []) {
             Constraints::validate($this->serializeValidated($mode), static::MODEL_VALIDATION, static::class, $mode);

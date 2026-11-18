@@ -26,6 +26,10 @@ final class Psr18Transport implements TransportInterface
     /** @var \Closure(int): void Receives the delay in milliseconds. */
     private \Closure $sleeper;
 
+    private readonly RetryPolicy $retries;
+
+    private readonly RedirectPolicy $redirects;
+
     public function __construct(
         protected ClientInterface $client,
         private Psr18Options $options = new Psr18Options(),
@@ -33,6 +37,8 @@ final class Psr18Transport implements TransportInterface
         $this->sleeper = $options->sleeper ?? static function (int $ms): void {
             usleep($ms * 1000);
         };
+        $this->retries = $options->retryPolicy ?? new RetryPolicy(maxAttempts: 1);
+        $this->redirects = $options->redirectPolicy ?? RedirectPolicy::none();
     }
 
     /** @param array<string, string> $headers */
@@ -50,10 +56,12 @@ final class Psr18Transport implements TransportInterface
      */
     public function sendResponse(RequestInterface $request, bool $stream = false): ResponseInterface
     {
-        /** @var array<string, string> $own */
-        $own = array_map(static fn (array $values): string => implode(', ', $values), $request->getHeaders());
-        $request = new Request($request->getMethod(), $request->getUri(), \Dmorenof\SdkRuntime\CookieHeader::merge($this->options->defaultHeaders, $own), $request->getBody());
-        $policy = $this->options->redirectPolicy ?? RedirectPolicy::none();
+        if ($this->options->defaultHeaders !== []) {
+            /** @var array<string, string> $own */
+            $own = array_map(static fn (array $values): string => implode(', ', $values), $request->getHeaders());
+            $request = new Request($request->getMethod(), $request->getUri(), \Dmorenof\SdkRuntime\CookieHeader::merge($this->options->defaultHeaders, $own), $request->getBody());
+        }
+        $policy = $this->redirects;
         $origin = $request->getUri();
 
         for ($hop = 0;; $hop++) {
@@ -83,7 +91,7 @@ final class Psr18Transport implements TransportInterface
         foreach ($this->options->middleware as $middleware) {
             $request = $middleware->beforeRequest($request);
         }
-        if (!self::sameOrigin($origin, $request->getUri())) {
+        if ($request->getUri() !== $origin && !self::sameOrigin($origin, $request->getUri())) {
             $request = $redirects->withoutCredentials($request);
         }
 
@@ -101,7 +109,7 @@ final class Psr18Transport implements TransportInterface
     /** Sends once, or again after a transient failure when the policy allows the method and the body can be resent. */
     private function sendWithRetries(RequestInterface $request, bool $stream): ResponseInterface
     {
-        $policy = $this->options->retryPolicy ?? new RetryPolicy(maxAttempts: 1);
+        $policy = $this->retries;
         $maxAttempts = $policy->allows($request->getMethod()) && self::replayable($request) ? $policy->maxAttempts : 1;
 
         for ($attempt = 1;; $attempt++) {

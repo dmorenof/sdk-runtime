@@ -7,6 +7,7 @@ use Dmorenof\SdkRuntime\ApiException;
 use Dmorenof\SdkRuntime\Constraints;
 use Dmorenof\SdkRuntime\DTO;
 use Dmorenof\SdkRuntime\Hydrator;
+use Dmorenof\SdkRuntime\InvalidResponseException;
 use Dmorenof\SdkRuntime\JsonHydrator;
 use Dmorenof\SdkRuntime\MediaType;
 use Dmorenof\SdkRuntime\Operation;
@@ -80,10 +81,14 @@ final class ResponseDecoder
         }
         $encoding = $entry['encoding'] ?? (($entry['mediaType'] ?? '') === 'text/plain' ? 'text' : 'json');
         if (!in_array($encoding, ['json', 'text', 'binary'], true)) { throw new \InvalidArgumentException('Unsupported response encoding.'); }
-        $result = $encoding !== 'json'
-            ? Hydrator::hydrate($response->body, $entry['type'], false, $spec->label . ' response')
-            : JsonHydrator::decode($response->body, $entry['type'], $entry['schemaNullable']);
-        Constraints::validate($result, $entry['rules'] ?? $spec->responseValidation, $spec->label . ' response', 'response');
+        try {
+            $result = $encoding !== 'json'
+                ? Hydrator::hydrate($response->body, $entry['type'], false, $spec->label . ' response')
+                : JsonHydrator::decode($response->body, $entry['type'], $entry['schemaNullable']);
+            Constraints::validate($result, $entry['rules'] ?? $spec->responseValidation, $spec->label . ' response', 'response');
+        } catch (\JsonException|\UnexpectedValueException|\InvalidArgumentException|\ValueError|\TypeError $cause) {
+            throw new InvalidResponseException($response, $spec->label, $cause);
+        }
         return $result;
     }
 

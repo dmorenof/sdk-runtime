@@ -83,13 +83,13 @@ At 357 lines it wrote query strings, wrote path and header styles (simple, label
 ### D13. `ApiClient` handles PSR-7 responses only
 It kept two code paths for the two kinds of transport (PSR-7 and a custom one answering a buffered `HttpResponse`), with the same `instanceof` test repeated five times. A custom transport's response is now wrapped into a PSR-7 response once, right after the round trip, and everything after that is a single path.
 
-### D14. Left open on purpose
-These came up in the review and were not changed, because each is a behavior change that deserves its own decision rather than a refactor:
+### D14. Tolerant reading and one failure type for bad answers (from the audit against OpenAPI Generator)
+The audit ([AUDIT.md](AUDIT.md)) ran the same scenarios against both SDKs and found two things where the other tool behaved better:
 
-- **Unknown fields in a response are rejected** (`Unknown JSON property`). Strict reading is predictable but breaks older clients when an API adds a field. A tolerant default (ignore unknown fields in responses, keep rejecting them in requests) is the likely next step.
-- **Error types are not uniform** (`JsonException` for an empty body, `ValueError` for an enum, `UnexpectedValueException` for a type, `InvalidArgumentException` for an unknown field). A small family of runtime exceptions would be easier to catch.
-- **`lastResponse()` is instance state.** It is not safe to share one client between concurrent tasks. Returning the response metadata with the result would remove the state, at the cost of a different return type.
-- **`sdk-generator` rejects `oauth2` and `openIdConnect` security schemes.** The runtime implements OAuth2; the generator does not emit those scheme types yet.
+- **A field the schema does not declare broke the call.** Now it is ignored when reading an answer; a model built by hand from JSON stays strict, so mistakes in what you send are still caught.
+- **Bad answers raised four unrelated exception types** (`JsonException`, `ValueError`, `UnexpectedValueException`, `InvalidArgumentException`). Now one `InvalidResponseException` carries the raw response and the original failure.
+
+Still open: `lastResponse()` is instance state (not safe to share between concurrent tasks); `sdk-generator` rejects `oauth2` and `openIdConnect` security schemes.
 
 ### D15. Versioning: the next release is a 1.x minor, not 2.0.0
 The software is new and has no users, and the 1.0.0 that exists was published before this review. A new major for the redesign would signal a compatibility history that does not exist. The changes in this review therefore ship as the next 1.x release, and the changelog and the migration guide say plainly what changed. Major versions are reserved for packages that other projects already depend on (the TypedArray library is one). When this software has real users, the Semantic Versioning promise in [PUBLIC_API.md](PUBLIC_API.md) applies as written.

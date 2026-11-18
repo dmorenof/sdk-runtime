@@ -10,6 +10,7 @@ This software has no users yet, so these changes ship as a 1.x release instead o
 - **ApiException**: `new ApiException($response, $operation, $payload, $previous)`; `error` is derived from `payload`. `ApiException::fromResponse()` is gone.
 - **Transport**: `new Psr18Transport($client, new Psr18Options(defaultHeaders:, middleware:, retryPolicy:, redirectPolicy:, sleeper:))`; the setters and `addMiddleware()` are gone; `sendResponse()` takes a PSR-7 request.
 - **Operation**: constructed only through `Operation::fromArray()`.
+- **Responses**: a field the schema does not declare is ignored when reading an answer (hand-built models stay strict); a success body that does not fit (empty, not JSON, wrong type, missing field, unknown enum value) throws one `InvalidResponseException` with the raw response and the original failure as its previous exception; response models are validated once instead of once per level.
 - **Internals** (not public API): request building, response decoding and server choice moved out of `ApiClient` into `Execution\*`; `SecurityApplier::apply()` returns an `AppliedSecurity`; several long methods were split.
 
 ## [1.0.0] — 2026-11-11

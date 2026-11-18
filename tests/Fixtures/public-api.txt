@@ -58,6 +58,10 @@ class Dmorenof\SdkRuntime\DTO implements JsonSerializable, Stringable
     method public validateForRequest(): void
     method public validateForResponse(): void
 
+final class Dmorenof\SdkRuntime\InvalidResponseException extends UnexpectedValueException
+    method public __construct(Dmorenof\SdkRuntime\Transport\HttpResponse $response, string $operation, Throwable $cause)
+    property public readonly Dmorenof\SdkRuntime\Transport\HttpResponse $response
+
 class Dmorenof\SdkRuntime\Map implements ArrayAccess, Countable, IteratorAggregate, JsonSerializable, Traversable
     const protected MAP_VALIDATION
     const protected VALUE_NULLABLE

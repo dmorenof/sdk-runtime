@@ -127,12 +127,19 @@ final class Hydrator
             }
             return new $kind($value);
         }
-        return match ($classKind) {
-            'enum' => self::enum($value, $kind, $where),
-            'collection' => self::collection($value, $kind, $where),
-            'model' => self::model($value, $kind, $where),
-            default => throw new \UnexpectedValueException("Unsupported nested PHP type $kind at $where."),
-        };
+        if ($classKind === 'enum') {
+            /** @var class-string<\BackedEnum> $kind */
+            return self::enum($value, $kind, $where);
+        }
+        if ($classKind === 'collection') {
+            /** @var class-string<TypedArray> $kind */
+            return self::collection($value, $kind, $where);
+        }
+        if ($classKind === 'model') {
+            /** @var class-string<DTO> $kind */
+            return self::model($value, $kind, $where);
+        }
+        throw new \UnexpectedValueException("Unsupported nested PHP type $kind at $where.");
     }
 
     /** What a class name hydrates as: anyOf, map, enum, collection, model, or other. Looked up once per class. */

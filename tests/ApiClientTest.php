@@ -37,6 +37,16 @@ final class ApiClientTest extends TestCase
         self::assertSame('Bearer secret', $transport->sent[0]['headers']['Authorization']);
     }
 
+    public function testReusesTheOperationBuiltFromItsMetadata(): void
+    {
+        [$client, $transport] = $this->client(200, '{"id":1,"name":"Grace"}');
+
+        self::assertSame($client->reusedOperation(), $client->reusedOperation());
+        self::assertSame('Grace', $client->getUserReusingOperation(1)->name);
+        self::assertSame('Grace', $client->getUserReusingOperation(2)->name);
+        self::assertSame('https://api.example.com/users/2', $transport->sent[1]['url']);
+    }
+
     public function testRejectsInvalidParameterBeforeSending(): void
     {
         [$client, $transport] = $this->client(200, '{}');

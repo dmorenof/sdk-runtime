@@ -46,6 +46,9 @@ abstract class ApiClient
 
     protected TransportInterface $transport;
 
+    /** @var array<class-string, array<string, Operation>> Operations built by operation(), per resource class and route. */
+    private static array $operations = [];
+
     private Configuration $configuration;
 
     private ServerSelection $servers;
@@ -138,12 +141,12 @@ abstract class ApiClient
      * Run an operation from what a generated method receives: path values (or a parameter object that
      * declares them), an optional parameter object for query, headers and cookies, and an optional body.
      *
-     * @param OperationSpec $operation
+     * @param OperationSpec|Operation $operation
      * @param array<string, scalar|list<scalar>|DTO|Map|TypedArray|\stdClass|null>|DTO $path
      */
-    protected function executeArguments(array $operation, array|DTO $path = [], ?DTO $parameters = null, ?DTO $body = null): mixed
+    protected function executeArguments(array|Operation $operation, array|DTO $path = [], ?DTO $parameters = null, ?DTO $body = null): mixed
     {
-        $spec = Operation::fromArray($operation);
+        $spec = $operation instanceof Operation ? $operation : Operation::fromArray($operation);
         return $this->run($spec, InputBuilder::build($spec, $path, $parameters, $body, $body !== null));
     }
 
@@ -151,12 +154,12 @@ abstract class ApiClient
      * Same, when the body is the main argument. A body is always present here, even when it is JSON null;
      * to leave an optional body out, call executeArguments() instead.
      *
-     * @param OperationSpec $operation
+     * @param OperationSpec|Operation $operation
      * @param array<string, scalar|list<scalar>|DTO|Map|TypedArray|\stdClass|null>|DTO $path
      */
-    protected function executeBody(array $operation, mixed $body, array|DTO $path = [], ?DTO $parameters = null): mixed
+    protected function executeBody(array|Operation $operation, mixed $body, array|DTO $path = [], ?DTO $parameters = null): mixed
     {
-        $spec = Operation::fromArray($operation);
+        $spec = $operation instanceof Operation ? $operation : Operation::fromArray($operation);
         if ($spec->requestBody === null) {
             throw new \InvalidArgumentException('Native body execution requires its declared contract.');
         }
@@ -164,13 +167,24 @@ abstract class ApiClient
     }
 
     /**
+     * The operation a generated method describes, built once per resource class and route and reused by every call.
+     * Generated code passes its metadata constant through here: `$this->executeArguments(self::operation(self::GET_BY_ID))`.
+     *
+     * @param OperationSpec $spec
+     */
+    protected static function operation(array $spec): Operation
+    {
+        return self::$operations[static::class][$spec['method'] . ' ' . $spec['path']] ??= Operation::fromArray($spec);
+    }
+
+    /**
      * Run an operation from values already split by where they travel.
      *
-     * @param OperationSpec $operation
+     * @param OperationSpec|Operation $operation
      */
-    protected function executeOperation(array $operation, RequestInput $input = new RequestInput()): mixed
+    protected function executeOperation(array|Operation $operation, RequestInput $input = new RequestInput()): mixed
     {
-        return $this->run(Operation::fromArray($operation), $input);
+        return $this->run($operation instanceof Operation ? $operation : Operation::fromArray($operation), $input);
     }
 
     private function run(Operation $spec, RequestInput $input): mixed

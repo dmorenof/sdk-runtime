@@ -14,12 +14,12 @@ private const array GET_BY_ID = [
 public function getById(int $id, ?GetParams\Users\ById $params = null): DTOs\User
 {
     /** @var DTOs\User $result */
-    $result = $this->executeArguments(self::GET_BY_ID, path: ['id' => $id], parameters: $params);
+    $result = $this->executeArguments(self::operation(self::GET_BY_ID), path: ['id' => $id], parameters: $params);
     return $result;
 }
 ```
 
-Only `method` and `path` are required. Every other key falls back to `Operation::DEFAULTS`, and a generator omits keys equal to their default so the output stays small. (`Operation::fromArray($spec)` turns the array into a validated, immutable `Operation`.)
+Only `method` and `path` are required. Every other key falls back to `Operation::DEFAULTS`, and a generator omits keys equal to their default so the output stays small. (`Operation::fromArray($spec)` turns the array into a validated, immutable `Operation`.) Generated code passes the constant through `self::operation(...)`, which builds the `Operation` once per resource class and route and reuses it on every call; the execute methods also accept the plain array.
 
 ## Executing
 

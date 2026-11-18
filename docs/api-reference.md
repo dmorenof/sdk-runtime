@@ -15,7 +15,7 @@ Namespace: `Dmorenof\SdkRuntime` unless shown.
 | `lastResponse(): ?ResponseInfo` | Status and headers of the last response of *this* instance |
 | `static serverUrl($server = 0, $variables = [])` | Base URL for a declared root server |
 | `const SECURITY_SCHEMES`, `const SERVERS` | Declared by the SDK. See [Operation metadata](operation-metadata.md) |
-| `executeArguments(...)`, `executeBody(...)`, `executeOperation(...)` (protected) | Run an operation. For generators |
+| `executeArguments(...)`, `executeBody(...)`, `executeOperation(...)`, `operation($spec)` (protected) | Run an operation; `operation()` builds an `Operation` once per class and route. For generators |
 
 A client never changes after it is created. Every option is set in `Configuration`.
 

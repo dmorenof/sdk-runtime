@@ -12,9 +12,10 @@ class Dmorenof\SdkRuntime\AnyOf implements JsonSerializable
 abstract class Dmorenof\SdkRuntime\ApiClient
     const protected SECURITY_SCHEMES
     const protected SERVERS
-    method protected executeArguments(array $operation, Dmorenof\SdkRuntime\DTO|array $path = array ( ), ?Dmorenof\SdkRuntime\DTO $parameters = NULL, ?Dmorenof\SdkRuntime\DTO $body = NULL): mixed
-    method protected executeBody(array $operation, mixed $body, Dmorenof\SdkRuntime\DTO|array $path = array ( ), ?Dmorenof\SdkRuntime\DTO $parameters = NULL): mixed
-    method protected executeOperation(array $operation, Dmorenof\SdkRuntime\RequestInput $input = \Dmorenof\SdkRuntime\RequestInput::__set_state(array( 'bodyPresent' => false, 'path' => array ( ), 'query' => array ( ), 'headers' => array ( ), 'body' => NULL, ))): mixed
+    method protected executeArguments(Dmorenof\SdkRuntime\Operation|array $operation, Dmorenof\SdkRuntime\DTO|array $path = array ( ), ?Dmorenof\SdkRuntime\DTO $parameters = NULL, ?Dmorenof\SdkRuntime\DTO $body = NULL): mixed
+    method protected executeBody(Dmorenof\SdkRuntime\Operation|array $operation, mixed $body, Dmorenof\SdkRuntime\DTO|array $path = array ( ), ?Dmorenof\SdkRuntime\DTO $parameters = NULL): mixed
+    method protected executeOperation(Dmorenof\SdkRuntime\Operation|array $operation, Dmorenof\SdkRuntime\RequestInput $input = \Dmorenof\SdkRuntime\RequestInput::__set_state(array( 'bodyPresent' => false, 'path' => array ( ), 'query' => array ( ), 'headers' => array ( ), 'body' => NULL, ))): mixed
+    method protected static operation(array $spec): Dmorenof\SdkRuntime\Operation
     method public final __construct(Dmorenof\SdkRuntime\Configuration $configuration)
     method public lastResponse(): ?Dmorenof\SdkRuntime\Transport\ResponseInfo
     method public resource(string $type): self

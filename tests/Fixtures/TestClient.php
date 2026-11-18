@@ -43,6 +43,17 @@ final class TestClient extends ApiClient
         return $this->executeOperation(self::GET_USER, new \Dmorenof\SdkRuntime\RequestInput(path: ['id' => $id], query: ['verbose' => $verbose]));
     }
 
+    /** Same call as getUser(), through the operation built once per class and route. */
+    public function getUserReusingOperation(int $id): User
+    {
+        return $this->executeOperation(self::operation(self::GET_USER), new \Dmorenof\SdkRuntime\RequestInput(path: ['id' => $id]));
+    }
+
+    public function reusedOperation(): \Dmorenof\SdkRuntime\Operation
+    {
+        return self::operation(self::GET_USER);
+    }
+
     public function createUser(User $user): User
     {
         return $this->executeOperation(self::CREATE_USER, new \Dmorenof\SdkRuntime\RequestInput(body: $user));

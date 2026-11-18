@@ -3,7 +3,11 @@ declare(strict_types=1);
 
 namespace Dmorenof\SdkRuntime;
 
-/** Shared typed-collection behavior without duplicating TypedArray validation. */
+/**
+ * Shared typed-collection behavior without duplicating TypedArray validation.
+ *
+ * @extends \TypedArray\TypedArray<mixed>
+ */
 class TypedArray extends \TypedArray\TypedArray implements \Stringable
 {
     /** @var array<string, mixed> Rules applied to every item (see Constraints). */

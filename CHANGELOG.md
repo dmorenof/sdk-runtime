@@ -2,7 +2,7 @@
 
 ## [1.4.0] — 2026-11-19
 
-- **PHP 8.4 is the minimum.** Generated models check each value as it is assigned or hydrated, with a `set` hook on every property that has rules (sdk-generator 2 emits them). A value is checked once, where it enters the model, and never again when a request is sent.
+- **PHP 8.4 is the minimum.** Generated models check each value as it is assigned or hydrated, with a `set` hook on every property that has rules (sdk-generator 1.6 emits them). A value is checked once, where it enters the model, and never again when a request is sent.
 - Models, maps and collections check themselves one level when built; the whole-tree walks on construction, on sending and on reading an answer are removed (`validateNestedValue` is no longer called by the runtime, the deferral counters are gone).
 - `json_encode($model)` and `(string) $model` only serialize. `validate()`, `validateForRequest()` and `validateForResponse()` stay as the explicit, whole check.
 - A model declares its empty defaults once, in `DTO` (`PROPERTY_MAP`, `WIRE_PROPERTY_MAP`, `READ_ONLY_FIELDS`, `WRITE_ONLY_FIELDS`, `OPERATION_FIELDS`, `ADDITIONAL_PROPERTIES_VALIDATION`), and generated classes declare only what they set.

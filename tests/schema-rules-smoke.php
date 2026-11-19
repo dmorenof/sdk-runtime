@@ -30,7 +30,7 @@ try {
     try { $client->scalar(true); throw new RuntimeException('Invalid scalar response accepted.'); } catch (UnexpectedValueException) {}
     $prototype = new class([1, 2]) extends \Dmorenof\SdkRuntime\TypedArray { protected string $expected_type = 'integer'; protected const array COLLECTION_VALIDATION = ['uniqueItems' => true]; };
     $collection = $client->collection($prototype::class); $collection[] = 1;
-    try { (string) $collection; throw new RuntimeException('Invalid collection mutation accepted.'); } catch (UnexpectedValueException) {}
+    try { $collection->validateForMode(); throw new RuntimeException('Invalid collection mutation accepted.'); } catch (UnexpectedValueException) {}
     $items = new class([2, 4]) extends \Dmorenof\SdkRuntime\TypedArray { protected string $expected_type = 'integer'; protected const array ITEM_VALIDATION = ['multipleOf' => 2]; };
     $items->exchangeArray([3]);
     try { \Dmorenof\SdkRuntime\DTO::validateNestedValue($items, 'request'); throw new RuntimeException('Inherited collection mutation bypassed item rules.'); } catch (UnexpectedValueException) {}

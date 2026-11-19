@@ -36,9 +36,6 @@ class DTO implements \JsonSerializable, \Stringable
     /** @var array<class-string, list<string>> Properties whose `set` hook checks their rules (see assigning()). */
     private static array $hooked = [];
 
-    /** @var array<class-string, bool> Whether a model of the class has anything to check about itself (see hasLevelChecks()). */
-    private static array $levelChecks = [];
-
     /** While above zero, a JSON property the model does not declare is ignored instead of rejected. */
     private static int $tolerant = 0;
 
@@ -234,9 +231,6 @@ class DTO implements \JsonSerializable, \Stringable
      */
     public function validateLevel(string $mode): void
     {
-        if (!self::hasLevelChecks()) {
-            return;
-        }
         $fields = $this->fields();
         $this->assertRequiredFields($fields, $mode === 'request', $mode === 'response');
         $this->checkModelRules($fields, $mode);
@@ -255,16 +249,6 @@ class DTO implements \JsonSerializable, \Stringable
                 self::validateNestedValue($value, $mode);
             }
         }
-    }
-
-    /** Whether this class declares anything validateLevel() could refuse; worked out once per class. */
-    private static function hasLevelChecks(): bool
-    {
-        return self::$levelChecks[static::class] ??= static::REQUIRED_FIELDS !== []
-            || static::MODEL_VALIDATION !== []
-            || static::ADDITIONAL_PROPERTIES_VALIDATION !== []
-            || array_diff(array_keys(static::VALIDATION), self::hookedFields()) !== []
-            || (defined(static::class . '::DISCRIMINATOR_BASE') && constant(static::class . '::DISCRIMINATOR_BASE') !== static::class);
     }
 
     /** @param array<string, mixed> $fields */

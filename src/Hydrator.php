@@ -196,6 +196,27 @@ final class Hydrator
         return new $kind($value);
     }
 
+    /**
+     * A model from each JSON object of a list. A generated model calls it once it has seen that every item is an object;
+     * a list with anything else is hydrated by the general path, which refuses it.
+     *
+     * @template T of DTO
+     * @param array<mixed> $items
+     * @param class-string<T> $class
+     * @return list<T>
+     */
+    public static function models(array $items, string $class): array
+    {
+        $models = [];
+        foreach ($items as $item) {
+            if (!$item instanceof \stdClass) {
+                throw new \UnexpectedValueException("Expected JSON object for an item of $class.");
+            }
+            $models[] = new $class($item);
+        }
+        return $models;
+    }
+
     /** @param list<string> $types */
     private static function nativeUnion(mixed $value, array $types, bool $nullable, string $where): mixed
     {

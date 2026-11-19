@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.6.0] — 2026-11-19
+
+- `Hydrator::models()` (internal) builds a model from each JSON object of a list, for a generated model (sdk-generator 1.8) that has checked every item is an object, so a list of nested models is hydrated without the general dispatch per item.
+
 ## [1.5.0] — 2026-11-19
 
 - A model sets the members of a JSON object one at a time through `DTO::assignMember()` (protected, `@internal`). The general version is the one `DTO` already had; a generated model (sdk-generator 1.7) overrides it with a `match` that converts scalars, enum cases, plain nested models and lists of scalars inline and hands every other member to `parent::assignMember()`, so what is accepted, converted or refused does not change.

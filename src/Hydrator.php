@@ -47,6 +47,10 @@ final class Hydrator
     {
         $named = self::$namedTypes[$model::class][$property] ?? null;
         if ($named !== null) {
+            // A scalar of the type the property declares is the common case, and needs no conversion.
+            if (match ($named[0]) { 'string' => is_string($value), 'int' => is_int($value), 'bool' => is_bool($value), 'float' => is_float($value), default => false }) {
+                return $value;
+            }
             return self::convert($value, $named[0], $named[1], $where);
         }
         $type = self::$propertyTypes[$model::class][$property] ?? null;

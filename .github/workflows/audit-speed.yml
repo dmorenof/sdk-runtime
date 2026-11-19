@@ -8,6 +8,9 @@ on:
       calls:
         description: 'Calls per run'
         default: '20000'
+      spec:
+        description: 'Scenario: accounts-openapi30 (scalars, a list of strings) or orders-openapi30 (a list of models)'
+        default: 'accounts-openapi30'
       checkout:
         description: 'Also time our SDK built from this branch of the runtime and the generator (not the published ones)'
         type: boolean
@@ -48,9 +51,9 @@ jobs:
       - name: Generate both SDKs from the same specification
         run: |
           OUT=/tmp/audit-out; mkdir -p "$OUT"
-          php /tmp/gen/vendor/bin/generate-sdk.php audit/specs/accounts-openapi30.json "$OUT/ours-accounts-openapi30" 'Ours' ours/accounts
+          php /tmp/gen/vendor/bin/generate-sdk.php audit/specs/${{ inputs.spec }}.json "$OUT/ours-${{ inputs.spec }}" 'Ours' ours/accounts
           curl -fsSL https://repo.maven.apache.org/maven2/org/openapitools/openapi-generator-cli/7.26.0/openapi-generator-cli-7.26.0.jar -o /tmp/oag.jar
-          java -jar /tmp/oag.jar generate -i audit/specs/accounts-openapi30.json -g php -o "$OUT/oag-accounts-openapi30" \
+          java -jar /tmp/oag.jar generate -i audit/specs/${{ inputs.spec }}.json -g php -o "$OUT/oag-${{ inputs.spec }}" \
             --additional-properties=invokerPackage=Oag,composerPackageName=bench/accounts,library=guzzle,modern=true
       - name: Build our SDK from this branch of the runtime and the generator
         if: ${{ inputs.checkout }}
@@ -64,21 +67,22 @@ jobs:
           composer show dmorenof/sdk-runtime | grep -E '^(name|versions)'
           composer show dmorenof/sdk-generator | grep -E '^(name|versions)'
           mkdir -p /tmp/audit-out2
-          php /tmp/gen2/vendor/bin/generate-sdk.php "$GITHUB_WORKSPACE/audit/specs/accounts-openapi30.json" /tmp/audit-out2/ours-accounts-openapi30 'Ours' ours/accounts
-          ln -s /tmp/audit-out/oag-accounts-openapi30 /tmp/audit-out2/oag-accounts-openapi30
-          sed -n 1,200p /tmp/audit-out2/ours-accounts-openapi30/src/DTOs/User.php
+          php /tmp/gen2/vendor/bin/generate-sdk.php "$GITHUB_WORKSPACE/audit/specs/${{ inputs.spec }}.json" /tmp/audit-out2/ours-${{ inputs.spec }} 'Ours' ours/accounts
+          ln -s /tmp/audit-out/oag-${{ inputs.spec }} /tmp/audit-out2/oag-${{ inputs.spec }}
+          find /tmp/audit-out2/ours-${{ inputs.spec }}/src/DTOs -name '*.php' | head -3 | xargs sed -n 1,80p
       - name: Measure
         if: ${{ !inputs.profile }}
         env:
           AUDIT_AUTOLOAD: /tmp/gen/vendor/autoload.php
           AUDIT_OUT: /tmp/audit-out
+          AUDIT_SPEC: ${{ inputs.spec }}
           CALLS: ${{ inputs.calls }}
         run: |
           for i in 1 2 3 4 5 6 7; do
             php audit/bench.php oag "$CALLS"
             php audit/bench.php ours "$CALLS"
             if [ "${{ inputs.checkout }}" = "true" ]; then
-              AUDIT_AUTOLOAD=/tmp/gen2/vendor/autoload.php AUDIT_OUT=/tmp/audit-out2 php audit/bench.php ours "$CALLS" | sed 's/^ours:/checkout:/'
+              AUDIT_AUTOLOAD=/tmp/gen2/vendor/autoload.php AUDIT_OUT=/tmp/audit-out2 AUDIT_SPEC="${{ inputs.spec }}" php audit/bench.php ours "$CALLS" | sed 's/^ours:/checkout:/'
             fi
           done | tee /tmp/speed.txt
           {
@@ -92,6 +96,7 @@ jobs:
         env:
           AUDIT_AUTOLOAD: ${{ inputs.checkout && '/tmp/gen2/vendor/autoload.php' || '/tmp/gen/vendor/autoload.php' }}
           AUDIT_OUT: ${{ inputs.checkout && '/tmp/audit-out2' || '/tmp/audit-out' }}
+          AUDIT_SPEC: ${{ inputs.spec }}
         run: |
           mkdir -p /tmp/prof
           php -m | grep -i xdebug || { echo 'Xdebug is not loaded'; exit 1; }

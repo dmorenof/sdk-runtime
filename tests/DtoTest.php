@@ -46,13 +46,14 @@ final class DtoTest extends TestCase
         new User((object) ['name' => 'Grace', 'age' => 'old']);
     }
 
-    public function testValidatesConstraintsOnSerialization(): void
+    public function testValidateIsExplicitAndJsonEncodeDoesNotRevalidate(): void
     {
         $user = new User((object) ['name' => 'Grace']);
         $user->age = -1;
 
+        self::assertStringContainsString('"age":-1', json_encode($user, JSON_THROW_ON_ERROR));
         $this->expectException(\UnexpectedValueException::class);
-        json_encode($user, JSON_THROW_ON_ERROR);
+        $user->validate();
     }
 
     public function testRequestSerializationOmitsReadOnlyFields(): void

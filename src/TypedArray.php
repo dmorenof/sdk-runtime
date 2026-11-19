@@ -60,7 +60,6 @@ class TypedArray extends \TypedArray\TypedArray implements \Stringable
 
     public function __toString(): string
     {
-        DTO::validateNestedValue($this, 'neutral');
         return json_encode(Serializer::value($this, 'neutral'), JSON_THROW_ON_ERROR);
     }
 }

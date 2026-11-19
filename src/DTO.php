@@ -13,11 +13,6 @@ class DTO implements \JsonSerializable, \Stringable
 {
     /** @var list<string> Field names that must be present. A model that requires none declares nothing. */
     protected const array REQUIRED_FIELDS = [];
-    /**
-     * True in a model whose properties with rules check each value as it is assigned (a `set` hook calling
-     * assigning(), PHP 8.4). Its rules are then not checked again when the model is validated.
-     */
-    protected const bool VALIDATES_ON_ASSIGNMENT = false;
     /** @var array<string, array<string, mixed>> Field => rules (see Constraints). */
     protected const array VALIDATION = [];
     /** @var array<string,mixed> */
@@ -28,9 +23,6 @@ class DTO implements \JsonSerializable, \Stringable
 
     /** @var array<class-string, bool> Whether the class is a subtype that must agree with its discriminator. */
     private static array $discriminated = [];
-
-    /** @var array<class-string, array{trivial: bool, nested: list<string>}> What validating each class involves (see shape()). */
-    private static array $shapes = [];
 
     /** While above zero, constructing a model from JSON skips its own validation: the caller validates the whole tree once. */
     private static int $deferred = 0;
@@ -48,25 +40,14 @@ class DTO implements \JsonSerializable, \Stringable
             Constraints::validate(SchemaValidator::snapshot($json), ['jsonSchema' => static::MODEL_VALIDATION['jsonSchema']], static::class);
         }
         $propertyMap = $this->declaredMap('PROPERTY_MAP');
-        // The model at the top of a tree validates the whole tree once, when it is built; the models and collections
-        // it creates on the way leave that to it, instead of each validating its own subtree again.
-        $topLevel = self::$deferred === 0;
-        if ($topLevel) {
-            self::$deferred++;
-        }
-        try {
-            foreach (get_object_vars($json) as $key => $value) {
-                $name = (string) $key;
-                $propertyName = $propertyMap[$name] ?? $name;
-                if (property_exists($this, $propertyName)) {
-                    $this->{$propertyName} = Hydrator::hydrateField($this, $propertyName, $value, $name);
-                } elseif (self::$tolerant === 0 || defined(static::class . '::ADDITIONAL_PROPERTIES_TYPE')) {
-                    AdditionalPropertyStore::put($this, $name, $this->hydrateAdditional($value, static::class . "::$name"));
-                }
-            }
-        } finally {
-            if ($topLevel) {
-                self::$deferred--;
+        foreach (get_object_vars($json) as $key => $value) {
+            $name = (string) $key;
+            $propertyName = $propertyMap[$name] ?? $name;
+            $where = static::class . "::$name";
+            if (property_exists($this, $propertyName)) {
+                $this->{$propertyName} = Hydrator::hydrateProperty($this, $propertyName, $value, $where);
+            } elseif (self::$tolerant === 0 || defined(static::class . '::ADDITIONAL_PROPERTIES_TYPE')) {
+                AdditionalPropertyStore::put($this, $name, $this->hydrateAdditional($value, $where));
             }
         }
 
@@ -74,7 +55,7 @@ class DTO implements \JsonSerializable, \Stringable
         // and again before encoding a manually created outbound DTO.
         // Legacy Request/Response subclasses can still override validate().
         // A neutral DTO does not infer direction from the PHP class name.
-        if ($topLevel) {
+        if (self::$deferred === 0) {
             $this->validate();
         }
     }
@@ -298,10 +279,6 @@ class DTO implements \JsonSerializable, \Stringable
 
     private function validateWithMode(bool $request = false, bool $response = false): void
     {
-        $shape = self::$shapes[static::class] ??= $this->shape();
-        if ($shape['trivial']) {
-            return; // Nothing to check and nothing nested to descend into.
-        }
         $fields = $this->fields();
         $this->assertRequiredFields($fields, $request, $response);
         $mode = $request ? 'request' : ($response ? 'response' : 'neutral');
@@ -325,9 +302,8 @@ class DTO implements \JsonSerializable, \Stringable
                 Constraints::validate($value, $additionalRules, static::class . "::$name", $mode);
             }
         }
-        $checked = static::VALIDATES_ON_ASSIGNMENT ? [] : static::VALIDATION;
-        $skipped = $checked === [] ? [] : $this->directionalFields($request, $response);
-        foreach ($checked as $field => $rules) {
+        $skipped = static::VALIDATION === [] ? [] : $this->directionalFields($request, $response);
+        foreach (static::VALIDATION as $field => $rules) {
             if (!property_exists($this, $field)) {
                 throw new \LogicException("Validation refers to an unknown field " . static::class . "::$field.");
             }
@@ -336,76 +312,11 @@ class DTO implements \JsonSerializable, \Stringable
             }
             Constraints::validate($fields[$field], $rules, static::class . "::$field", $mode);
         }
-        foreach ($shape['nested'] as $name) {
-            $value = $fields[$name] ?? null;
+        foreach ($fields as $value) {
             if ((is_object($value) && !$value instanceof \UnitEnum) || is_array($value)) {
                 self::validateNestedValue($value, $mode);
             }
         }
-        if (defined(static::class . '::ADDITIONAL_PROPERTIES_TYPE')) {
-            foreach (AdditionalPropertyStore::all($this) as $value) {
-                if ((is_object($value) && !$value instanceof \UnitEnum) || is_array($value)) {
-                    self::validateNestedValue($value, $mode);
-                }
-            }
-        }
-    }
-
-    /**
-     * What validating a model of this class involves, worked out once: whether there is anything to check at
-     * all, and which properties can hold a model, collection or list that has to be validated in turn.
-     *
-     * @return array{trivial: bool, nested: list<string>}
-     */
-    private function shape(): array
-    {
-        $nested = [];
-        foreach ((new \ReflectionClass($this))->getProperties(\ReflectionProperty::IS_PUBLIC) as $property) {
-            if (!$property->isStatic() && self::canHoldNested($property->getType())) {
-                $nested[] = $property->getName();
-            }
-        }
-        $discriminated = defined(static::class . '::DISCRIMINATOR_BASE') && constant(static::class . '::DISCRIMINATOR_BASE') !== static::class;
-        $trivial = $nested === [] && static::REQUIRED_FIELDS === [] && (static::VALIDATES_ON_ASSIGNMENT || static::VALIDATION === []) && static::MODEL_VALIDATION === []
-            && !$discriminated && !defined(static::class . '::ADDITIONAL_PROPERTIES_TYPE')
-            && !defined(static::class . '::ADDITIONAL_PROPERTIES_VALIDATION');
-        return ['trivial' => $trivial, 'nested' => $nested];
-    }
-
-    /** Whether a value of this type may be (or contain) something that validates itself: anything but scalars and enums. */
-    private static function canHoldNested(?\ReflectionType $type): bool
-    {
-        if ($type === null) {
-            return true;
-        }
-        if ($type instanceof \ReflectionNamedType) {
-            $name = $type->getName();
-            if (in_array($name, ['int', 'float', 'string', 'bool', 'null', 'false', 'true'], true)) {
-                return false;
-            }
-            return !enum_exists($name);
-        }
-        foreach ($type instanceof \ReflectionUnionType || $type instanceof \ReflectionIntersectionType ? $type->getTypes() : [] as $member) {
-            if (self::canHoldNested($member)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    /**
-     * Checks one value against the rules of its property. The `set` hook of a property that has rules calls it
-     * (sdk-generator --php=8.4), so a value is checked when it is assigned or hydrated, once, without walking anything.
-     *
-     * @internal Used by generated models; not covered by the backward-compatibility promise.
-     */
-    final protected function assigning(string $field, mixed $value): void
-    {
-        $rules = static::VALIDATION[$field] ?? null;
-        if ($rules === null || ($value === null && !$this->rulesApplyToNull($field, $rules))) {
-            return;
-        }
-        Constraints::validate($value, $rules, static::class . "::$field", 'neutral');
     }
 
     /** @param array<string,mixed> $rules */
@@ -445,7 +356,6 @@ class DTO implements \JsonSerializable, \Stringable
 
     public function jsonSerialize(): object
     {
-        $this->validate();
         return $this->serializeValidated('neutral');
     }
 

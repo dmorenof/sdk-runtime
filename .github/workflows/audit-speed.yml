@@ -8,6 +8,10 @@ on:
       calls:
         description: 'Calls per run'
         default: '20000'
+      profile:
+        description: 'Profile our SDK with Xdebug instead of timing it'
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -23,7 +27,7 @@ jobs:
         with:
           php-version: '8.4'
           tools: composer:v2
-          coverage: none
+          coverage: ${{ inputs.profile && 'xdebug' || 'none' }}
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -42,6 +46,7 @@ jobs:
           java -jar /tmp/oag.jar generate -i audit/specs/accounts-openapi30.json -g php -o "$OUT/oag-accounts-openapi30" \
             --additional-properties=invokerPackage=Oag,composerPackageName=bench/accounts,library=guzzle,modern=true
       - name: Measure
+        if: ${{ !inputs.profile }}
         env:
           AUDIT_AUTOLOAD: /tmp/gen/vendor/autoload.php
           AUDIT_OUT: /tmp/audit-out
@@ -57,3 +62,12 @@ jobs:
               grep "^$t:" /tmp/speed.txt | sed -E 's/^[a-z]+: ([0-9.]+) us.*/\1/' | sort -n | head -1 | sed "s/^/$t: /"
             done
           } | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: Profile our SDK (self time per function)
+        if: ${{ inputs.profile }}
+        env:
+          AUDIT_AUTOLOAD: /tmp/gen/vendor/autoload.php
+          AUDIT_OUT: /tmp/audit-out
+        run: |
+          mkdir -p /tmp/prof
+          XDEBUG_MODE=profile php -d xdebug.output_dir=/tmp/prof -d xdebug.profiler_output_name=cachegrind.out.ours audit/bench.php ours 3000
+          python3 audit/profile-top.py /tmp/prof/cachegrind.out.ours 40 | tee -a "$GITHUB_STEP_SUMMARY"

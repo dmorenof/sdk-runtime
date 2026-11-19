@@ -47,6 +47,7 @@ The values of one call split by where they travel: `new RequestInput(path: [], q
 | --- | --- |
 | `SecurityCredentials` | Scheme name → secret. `new SecurityCredentials(array)`, `forScheme($name)` |
 | `BasicAuthCredentials` | `new BasicAuthCredentials($username, $password)` |
+| `ClientCertificate` | `ClientCertificate::fromFiles($certificate, $key, $passphrase)` or `ClientCertificate::configuredOnTheClient()`, the credential of a `mutualTLS` scheme |
 | `TokenProviderInterface` | `accessToken(): string`, `invalidate(): void` |
 | `OAuth2Endpoints`, `OAuth2Client`, `OAuth2Options` | What both providers are built from: where the server is, who the application is, and the optional settings |
 | `OAuth2ClientCredentials` | Machine-to-machine tokens: `new OAuth2ClientCredentials($endpoints, $client, $options)`; cached, renewed, replayed after 401. Also `forget()` |

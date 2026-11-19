@@ -29,7 +29,7 @@ Application code and generated SDKs may rely on these classes: constructors, pub
 
 **Security**
 
-- `SecurityCredentials`, `BasicAuthCredentials`.
+- `SecurityCredentials`, `BasicAuthCredentials`, `ClientCertificate`.
 - `TokenProviderInterface`, `TokenStoreInterface`, `InMemoryTokenStore`, `OAuth2Token`, `OAuth2ClientCredentials`, `OAuth2Endpoints`, `OAuth2Client`, `OAuth2Options`.
 - `OAuth2AuthorizationCode` (authorization code with PKCE), `AuthorizationRequest`, `OAuth2Exception`, `ReauthorizationRequiredException`.
 

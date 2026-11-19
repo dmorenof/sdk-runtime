@@ -9,6 +9,7 @@ use Dmorenof\SdkRuntime\Execution\PreparedRequest;
 use Dmorenof\SdkRuntime\Execution\RequestBuilder;
 use Dmorenof\SdkRuntime\Execution\ResponseDecoder;
 use Dmorenof\SdkRuntime\Execution\ServerSelection;
+use Dmorenof\SdkRuntime\Security\AppliedSecurity;
 use Dmorenof\SdkRuntime\Security\SecurityApplier;
 use Dmorenof\SdkRuntime\Security\SecurityCredentials;
 use Dmorenof\SdkRuntime\Streaming\StreamDecoder;
@@ -215,7 +216,7 @@ abstract class ApiClient
         for ($attempt = 0;; $attempt++) {
             $security = SecurityApplier::apply($this->securityCredentials, $spec->security, static::SECURITY_SCHEMES);
             $url = $this->requestUrl($spec, $request, $security->query, $baseUrl);
-            $response = $this->exchange($spec, $url, CookieHeader::merge($request->headers, $security->headers), $request->body);
+            $response = $this->exchange($spec, $url, $request, $security);
             if ($attempt === 0 && $security->providers !== [] && $replayable && $response->getStatusCode() === 401 && !$spec->succeeded(401)) {
                 foreach ($security->providers as $provider) {
                     $provider->invalidate();
@@ -229,13 +230,16 @@ abstract class ApiClient
 
     /**
      * One round trip, answered as PSR-7. A custom transport answers with a buffered HttpResponse, which is wrapped.
-     *
-     * @param array<string, string> $headers
      */
-    private function exchange(Operation $spec, string $url, array $headers, string|StreamInterface|null $body): ResponseInterface
+    private function exchange(Operation $spec, string $url, PreparedRequest $request, AppliedSecurity $security): ResponseInterface
     {
+        $headers = CookieHeader::merge($request->headers, $security->headers);
+        $body = $request->body;
         if ($this->transport instanceof Psr18Transport) {
-            return $this->transport->sendResponse(new PsrRequest($spec->method, $url, $headers, $body ?? ''), $spec->streamsResponse());
+            return $this->transport->sendResponse(new PsrRequest($spec->method, $url, $headers, $body ?? ''), $spec->streamsResponse(), $security->certificate);
+        }
+        if ($security->certificate !== null && !$security->certificate->isConfiguredOnTheClient()) {
+            throw new \LogicException('A client certificate is sent by the default transport. A custom transport must present it itself: use ClientCertificate::configuredOnTheClient().');
         }
         $buffered = $this->transport->send($spec->method, $url, $headers, $body instanceof StreamInterface ? (string) $body : $body);
         return new PsrResponse($buffered->status, $buffered->headers, $buffered->body);

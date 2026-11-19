@@ -161,6 +161,12 @@ final readonly class Dmorenof\SdkRuntime\Security\BasicAuthCredentials
     method public password(): string
     method public username(): string
 
+final readonly class Dmorenof\SdkRuntime\Security\ClientCertificate
+    method public __debugInfo(): array
+    method public isConfiguredOnTheClient(): bool
+    method public static configuredOnTheClient(): self
+    method public static fromFiles(string $certificate, ?string $privateKey = NULL, ?string $password = NULL): self
+
 final class Dmorenof\SdkRuntime\Security\InMemoryTokenStore implements Dmorenof\SdkRuntime\Security\TokenStoreInterface
     method public delete(string $key): void
     method public get(string $key): ?Dmorenof\SdkRuntime\Security\OAuth2Token
@@ -223,7 +229,7 @@ final class Dmorenof\SdkRuntime\Security\ReauthorizationRequiredException extend
 final readonly class Dmorenof\SdkRuntime\Security\SecurityCredentials
     method public __construct(array $credentials = array ( ))
     method public __debugInfo(): array
-    method public forScheme(string $name): Dmorenof\SdkRuntime\Security\BasicAuthCredentials|Dmorenof\SdkRuntime\Security\TokenProviderInterface|string|null
+    method public forScheme(string $name): Dmorenof\SdkRuntime\Security\BasicAuthCredentials|Dmorenof\SdkRuntime\Security\TokenProviderInterface|Dmorenof\SdkRuntime\Security\ClientCertificate|string|null
 
 interface Dmorenof\SdkRuntime\Security\TokenProviderInterface
     method public accessToken(): string
@@ -265,7 +271,7 @@ final readonly class Dmorenof\SdkRuntime\Transport\Psr18Options
 final class Dmorenof\SdkRuntime\Transport\Psr18Transport implements Dmorenof\SdkRuntime\Transport\TransportInterface
     method public __construct(Psr\Http\Client\ClientInterface $client, Dmorenof\SdkRuntime\Transport\Psr18Options $options = \Dmorenof\SdkRuntime\Transport\Psr18Options::__set_state(array( 'defaultHeaders' => array ( ), 'middleware' => array ( ), 'retryPolicy' => NULL, 'redirectPolicy' => NULL, 'sleeper' => NULL, )))
     method public send(string $method, string $url, array $headers, Psr\Http\Message\StreamInterface|string|null $body): Dmorenof\SdkRuntime\Transport\HttpResponse
-    method public sendResponse(Psr\Http\Message\RequestInterface $request, bool $stream = false): Psr\Http\Message\ResponseInterface
+    method public sendResponse(Psr\Http\Message\RequestInterface $request, bool $stream = false, ?Dmorenof\SdkRuntime\Security\ClientCertificate $certificate = NULL): Psr\Http\Message\ResponseInterface
 
 final class Dmorenof\SdkRuntime\Transport\RedirectException extends RuntimeException
     method public __construct(string $message, Psr\Http\Message\ResponseInterface $response)

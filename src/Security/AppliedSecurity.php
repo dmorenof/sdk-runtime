@@ -15,10 +15,12 @@ final readonly class AppliedSecurity
      * @param array<string, string> $headers
      * @param array<string, string> $query
      * @param list<TokenProviderInterface> $providers
+     * @param ClientCertificate|null $certificate The certificate the TLS handshake of the call presents (mutualTLS).
      */
     public function __construct(
         public array $headers = [],
         public array $query = [],
         public array $providers = [],
+        public ?ClientCertificate $certificate = null,
     ) {}
 }

@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace Dmorenof\SdkRuntime\Transport;
 
+use Dmorenof\SdkRuntime\Security\ClientCertificate;
 use GuzzleHttp\Psr7\Request;
 use GuzzleHttp\Psr7\Uri;
 use GuzzleHttp\Psr7\UriResolver;
@@ -58,8 +59,11 @@ final class Psr18Transport implements TransportInterface
      * @param bool $stream Do not buffer the response body: it is read incrementally from the returned stream.
      *                     Honored by Guzzle clients (which then use their stream handler); other PSR-18 clients
      *                     decide for themselves whether they buffer.
+     * @param ClientCertificate|null $certificate The certificate the TLS handshake presents (a mutualTLS scheme). Only the
+     *                     Guzzle client takes one per call; for any other client, set it up on the client and pass
+     *                     ClientCertificate::configuredOnTheClient().
      */
-    public function sendResponse(RequestInterface $request, bool $stream = false): ResponseInterface
+    public function sendResponse(RequestInterface $request, bool $stream = false, ?ClientCertificate $certificate = null): ResponseInterface
     {
         if ($this->plain) {
             // What exchange() and sendWithRetries() do for one attempt with nothing around it, without the layers.
@@ -67,7 +71,7 @@ final class Psr18Transport implements TransportInterface
             if ($body->isSeekable()) {
                 $body->rewind();
             }
-            $response = $this->dispatch($request, $stream);
+            $response = $this->dispatch($request, $stream, $certificate);
             $answer = $response->getBody();
             if ($answer->isSeekable()) {
                 $answer->rewind();
@@ -81,9 +85,10 @@ final class Psr18Transport implements TransportInterface
         }
         $policy = $this->redirects;
         $origin = $request->getUri();
+        $options = new SendOptions($stream, $certificate);
 
         for ($hop = 0;; $hop++) {
-            $response = $this->exchange($request, $stream, $origin, $policy);
+            $response = $this->exchange($request, $options, $origin, $policy);
             $location = $response->getHeaderLine('Location');
             if (!$policy->follows($response->getStatusCode()) || $location === '') {
                 return $response;
@@ -104,16 +109,17 @@ final class Psr18Transport implements TransportInterface
      * One hop: middleware, a send with retries, middleware. A request that has left the origin of the original
      * call is stripped of credentials after the middleware ran, so a middleware cannot add them back.
      */
-    private function exchange(RequestInterface $request, bool $stream, UriInterface $origin, RedirectPolicy $redirects): ResponseInterface
+    private function exchange(RequestInterface $request, SendOptions $options, UriInterface $origin, RedirectPolicy $redirects): ResponseInterface
     {
         foreach ($this->options->middleware as $middleware) {
             $request = $middleware->beforeRequest($request);
         }
         if ($request->getUri() !== $origin && !self::sameOrigin($origin, $request->getUri())) {
             $request = $redirects->withoutCredentials($request);
+            $options = $options->withoutCertificate(); // The certificate is an identity: only the host the call was made to sees it.
         }
 
-        $response = $this->sendWithRetries($request, $stream);
+        $response = $this->sendWithRetries($request, $options);
 
         foreach ($this->options->middleware as $middleware) {
             $response = $middleware->afterResponse($request, $response);
@@ -125,7 +131,7 @@ final class Psr18Transport implements TransportInterface
     }
 
     /** Sends once, or again after a transient failure when the policy allows the method and the body can be resent. */
-    private function sendWithRetries(RequestInterface $request, bool $stream): ResponseInterface
+    private function sendWithRetries(RequestInterface $request, SendOptions $options): ResponseInterface
     {
         $policy = $this->retries;
         $maxAttempts = $policy->allows($request->getMethod()) && self::replayable($request) ? $policy->maxAttempts : 1;
@@ -140,7 +146,7 @@ final class Psr18Transport implements TransportInterface
             try {
                 // PSR-18 returns non-2xx responses without throwing for status alone.
                 // Endpoint-specific code retains control of expected status checking.
-                $response = $this->dispatch($request, $stream);
+                $response = $this->dispatch($request, $options->stream, $options->certificate);
             } catch (NetworkExceptionInterface $e) {
                 if (!$canRetry || !$policy->retryNetworkErrors) {
                     throw $e;
@@ -157,11 +163,15 @@ final class Psr18Transport implements TransportInterface
         }
     }
 
-    private function dispatch(RequestInterface $request, bool $stream): ResponseInterface
+    private function dispatch(RequestInterface $request, bool $stream, ?ClientCertificate $certificate): ResponseInterface
     {
-        if ($stream && $this->client instanceof \GuzzleHttp\ClientInterface) {
+        $tls = $certificate?->guzzleOptions() ?? [];
+        if (($stream || $tls !== []) && $this->client instanceof \GuzzleHttp\ClientInterface) {
             // PSR-18 sendRequest() cannot carry options, and without "stream" Guzzle waits for the whole body.
-            return $this->client->send($request, ['stream' => true, 'http_errors' => false, 'allow_redirects' => false]);
+            return $this->client->send($request, $tls + ['stream' => $stream, 'http_errors' => false, 'allow_redirects' => false]);
+        }
+        if ($tls !== []) {
+            throw new \LogicException('A client certificate can be sent per call only with a Guzzle client. Set the certificate up on your PSR-18 client and use ClientCertificate::configuredOnTheClient().');
         }
         return $this->client->sendRequest($request);
     }

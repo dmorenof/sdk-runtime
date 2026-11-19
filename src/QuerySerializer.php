@@ -43,11 +43,7 @@ final class QuerySerializer
         foreach ($formats as $name => $format) {
             self::assertFormat($format, (string) $name);
         }
-        $reserved = self::reservedNames($allowReserved); // invalid metadata is refused even when there is nothing to write
-        if ($parameters === []) {
-            return '';
-        }
-        $serializer = new self($parameters, $formats, $reserved, $encode);
+        $serializer = new self($parameters, $formats, self::reservedNames($allowReserved), $encode);
         $pairs = [];
         foreach ($parameters as $name => $value) {
             if ($value !== null) {

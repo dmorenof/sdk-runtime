@@ -17,9 +17,6 @@ final class Hydrator
     /** @var array<class-string, array<string, array{string, bool}>> Property => [type name, nullable] of a plain (non-union) type. */
     private static array $namedTypes = [];
 
-    /** @var array<class-string<TypedArray>, string> Collection class => the item type it declares. */
-    private static array $expectedTypes = [];
-
     /** @var array<string, string> Class name => what it hydrates as (see classKind()); asked once per class. */
     private static array $classKinds = [];
 
@@ -43,30 +40,6 @@ final class Hydrator
             return self::hydrate($value, is_string($value) ? 'string' : \Psr\Http\Message\UploadedFileInterface::class, $nullable, $where);
         }
         return self::convert($value, $kind, $nullable, $where);
-    }
-
-    /**
-     * Hydrate the value of one JSON key into a model property. A scalar that already has the declared type, by far
-     * the most common case, needs no conversion and is returned at once; everything else takes the general path.
-     *
-     * @internal Used by DTO; not covered by the backward-compatibility promise.
-     */
-    public static function hydrateField(DTO $model, string $property, mixed $value, string $key): mixed
-    {
-        $named = self::$namedTypes[$model::class][$property] ?? null;
-        if ($named !== null) {
-            $matches = match ($named[0]) {
-                'string' => is_string($value),
-                'int' => is_int($value),
-                'bool' => is_bool($value),
-                'float' => is_float($value),
-                default => false,
-            };
-            if ($matches) {
-                return $value;
-            }
-        }
-        return self::hydrateProperty($model, $property, $value, $model::class . "::$key");
     }
 
     /** Hydrate a JSON value into the declared type of a public model property. */
@@ -277,7 +250,7 @@ final class Hydrator
         if (!is_array($value) || !array_is_list($value)) {
             throw new \UnexpectedValueException("Expected a JSON array at $where.");
         }
-        $expectedType = self::$expectedTypes[$kind] ??= (new $kind())->getExpectedType();
+        $expectedType = (new $kind())->getExpectedType();
         $items = [];
         foreach ($value as $index => $item) {
             $items[] = self::hydrate($item, $expectedType, false, $where . "[$index]");

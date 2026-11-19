@@ -43,13 +43,25 @@ class DTO implements \JsonSerializable, \Stringable
             Constraints::validate(SchemaValidator::snapshot($json), ['jsonSchema' => static::MODEL_VALIDATION['jsonSchema']], static::class);
         }
         $propertyMap = $this->declaredMap('PROPERTY_MAP');
-        foreach (get_object_vars($json) as $key => $value) {
-            $name = (string) $key;
-            $propertyName = $propertyMap[$name] ?? $name;
-            if (property_exists($this, $propertyName)) {
-                $this->{$propertyName} = Hydrator::hydrateField($this, $propertyName, $value, $name);
-            } elseif (self::$tolerant === 0 || defined(static::class . '::ADDITIONAL_PROPERTIES_TYPE')) {
-                AdditionalPropertyStore::put($this, $name, $this->hydrateAdditional($value, static::class . "::$name"));
+        // The model at the top of a tree validates the whole tree once, when it is built; the models and collections
+        // it creates on the way leave that to it, instead of each validating its own subtree again.
+        $topLevel = self::$deferred === 0;
+        if ($topLevel) {
+            self::$deferred++;
+        }
+        try {
+            foreach (get_object_vars($json) as $key => $value) {
+                $name = (string) $key;
+                $propertyName = $propertyMap[$name] ?? $name;
+                if (property_exists($this, $propertyName)) {
+                    $this->{$propertyName} = Hydrator::hydrateField($this, $propertyName, $value, $name);
+                } elseif (self::$tolerant === 0 || defined(static::class . '::ADDITIONAL_PROPERTIES_TYPE')) {
+                    AdditionalPropertyStore::put($this, $name, $this->hydrateAdditional($value, static::class . "::$name"));
+                }
+            }
+        } finally {
+            if ($topLevel) {
+                self::$deferred--;
             }
         }
 
@@ -57,7 +69,7 @@ class DTO implements \JsonSerializable, \Stringable
         // and again before encoding a manually created outbound DTO.
         // Legacy Request/Response subclasses can still override validate().
         // A neutral DTO does not infer direction from the PHP class name.
-        if (self::$deferred === 0) {
+        if ($topLevel) {
             $this->validate();
         }
     }

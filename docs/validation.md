@@ -12,7 +12,7 @@ A model checks itself when a value goes into it, so a mistake surfaces where it 
 
 `json_encode($model)` and `(string) $model` only serialize.
 
-What a hook cannot see: a list stored in a plain array property, changed in place (`$model->ids[] = 1`), and a property you `unset`. Use a typed collection for lists with rules (its `append` and `offsetSet` check), and call `validate()` when you want everything looked at.
+What a hook cannot see or allow: a list stored in a plain array property that is changed in place (`$model->ids[] = 1`) is not checked, because the generator puts no hook on array properties (PHP raises an Error when a hooked property is edited in place); use a typed collection for lists with rules (its `append` and `offsetSet` check), or assign the whole list. A property that has a hook cannot be unset: `unset($model->name)` is an Error in PHP 8.4, so assign a value instead. Call `validate()` when you want everything looked at.
 
 Message format: `Validation <rule> failed at <where> (<limit>).` For example `Validation maxLength failed at Acme\Accounts\DTOs\NewUser::name (limit 50).`
 

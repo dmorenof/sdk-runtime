@@ -22,9 +22,6 @@ final class OperationPlan
 
     public ?string $accept = null;
 
-    /** How the request body is carried, decided from the declared media type; worked out on the first call. */
-    public ?string $bodyKind = null;
-
     /** The metadata of the parameters (content, serialization) is checked on the first call only. */
     public bool $parametersChecked = false;
 

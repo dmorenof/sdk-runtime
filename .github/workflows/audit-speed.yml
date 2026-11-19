@@ -69,5 +69,7 @@ jobs:
           AUDIT_OUT: /tmp/audit-out
         run: |
           mkdir -p /tmp/prof
-          XDEBUG_MODE=profile php -d xdebug.output_dir=/tmp/prof -d xdebug.profiler_output_name=cachegrind.out.ours audit/bench.php ours 3000
+          php -m | grep -i xdebug || { echo 'Xdebug is not loaded'; exit 1; }
+          XDEBUG_MODE=profile php -d xdebug.start_with_request=yes -d xdebug.output_dir=/tmp/prof -d xdebug.profiler_output_name=cachegrind.out.ours audit/bench.php ours 3000
+          ls -la /tmp/prof
           python3 audit/profile-top.py /tmp/prof/cachegrind.out.ours 40 | tee -a "$GITHUB_STEP_SUMMARY"

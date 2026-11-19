@@ -140,11 +140,26 @@ class DTO implements \JsonSerializable, \Stringable
         return AdditionalPropertyStore::all($this);
     }
 
+    /**
+     * The properties that hold a value. (`get_object_vars()` is not used: with a `set` hook, PHP reports an
+     * uninitialized property as null, and a field that was never set must stay absent.)
+     *
+     * @internal Used by the runtime itself; not covered by the backward-compatibility promise.
+     * @return array<string, mixed>
+     */
+    public function initializedProperties(): array
+    {
+        $values = [];
+        foreach ($this as $name => $value) {
+            $values[$name] = $value;
+        }
+        return $values;
+    }
+
     /** @return array<string, mixed> */
     private function fields(): array
     {
-        /** @var array<string, mixed> $declared */
-        $declared = get_object_vars($this);
+        $declared = $this->initializedProperties();
         $additional = AdditionalPropertyStore::all($this);
         return $additional === [] ? $declared : array_replace($declared, $additional);
     }

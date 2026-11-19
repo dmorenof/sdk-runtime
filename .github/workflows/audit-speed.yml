@@ -52,7 +52,7 @@ jobs:
       - name: Install this checkout's runtime next to the published one
         if: ${{ inputs.checkout }}
         run: |
-          mkdir -p /tmp/gen2 && cd /tmp/gen2
+          mkdir -p /tmp/gen2 && cd /tmp/gen2 && echo "{}" > composer.json
           composer config repositories.checkout path "$GITHUB_WORKSPACE"
           composer config minimum-stability dev
           composer require dmorenof/sdk-generator dmorenof/sdk-runtime:'*@dev' --no-interaction --no-progress

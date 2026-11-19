@@ -8,6 +8,10 @@ on:
       calls:
         description: 'Calls per run'
         default: '20000'
+      checkout:
+        description: 'Also time the runtime of this checkout (not the published one)'
+        type: boolean
+        default: false
       profile:
         description: 'Profile our SDK with Xdebug instead of timing it'
         type: boolean
@@ -45,6 +49,14 @@ jobs:
           curl -fsSL https://repo.maven.apache.org/maven2/org/openapitools/openapi-generator-cli/7.26.0/openapi-generator-cli-7.26.0.jar -o /tmp/oag.jar
           java -jar /tmp/oag.jar generate -i audit/specs/accounts-openapi30.json -g php -o "$OUT/oag-accounts-openapi30" \
             --additional-properties=invokerPackage=Oag,composerPackageName=bench/accounts,library=guzzle,modern=true
+      - name: Install this checkout's runtime next to the published one
+        if: ${{ inputs.checkout }}
+        run: |
+          mkdir -p /tmp/gen2 && cd /tmp/gen2
+          composer config repositories.checkout path "$GITHUB_WORKSPACE"
+          composer config minimum-stability dev
+          composer require dmorenof/sdk-generator dmorenof/sdk-runtime:'*@dev' --no-interaction --no-progress
+          composer show dmorenof/sdk-runtime | grep -E '^(name|versions)'
       - name: Measure
         if: ${{ !inputs.profile }}
         env:
@@ -55,10 +67,13 @@ jobs:
           for i in 1 2 3 4 5 6 7; do
             php audit/bench.php oag "$CALLS"
             php audit/bench.php ours "$CALLS"
+            if [ "${{ inputs.checkout }}" = "true" ]; then
+              AUDIT_AUTOLOAD=/tmp/gen2/vendor/autoload.php php audit/bench.php ours "$CALLS" | sed 's/^ours:/checkout:/'
+            fi
           done | tee /tmp/speed.txt
           {
             echo '### Best of 7 (microseconds per call)'
-            for t in oag ours; do
+            for t in oag ours checkout; do
               grep "^$t:" /tmp/speed.txt | sed -E 's/^[a-z]+: ([0-9.]+) us.*/\1/' | sort -n | head -1 | sed "s/^/$t: /"
             done
           } | tee -a "$GITHUB_STEP_SUMMARY"

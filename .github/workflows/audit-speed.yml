@@ -1,0 +1,58 @@
+name: Audit speed
+
+# Manual: one mocked call through Guzzle, our SDK (published generator and runtime) against OpenAPI Generator,
+# on the same runner, best of 7 interleaved runs. See docs/AUDIT.md.
+on:
+  workflow_dispatch:
+    inputs:
+      calls:
+        description: 'Calls per run'
+        default: '20000'
+
+permissions:
+  contents: read
+
+jobs:
+  speed:
+    name: Speed against OpenAPI Generator
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v5
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          tools: composer:v2
+          coverage: none
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Install the published generator and runtime
+        run: |
+          mkdir -p /tmp/gen && cd /tmp/gen
+          composer require dmorenof/sdk-generator --no-interaction --no-progress
+          composer show dmorenof/sdk-generator dmorenof/sdk-runtime | grep -E '^(name|versions)'
+      - name: Generate both SDKs from the same specification
+        run: |
+          OUT=/tmp/audit-out; mkdir -p "$OUT"
+          php /tmp/gen/vendor/bin/generate-sdk.php audit/specs/accounts-openapi30.json "$OUT/ours-accounts-openapi30" 'Ours' ours/accounts
+          curl -fsSL https://repo.maven.apache.org/maven2/org/openapitools/openapi-generator-cli/7.26.0/openapi-generator-cli-7.26.0.jar -o /tmp/oag.jar
+          java -jar /tmp/oag.jar generate -i audit/specs/accounts-openapi30.json -g php -o "$OUT/oag-accounts-openapi30" \
+            --additional-properties=invokerPackage=Oag,composerPackageName=bench/accounts,library=guzzle,modern=true
+      - name: Measure
+        env:
+          AUDIT_AUTOLOAD: /tmp/gen/vendor/autoload.php
+          AUDIT_OUT: /tmp/audit-out
+          CALLS: ${{ inputs.calls }}
+        run: |
+          for i in 1 2 3 4 5 6 7; do
+            php audit/bench.php oag "$CALLS"
+            php audit/bench.php ours "$CALLS"
+          done | tee /tmp/speed.txt
+          {
+            echo '### Best of 7 (microseconds per call)'
+            for t in oag ours; do
+              grep "^$t:" /tmp/speed.txt | sed -E 's/^[a-z]+: ([0-9.]+) us.*/\1/' | sort -n | head -1 | sed "s/^/$t: /"
+            done
+          } | tee -a "$GITHUB_STEP_SUMMARY"

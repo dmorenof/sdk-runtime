@@ -35,7 +35,8 @@ final readonly class OAuth2Endpoints
         return in_array(strtolower($host), self::LOOPBACK_HOSTS, true);
     }
 
-    private static function assertUrl(string $url, string $what): void
+    /** @internal Shared with OAuth2Implicit; not covered by the backward-compatibility promise. */
+    public static function assertUrl(string $url, string $what): void
     {
         $parts = parse_url($url);
         $host = strtolower($parts['host'] ?? '');

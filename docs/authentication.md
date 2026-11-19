@@ -123,6 +123,41 @@ A started flow stays valid for 10 minutes.
 
 Security notes: the PKCE verifier is a secret (session only, never in the URL or logs); `state` is compared in constant time; the redirect URI must be `https`, `http` on localhost, or a private-use scheme such as `com.example.app:/callback`.
 
+### Password grant (the user's own credentials)
+
+The password grant (RFC 6749 section 4.3) sends the end user's name and password to the token endpoint from your application. OAuth 2.0 Security Best Current Practice (RFC 9700) says not to use it and OAuth 2.1 drops it, because your application then holds a password the authorization server should be the only one to see. Use it only when an API leaves you no other way.
+
+```php
+use Dmorenof\SdkRuntime\Security\{OAuth2Client, OAuth2Endpoints, OAuth2Options, OAuth2Password, ResourceOwner};
+
+$oauth = new OAuth2Password(
+    new OAuth2Endpoints('https://auth.example.com/oauth/token'),
+    new OAuth2Client($clientId, $clientSecret),          // a public client passes no secret
+    new ResourceOwner($username, $password),
+    new OAuth2Options(scopes: ['read']),
+);
+
+$config->securityCredentials = new SecurityCredentials(['OAuth' => $oauth]);
+```
+
+It works like the client credentials provider: the token is kept (in memory, or in the store you give), renewed with its refresh token before it expires, and replayed once after a `401`. When the token cannot be renewed, it logs in again with the same name and password; a password the server refuses raises `OAuth2Exception` (with the error code, never the password). The user name tells users apart in a shared store, unless you pass your own `subject`.
+
+### Implicit grant (a token in the redirect)
+
+The implicit grant (RFC 6749 section 4.2) returns the token in the **fragment** of the redirect URI, which a browser never sends to a server. It is for an application that sees the URL the user was sent back to: a command-line or desktop tool, or a page script that hands the URL over. RFC 9700 says not to use it either: prefer the authorization code flow with PKCE when the API offers it. There is no refresh token, so when the token expires the user authorizes again.
+
+```php
+use Dmorenof\SdkRuntime\Security\{OAuth2Client, OAuth2Implicit};
+
+$flow = new OAuth2Implicit('https://auth.example.com/authorize', new OAuth2Client($clientId, redirectUri: 'http://localhost:8123/callback'));
+$request = $flow->start();                   // send the user to $request->url; keep $request
+$flow->complete($request, $redirectedUrl);   // the full URL the user was sent back to, fragment included
+
+$config->securityCredentials = new SecurityCredentials(['OAuth' => $flow]);
+```
+
+`complete()` checks that the request has not expired, that the URL is the registered redirect URI, that the response is not an error, and that `state` matches, and refuses a token that is not a Bearer token. When `accessToken()` finds no valid token it raises `ReauthorizationRequiredException`.
+
 ## Your own token source
 
 Anything that returns a bearer string can be a provider:
@@ -165,4 +200,4 @@ That satisfies the requirement and adds nothing to the call. Passing `fromFiles(
 
 ## Not supported yet
 
-OAuth2 `password` and `implicit` flows, OpenID Connect discovery and scope checking are not implemented.
+OpenID Connect discovery and scope checking are not implemented.

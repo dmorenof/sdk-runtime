@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.4.1] — 2026-11-19
+
+- Fix: a property that has a `set` hook and was never set is no longer reported as `null`. PHP 8.4's `get_object_vars()` does that, so a model with hooks sent explicit nulls for every unset optional field and failed on object parameters; the runtime now reads a model's fields with `foreach`, which leaves them out.
+
 ## [1.4.0] — 2026-11-19
 
 - **PHP 8.4 is the minimum.** Generated models check each value as it is assigned or hydrated, with a `set` hook on every property that has rules (sdk-generator 1.6 emits them). A value is checked once, where it enters the model, and never again when a request is sent.

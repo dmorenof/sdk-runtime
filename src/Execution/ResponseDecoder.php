@@ -126,7 +126,6 @@ final class ResponseDecoder
                     'text', 'binary' => Hydrator::hydrate($response->body, $declared['type'], false, $label . ' error'),
                     'json' => JsonHydrator::decode($response->body, $declared['type'], $declared['schemaNullable']),
                 };
-                DTO::validateNestedValue($payload, 'response');
                 Constraints::validate($payload, $declared['rules'] ?? [], $label . ' error', 'response');
             } catch (\Throwable $exception) {
                 $previous = $exception;
@@ -150,7 +149,6 @@ final class ResponseDecoder
                 throw new \UnexpectedValueException("Expected JSON object for error type $errorType.");
             }
             $error = new $errorType($json);
-            $error->validateForResponse();
         } catch (\Throwable $exception) {
             // Always expose HTTP response information to the caller.
             $previous = $exception;

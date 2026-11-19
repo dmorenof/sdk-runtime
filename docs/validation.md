@@ -1,12 +1,18 @@
 # Validation
 
-The runtime checks data against the API's schema at three points, so mistakes surface where they are made and not as a confusing server error.
+A model checks itself when a value goes into it, so a mistake surfaces where it is made and not as a confusing server error. Nothing is checked again when a request is sent.
 
 | When | What is checked | Failure |
 | --- | --- | --- |
-| Before sending | Parameters, then the request body (required fields, types, rules) | `UnexpectedValueException` (or `InvalidArgumentException` for something that cannot be sent at all); nothing is sent |
-| After receiving | The response body against its declared type and rules | `UnexpectedValueException` / `JsonException` |
-| When you ask | `$model->validate()` | `UnexpectedValueException` |
+| You assign a property (`$user->age = 5`) | The rules of that property, once, through a PHP 8.4 `set` hook that the generator writes on every property that has rules | `UnexpectedValueException`; the value is not stored |
+| A model is built from JSON (an answer, or `new Model($json)`) | Each property as it is set (same hook), then which fields are required and the rules of the model as a whole. Models and collections inside it check themselves as they are built | `UnexpectedValueException` |
+| A collection or map changes (`append`, `$list[] = x`, `$map['k'] = v`) | The item rules, and the rules of the whole collection | `UnexpectedValueException` |
+| A request is sent | The parameters and the operation input (its required fields). The body is not walked | `UnexpectedValueException` (or `InvalidArgumentException` for something that cannot be sent at all); nothing is sent |
+| You ask: `$model->validate()` | Everything, including what is inside the model | `UnexpectedValueException` |
+
+`json_encode($model)` and `(string) $model` only serialize.
+
+What a hook cannot see: a list stored in a plain array property, changed in place (`$model->ids[] = 1`), and a property you `unset`. Use a typed collection for lists with rules (its `append` and `offsetSet` check), and call `validate()` when you want everything looked at.
 
 Message format: `Validation <rule> failed at <where> (<limit>).` For example `Validation maxLength failed at Acme\Accounts\DTOs\NewUser::name (limit 50).`
 

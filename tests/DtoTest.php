@@ -116,18 +116,21 @@ final class DtoTest extends TestCase
         self::assertSame(7, $nested->user->id);
         self::assertTrue($nested->result);
 
-        $this->expectException(\UnexpectedValueException::class);
-        \Dmorenof\SdkRuntime\JsonHydrator::decode(
+        // Reading an answer checks each model as it is built, not the wire direction: a readOnly field
+        // that is absent is caught only by an explicit check.
+        $partial = \Dmorenof\SdkRuntime\JsonHydrator::decode(
             '{"result":true,"user":{"name":"Ada"}}',
             \Dmorenof\SdkRuntime\Tests\Fixtures\DirectionalEnvelope::class,
         );
+        $this->expectException(\UnexpectedValueException::class);
+        $partial->validateForResponse();
     }
 
     public function testRequestDirectionRequiresWriteOnlyFieldEvenOnNeutralDto(): void
     {
         $body = new \Dmorenof\SdkRuntime\Tests\Fixtures\DirectionalUser((object) ['name' => 'Ada']);
         $this->expectException(\UnexpectedValueException::class);
-        $body->jsonSerializeForRequest();
+        $body->validateForRequest();
     }
 
 }

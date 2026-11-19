@@ -14,10 +14,7 @@ final class JsonHydrator
     public static function decode(string $body, string $type, bool $nullable = false): mixed
     {
         $json = json_decode($body, false, 512, JSON_THROW_ON_ERROR);
-        $result = DTO::readingResponse(static fn (): mixed => Hydrator::hydrate($json, $type, $nullable, 'response'));
-        // Input and output types are both DTOs. The wire direction—not the
-        // class hierarchy—determines readOnly/writeOnly requiredness.
-        DTO::validateNestedValue($result, 'response');
-        return $result;
+        // Each model, map and collection checks itself as it is built, so the answer is not walked again.
+        return DTO::readingResponse(static fn (): mixed => Hydrator::hydrate($json, $type, $nullable, 'response'));
     }
 }

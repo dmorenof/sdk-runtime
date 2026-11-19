@@ -97,12 +97,14 @@ final class RequestBody
     private static function serializeBody(Operation $spec, string $kind, mixed $body): array
     {
         $contentType = $spec->requestMediaType;
+        if ($body instanceof DTO) {
+            $body->validateLevel('request'); // This model only: what is inside it was checked when it was built or assigned.
+        }
         if ($kind === 'text' || $kind === 'binary') {
             if (!is_string($body) && !$body instanceof \Psr\Http\Message\StreamInterface) { throw new \UnexpectedValueException('Raw body must contain bytes.'); }
             return [$body, $contentType];
         }
         if ($kind === 'json') {
-            DTO::validateNestedValue($body, 'request');
             return [json_encode(Serializer::value($body, 'request'), JSON_THROW_ON_ERROR), $contentType];
         }
         if (!$body instanceof DTO) { throw new \UnexpectedValueException('Form body must be a DTO.'); }

@@ -2,7 +2,7 @@
 
 ## Requirements and install
 
-PHP 8.3 or newer. A generated SDK already requires this package; install the SDK and Composer brings the runtime with it.
+PHP 8.4 or newer. A generated SDK already requires this package; install the SDK and Composer brings the runtime with it.
 
 ```bash
 composer require acme/accounts-sdk

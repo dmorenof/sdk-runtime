@@ -110,7 +110,7 @@ final class QuerySerializationTest extends TestCase
         self::assertSame('filter%5Bcity-name%5D=Madrid&filter%5Bsecret%5D=sent', QuerySerializer::encode(['filter' => $dto], ['filter' => 'deepObject']));
         $dto->city = '';
         $this->expectException(\UnexpectedValueException::class);
-        QuerySerializer::encode(['filter' => $dto], ['filter' => 'deepObject']);
+        $dto->validate();
     }
 
     public function testDeepMapsAndBackedEnumsUseTheirValidatedScalarValues(): void

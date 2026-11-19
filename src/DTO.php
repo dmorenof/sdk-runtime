@@ -13,11 +13,6 @@ class DTO implements \JsonSerializable, \Stringable
 {
     /** @var list<string> Field names that must be present. A model that requires none declares nothing. */
     protected const array REQUIRED_FIELDS = [];
-    /**
-     * True in a model whose properties with rules check each value as it is assigned (a `set` hook calling
-     * assigning(), PHP 8.4): building the model from JSON then does not check those rules a second time.
-     */
-    protected const bool VALIDATES_ON_ASSIGNMENT = false;
     /** @var array<string, array<string, mixed>> Field => rules (see Constraints). */
     protected const array VALIDATION = [];
     /** @var array<string,mixed> */
@@ -37,6 +32,9 @@ class DTO implements \JsonSerializable, \Stringable
 
     /** @var array<class-string, bool> Whether the class is a subtype that must agree with its discriminator. */
     private static array $discriminated = [];
+
+    /** @var array<class-string, list<string>> Properties whose `set` hook checks their rules (see assigning()). */
+    private static array $hooked = [];
 
     /** While above zero, a JSON property the model does not declare is ignored instead of rejected. */
     private static int $tolerant = 0;
@@ -167,7 +165,7 @@ class DTO implements \JsonSerializable, \Stringable
         foreach ($required as $name) {
             if ($request && array_key_exists($name, $defined) && $defined[$name] === null) {
                 foreach (static::OPERATION_FIELDS as $names) {
-                    if (is_array($names) && in_array($name, $names, true)) {
+                    if (in_array($name, $names, true)) {
                         throw new \UnexpectedValueException("Required wire parameter " . static::class . "::$name cannot be omitted as null.");
                     }
                 }
@@ -208,9 +206,7 @@ class DTO implements \JsonSerializable, \Stringable
         $fields = $this->fields();
         $this->assertRequiredFields($fields, $mode === 'request', $mode === 'response');
         $this->checkModelRules($fields, $mode);
-        if (!static::VALIDATES_ON_ASSIGNMENT) {
-            $this->checkFieldRules($fields, $mode);
-        }
+        $this->checkFieldRules($fields, $mode, true);
     }
 
     private function validateWithMode(bool $request = false, bool $response = false): void
@@ -219,7 +215,7 @@ class DTO implements \JsonSerializable, \Stringable
         $fields = $this->fields();
         $this->assertRequiredFields($fields, $request, $response);
         $this->checkModelRules($fields, $mode);
-        $this->checkFieldRules($fields, $mode);
+        $this->checkFieldRules($fields, $mode, false);
         foreach ($fields as $value) {
             if ((is_object($value) && !$value instanceof \UnitEnum) || is_array($value)) {
                 self::validateNestedValue($value, $mode);
@@ -251,10 +247,16 @@ class DTO implements \JsonSerializable, \Stringable
         }
     }
 
-    /** @param array<string, mixed> $fields */
-    private function checkFieldRules(array $fields, string $mode): void
+    /**
+     * @param array<string, mixed> $fields
+     * @param bool $skipHooked Leave out the properties whose `set` hook already checked their value.
+     */
+    private function checkFieldRules(array $fields, string $mode, bool $skipHooked): void
     {
         $skipped = static::VALIDATION === [] ? [] : $this->directionalFields($mode === 'request', $mode === 'response');
+        if ($skipHooked && static::VALIDATION !== []) {
+            $skipped = array_merge($skipped, self::hookedFields());
+        }
         foreach (static::VALIDATION as $field => $rules) {
             if (!property_exists($this, $field)) {
                 throw new \LogicException("Validation refers to an unknown field " . static::class . "::$field.");
@@ -264,6 +266,27 @@ class DTO implements \JsonSerializable, \Stringable
             }
             Constraints::validate($fields[$field], $rules, static::class . "::$field", $mode);
         }
+    }
+
+    /**
+     * The properties of this class that have rules and a `set` hook, worked out once per class.
+     *
+     * @return list<string>
+     */
+    private static function hookedFields(): array
+    {
+        if (isset(self::$hooked[static::class])) {
+            return self::$hooked[static::class];
+        }
+        $names = [];
+        if ((new \ReflectionClass(\ReflectionProperty::class))->hasMethod('hasHook')) { // PHP 8.4
+            foreach (array_keys(static::VALIDATION) as $field) {
+                if (property_exists(static::class, $field) && (new \ReflectionProperty(static::class, $field))->hasHook(\PropertyHookType::Set)) {
+                    $names[] = $field;
+                }
+            }
+        }
+        return self::$hooked[static::class] = $names;
     }
 
     /**
@@ -286,7 +309,7 @@ class DTO implements \JsonSerializable, \Stringable
     {
         if (!array_key_exists('const', $rules) && !array_key_exists('enum', $rules) && !array_key_exists('schema', $rules) && !array_key_exists('jsonSchema', $rules)) { return false; }
         foreach (static::OPERATION_FIELDS as $names) {
-            if (is_array($names) && in_array($field, $names, true)) { return false; }
+            if (in_array($field, $names, true)) { return false; }
         }
         return true;
     }

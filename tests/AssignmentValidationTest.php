@@ -6,86 +6,87 @@ namespace Dmorenof\SdkRuntime\Tests;
 use Dmorenof\SdkRuntime\DTO;
 use PHPUnit\Framework\TestCase;
 
-/** What a `set` hook does, written by hand so it runs on any PHP: check the value, then store it. */
-final class HandHookedUser extends DTO
+/** A model whose rules are checked by `validate()` only: it has no hooks (plain properties). */
+final class PlainRuledUser extends DTO
 {
-    protected const bool VALIDATES_ON_ASSIGNMENT = true;
-    protected const array VALIDATION = ['name' => ['minLength' => 3], 'age' => ['minimum' => 18]];
+    protected const array VALIDATION = ['name' => ['minLength' => 3]];
     public const array REQUIRED_FIELDS = ['name'];
     public string $name;
-    public ?int $age;
-
-    public function setName(string $value): void { $this->assigning('name', $value); $this->name = $value; }
-    public function setAge(?int $value): void { $this->assigning('age', $value); $this->age = $value; }
 }
 
 final class AssignmentValidationTest extends TestCase
 {
-    public function testAValueIsCheckedAgainstItsRulesWhenItIsAssigned(): void
+    public function testValidateOnDemandChecksEveryRule(): void
     {
-        $user = new HandHookedUser();
-        $user->setName('Ada');
-        $user->setAge(40);
-        self::assertSame('Ada', $user->name);
-
-        $this->expectException(\UnexpectedValueException::class);
-        $user->setName('Al');
-    }
-
-    public function testANullIsLeftToTheTypeUnlessARuleAppliesToIt(): void
-    {
-        $user = new HandHookedUser();
-        $user->setAge(null);
-        self::assertNull($user->age);
-    }
-
-    public function testValidateOnDemandChecksEveryRuleEvenOnAModelThatChecksOnAssignment(): void
-    {
-        // A value stored without going through the hook (an array appended to in place, say) is caught by an
-        // explicit validate(), which is the check you ask for when you want everything looked at.
-        $user = new HandHookedUser();
+        $user = new PlainRuledUser();
         $user->name = 'x';
         $this->expectException(\UnexpectedValueException::class);
         $user->validate();
     }
 
-    public function testRequiredFieldsAreStillCheckedWhenTheModelIsValidated(): void
+    public function testRequiredFieldsAreCheckedWhenTheModelIsValidated(): void
     {
-        $user = new HandHookedUser();
         $this->expectException(\UnexpectedValueException::class);
-        $user->validate();
+        (new PlainRuledUser())->validate();
     }
 
-    public function testHydrationOfAHookedModelChecksEachValueOnce(): void
+    public function testAModelWithoutHooksChecksItsRulesWhenBuiltFromJson(): void
+    {
+        $this->expectException(\UnexpectedValueException::class);
+        new PlainRuledUser((object) ['name' => 'x']);
+    }
+
+    private static function realHookedClass(): string
     {
         if (PHP_VERSION_ID < 80400) {
             self::markTestSkipped('Property hooks need PHP 8.4.');
         }
-        eval(<<<'PHP'
-        namespace Dmorenof\SdkRuntime\Tests;
-        final class RealHookedUser extends \Dmorenof\SdkRuntime\DTO
-        {
-            public static int $checks = 0;
-            protected const bool VALIDATES_ON_ASSIGNMENT = true;
-            protected const array VALIDATION = ['name' => ['minLength' => 3]];
-            public const array REQUIRED_FIELDS = ['name'];
-            public string $name {
-                set {
-                    self::$checks++;
-                    $this->assigning('name', $value);
-                    $this->name = $value;
+        if (!class_exists(RealHookedUser::class, false)) {
+            eval(<<<'PHP'
+            namespace Dmorenof\SdkRuntime\Tests;
+            final class RealHookedUser extends \Dmorenof\SdkRuntime\DTO
+            {
+                public static int $checks = 0;
+                protected const array VALIDATION = ['name' => ['minLength' => 3], 'age' => ['minimum' => 18]];
+                public const array REQUIRED_FIELDS = ['name'];
+                public string $name {
+                    set {
+                        self::$checks++;
+                        $this->assigning('name', $value);
+                        $this->name = $value;
+                    }
                 }
+                public ?int $age = null;
             }
+            PHP);
         }
-        PHP);
-        $class = RealHookedUser::class;
-        $user = new $class((object) ['name' => 'Ada']);
-        self::assertSame('Ada', $user->name);
+        return RealHookedUser::class;
+    }
+
+    public function testAHookedPropertyIsCheckedOnceWhenAssignedAndNotAgainWhenBuilt(): void
+    {
+        $class = self::realHookedClass();
+        $class::$checks = 0;
+        $user = new $class((object) ['name' => 'Ada', 'age' => 40]);
         self::assertSame(1, $class::$checks);
-        $user->validate();
-        self::assertSame(1, $class::$checks, 'validate() must not check the rules again');
+        self::assertSame('Ada', $user->name);
 
         $this->expectException(\UnexpectedValueException::class);
         $user->name = 'Al';
+    }
+
+    public function testAPropertyWithoutAHookIsStillCheckedWhenBuilt(): void
+    {
+        $class = self::realHookedClass();
+        $this->expectException(\UnexpectedValueException::class);
+        new $class((object) ['name' => 'Ada', 'age' => 3]);
+    }
+
+    public function testAnExplicitValidateChecksHookedPropertiesToo(): void
+    {
+        $class = self::realHookedClass();
+        $user = new $class((object) ['name' => 'Ada']);
+        $user->validate();
+        self::assertSame('Ada', $user->name);
     }
 }

@@ -10,7 +10,7 @@
 
 ## [1.3.1] — 2026-11-19
 
-- **Validation is simple again.** 1.3.0 added PHP 8.4 `set`-hook validation and several shortcuts to skip repeated checks; they made the model base class larger without making calls faster, so they are removed (`assigning()`, `VALIDATES_ON_ASSIGNMENT`, the per-class shape cache, the single-validation-per-tree counters on construction). Native typing rejects wrong types; declared rules (`minLength`, `pattern`, `minimum`, required fields) run when a model is built from JSON, when `validate()` is called, and once when a request is sent.
+- **Validation is simple again.** The 1.3.0 shortcuts and the opt-in hook mode are removed; the rules are checked when a model is built from JSON, when `validate()` is called, and once when a request is sent. `json_encode($model)` and `(string) $model` only serialize. Decision D18 records why. (1.4.0 then moves validation to the moment a value is assigned: see D19.)
 - `json_encode($model)` and `(string) $model` no longer validate: they only serialize. Call `validate()` first if you need the check.
 - Decision D18 records why.
 

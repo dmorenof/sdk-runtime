@@ -50,7 +50,6 @@ class Dmorenof\SdkRuntime\DTO implements JsonSerializable, Stringable
     const protected PROPERTY_MAP
     const protected READ_ONLY_FIELDS
     const protected REQUIRED_FIELDS
-    const protected VALIDATES_ON_ASSIGNMENT
     const protected VALIDATION
     const protected WIRE_PROPERTY_MAP
     const protected WRITE_ONLY_FIELDS

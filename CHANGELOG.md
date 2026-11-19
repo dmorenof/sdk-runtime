@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.2.1] — 2026-11-19
+
+- Faster calls, no behavior change (about 5–8% less time per call on a mocked request): a scalar that already has its declared type is assigned without going through the general conversion; a model with nothing to validate and nothing nested is skipped when validating, and only its nested-capable properties are walked otherwise; the body kind of an operation and the item type of a collection class are worked out once; an empty query is not encoded.
+
 ## [1.2.0] — 2026-11-18
 
 - **Enum parameters.** A path, query, header or cookie value may be a backed enum case, or a list of them; the request carries the backing value. Before, an enum case in a parameter was refused. sdk-generator 1.5 generates enums for parameters whose schema lists its values.

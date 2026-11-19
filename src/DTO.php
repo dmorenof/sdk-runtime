@@ -24,6 +24,9 @@ class DTO implements \JsonSerializable, \Stringable
     /** @var array<class-string, bool> Whether the class is a subtype that must agree with its discriminator. */
     private static array $discriminated = [];
 
+    /** @var array<class-string, array{trivial: bool, nested: list<string>}> What validating each class involves (see shape()). */
+    private static array $shapes = [];
+
     /** While above zero, constructing a model from JSON skips its own validation: the caller validates the whole tree once. */
     private static int $deferred = 0;
 
@@ -43,11 +46,10 @@ class DTO implements \JsonSerializable, \Stringable
         foreach (get_object_vars($json) as $key => $value) {
             $name = (string) $key;
             $propertyName = $propertyMap[$name] ?? $name;
-            $where = static::class . "::$name";
             if (property_exists($this, $propertyName)) {
-                $this->{$propertyName} = Hydrator::hydrateProperty($this, $propertyName, $value, $where);
+                $this->{$propertyName} = Hydrator::hydrateField($this, $propertyName, $value, $name);
             } elseif (self::$tolerant === 0 || defined(static::class . '::ADDITIONAL_PROPERTIES_TYPE')) {
-                AdditionalPropertyStore::put($this, $name, $this->hydrateAdditional($value, $where));
+                AdditionalPropertyStore::put($this, $name, $this->hydrateAdditional($value, static::class . "::$name"));
             }
         }
 
@@ -279,6 +281,10 @@ class DTO implements \JsonSerializable, \Stringable
 
     private function validateWithMode(bool $request = false, bool $response = false): void
     {
+        $shape = self::$shapes[static::class] ??= $this->shape();
+        if ($shape['trivial']) {
+            return; // Nothing to check and nothing nested to descend into.
+        }
         $fields = $this->fields();
         $this->assertRequiredFields($fields, $request, $response);
         $mode = $request ? 'request' : ($response ? 'response' : 'neutral');
@@ -312,11 +318,61 @@ class DTO implements \JsonSerializable, \Stringable
             }
             Constraints::validate($fields[$field], $rules, static::class . "::$field", $mode);
         }
-        foreach ($fields as $value) {
+        foreach ($shape['nested'] as $name) {
+            $value = $fields[$name] ?? null;
             if ((is_object($value) && !$value instanceof \UnitEnum) || is_array($value)) {
                 self::validateNestedValue($value, $mode);
             }
         }
+        if (defined(static::class . '::ADDITIONAL_PROPERTIES_TYPE')) {
+            foreach (AdditionalPropertyStore::all($this) as $value) {
+                if ((is_object($value) && !$value instanceof \UnitEnum) || is_array($value)) {
+                    self::validateNestedValue($value, $mode);
+                }
+            }
+        }
+    }
+
+    /**
+     * What validating a model of this class involves, worked out once: whether there is anything to check at
+     * all, and which properties can hold a model, collection or list that has to be validated in turn.
+     *
+     * @return array{trivial: bool, nested: list<string>}
+     */
+    private function shape(): array
+    {
+        $nested = [];
+        foreach ((new \ReflectionClass($this))->getProperties(\ReflectionProperty::IS_PUBLIC) as $property) {
+            if (!$property->isStatic() && self::canHoldNested($property->getType())) {
+                $nested[] = $property->getName();
+            }
+        }
+        $discriminated = defined(static::class . '::DISCRIMINATOR_BASE') && constant(static::class . '::DISCRIMINATOR_BASE') !== static::class;
+        $trivial = $nested === [] && static::REQUIRED_FIELDS === [] && static::VALIDATION === [] && static::MODEL_VALIDATION === []
+            && !$discriminated && !defined(static::class . '::ADDITIONAL_PROPERTIES_TYPE')
+            && !defined(static::class . '::ADDITIONAL_PROPERTIES_VALIDATION');
+        return ['trivial' => $trivial, 'nested' => $nested];
+    }
+
+    /** Whether a value of this type may be (or contain) something that validates itself: anything but scalars and enums. */
+    private static function canHoldNested(?\ReflectionType $type): bool
+    {
+        if ($type === null) {
+            return true;
+        }
+        if ($type instanceof \ReflectionNamedType) {
+            $name = $type->getName();
+            if (in_array($name, ['int', 'float', 'string', 'bool', 'null', 'false', 'true'], true)) {
+                return false;
+            }
+            return !(enum_exists($name) && is_subclass_of($name, \UnitEnum::class));
+        }
+        foreach ($type instanceof \ReflectionUnionType || $type instanceof \ReflectionIntersectionType ? $type->getTypes() : [] as $member) {
+            if (self::canHoldNested($member)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /** @param array<string,mixed> $rules */

@@ -365,7 +365,7 @@ class DTO implements \JsonSerializable, \Stringable
             if (in_array($name, ['int', 'float', 'string', 'bool', 'null', 'false', 'true'], true)) {
                 return false;
             }
-            return !(enum_exists($name) && is_subclass_of($name, \UnitEnum::class));
+            return !enum_exists($name);
         }
         foreach ($type instanceof \ReflectionUnionType || $type instanceof \ReflectionIntersectionType ? $type->getTypes() : [] as $member) {
             if (self::canHoldNested($member)) {

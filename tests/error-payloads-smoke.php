@@ -63,6 +63,6 @@ try {
         }
     }
     if ($dto === null) { throw new RuntimeException('Missing DTO error.'); } $dto->message = 'x';
-    try { $dto->jsonSerializeForResponse(); throw new RuntimeException('Invalid error DTO mutation accepted.'); } catch (UnexpectedValueException) {}
+    try { $dto->validateForResponse(); throw new RuntimeException('Invalid error DTO mutation accepted.'); } catch (UnexpectedValueException) {}
 } finally { foreach ($pipes as $pipe) { fclose($pipe); } proc_terminate($process); proc_close($process); }
 echo 'ERROR_PAYLOADS_RUNTIME_HTTP_OK', PHP_EOL;

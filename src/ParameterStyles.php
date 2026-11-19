@@ -23,7 +23,6 @@ final class ParameterStyles
             && !$value instanceof DTO && !$value instanceof Map && !$value instanceof TypedArray)) {
             throw new \UnexpectedValueException('JSON parameters require typed models, collections or non-null scalar values.');
         }
-        DTO::validateNestedValue($value, 'request');
         $json = json_encode(Serializer::value($value, 'request'), JSON_THROW_ON_ERROR);
         return $header ? self::headerText($json) : $json;
     }

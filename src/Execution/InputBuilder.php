@@ -54,7 +54,7 @@ final class InputBuilder
      */
     private static function operationFields(DTO $dto): array
     {
-        $dto->validateForRequest();
+        $dto->validateLevel('request');
         $values = get_object_vars($dto);
         $bodyValue = $values['body'] ?? null;
         // A query or path parameter may also be named "body"; only an explicit operation body is a payload.

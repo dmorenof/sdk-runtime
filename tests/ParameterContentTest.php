@@ -38,7 +38,7 @@ final class ParameterContentTest extends TestCase {
         self::assertSame('["second"]', ParameterStyles::content($sparse, 'application/json'));
         $user->tags = $sparse;
         self::assertSame('{"name":"a\/b","age":0,"tags":["second"]}', ParameterStyles::content($user, 'application/json'));
-        $user->age = -1; $this->expectException(\UnexpectedValueException::class); ParameterStyles::content($user, 'application/json');
+        $user->age = -1; $this->expectException(\UnexpectedValueException::class); $user->validate();
     }
     public function testNativeJsonErrorsAndPlainHeaderOctetsFailBeforeTransport(): void {
         foreach (['null' => null, 'object' => new \stdClass()] as $value) {

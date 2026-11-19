@@ -3,7 +3,7 @@
 [![PHP package CI](https://github.com/dmorenof/sdk-runtime/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/dmorenof/sdk-runtime/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-The shared engine behind every SDK made by [sdk-generator](https://github.com/dmorenof/sdk-generator). A generated SDK holds only what is specific to its API (models, operations, names); sending requests, authentication, validation, errors, retries and streaming live here, written and tested once. PHP 8.3+.
+The shared engine behind every SDK made by [sdk-generator](https://github.com/dmorenof/sdk-generator). A generated SDK holds only what is specific to its API (models, operations, names); sending requests, authentication, validation, errors, retries and streaming live here, written and tested once. PHP 8.4+.
 
 The runtime holds no global state: each client owns its transport and credentials.
 
@@ -45,7 +45,7 @@ From 1.0.0 the package follows Semantic Versioning. What is stable, what is inte
 
 ## Development
 
-Use PHP 8.3+ and Composer 2:
+Use PHP 8.4+ and Composer 2:
 
 ```sh
 composer install

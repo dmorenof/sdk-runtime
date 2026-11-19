@@ -102,7 +102,7 @@ final class ObjectParameterTest extends TestCase {
             $client->submit($path, $params);
             if (!$psr) { self::assertSame($expected, $transport->sent[0]['url']); self::assertSame('code=safe,active=false', $transport->sent[0]['headers']['X-Filter']); }
             $path->selector->code = '';
-            try { $client->submit($path, $params); self::fail('Nested mutation accepted.'); }
+            try { $path->selector->validate(); self::fail('Nested mutation accepted.'); }
             catch (\UnexpectedValueException) { self::assertCount($psr ? 0 : 1, $transport->sent); }
         }
     }

@@ -44,9 +44,16 @@ class Dmorenof\SdkRuntime\Configuration
     property public string|int|null $server
 
 class Dmorenof\SdkRuntime\DTO implements JsonSerializable, Stringable
+    const protected ADDITIONAL_PROPERTIES_VALIDATION
     const protected MODEL_VALIDATION
+    const protected OPERATION_FIELDS
+    const protected PROPERTY_MAP
+    const protected READ_ONLY_FIELDS
     const protected REQUIRED_FIELDS
+    const protected VALIDATES_ON_ASSIGNMENT
     const protected VALIDATION
+    const protected WIRE_PROPERTY_MAP
+    const protected WRITE_ONLY_FIELDS
     method public __construct(?object $json = NULL)
     method public __toString(): string
     method public additionalProperties(): array

@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.4.0] — 2026-11-19
+
+- **PHP 8.4 is the minimum.** Generated models check each value as it is assigned or hydrated, with a `set` hook on every property that has rules (sdk-generator 2 emits them). A value is checked once, where it enters the model, and never again when a request is sent.
+- Models, maps and collections check themselves one level when built; the whole-tree walks on construction, on sending and on reading an answer are removed (`validateNestedValue` is no longer called by the runtime, the deferral counters are gone).
+- `json_encode($model)` and `(string) $model` only serialize. `validate()`, `validateForRequest()` and `validateForResponse()` stay as the explicit, whole check.
+- A model declares its empty defaults once, in `DTO` (`PROPERTY_MAP`, `WIRE_PROPERTY_MAP`, `READ_ONLY_FIELDS`, `WRITE_ONLY_FIELDS`, `OPERATION_FIELDS`, `ADDITIONAL_PROPERTIES_VALIDATION`), and generated classes declare only what they set.
+- Changed: a `readOnly` field required in an answer is no longer flagged when absent (the wire direction is not tracked while reading); call `validateForResponse()` for that check. Decision D19.
+
 ## [1.3.1] — 2026-11-19
 
 - **Validation is simple again.** 1.3.0 added PHP 8.4 `set`-hook validation and several shortcuts to skip repeated checks; they made the model base class larger without making calls faster, so they are removed (`assigning()`, `VALIDATES_ON_ASSIGNMENT`, the per-class shape cache, the single-validation-per-tree counters on construction). Native typing rejects wrong types; declared rules (`minLength`, `pattern`, `minimum`, required fields) run when a model is built from JSON, when `validate()` is called, and once when a request is sent.

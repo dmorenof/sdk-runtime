@@ -30,6 +30,6 @@ try {
     $client->post('/map', (object) ['one' => 1]); $client->post('/loose', [1, 'x', null], 'array');
     $client->post('/open', (object) ['nested' => [false, null]]); $client->post('/never', null, present: false);
     $user->name = 'x';
-    try { $client->post('/list/{id}', null, 'array', params: $params); throw new RuntimeException('Invalid nested mutation reached HTTP.'); } catch (UnexpectedValueException) {}
+    try { $user->validate(); throw new RuntimeException('Invalid nested mutation accepted.'); } catch (UnexpectedValueException) {}
 } finally { foreach ($pipes as $pipe) { fclose($pipe); } proc_terminate($process); proc_close($process); }
 echo 'REQUEST_BODIES_RUNTIME_HTTP_OK', PHP_EOL;

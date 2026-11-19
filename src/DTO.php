@@ -13,19 +13,30 @@ class DTO implements \JsonSerializable, \Stringable
 {
     /** @var list<string> Field names that must be present. A model that requires none declares nothing. */
     protected const array REQUIRED_FIELDS = [];
+    /**
+     * True in a model whose properties with rules check each value as it is assigned (a `set` hook calling
+     * assigning(), PHP 8.4): building the model from JSON then does not check those rules a second time.
+     */
+    protected const bool VALIDATES_ON_ASSIGNMENT = false;
     /** @var array<string, array<string, mixed>> Field => rules (see Constraints). */
     protected const array VALIDATION = [];
     /** @var array<string,mixed> */
     protected const array MODEL_VALIDATION = [];
-    /** @var \WeakMap<self, array<string, mixed>>|null */
-    /** @var array<class-string, array<string, mixed>> */
-    private static array $declared = [];
+    /** @var array<string, string> JSON name => PHP property name, for names that are not valid or unique PHP identifiers. */
+    protected const array PROPERTY_MAP = [];
+    /** @var array<string, string> PHP property name => JSON name. */
+    protected const array WIRE_PROPERTY_MAP = [];
+    /** @var list<string> Fields that are sent in no request. */
+    protected const array READ_ONLY_FIELDS = [];
+    /** @var list<string> Fields that are present in no response. */
+    protected const array WRITE_ONLY_FIELDS = [];
+    /** @var array<string, list<string>> Where each parameter of an operation input travels. */
+    protected const array OPERATION_FIELDS = [];
+    /** @var array<string, mixed> Rules for the values of undeclared (additional) properties. */
+    protected const array ADDITIONAL_PROPERTIES_VALIDATION = [];
 
     /** @var array<class-string, bool> Whether the class is a subtype that must agree with its discriminator. */
     private static array $discriminated = [];
-
-    /** While above zero, constructing a model from JSON skips its own validation: the caller validates the whole tree once. */
-    private static int $deferred = 0;
 
     /** While above zero, a JSON property the model does not declare is ignored instead of rejected. */
     private static int $tolerant = 0;
@@ -39,7 +50,7 @@ class DTO implements \JsonSerializable, \Stringable
         if (array_key_exists('jsonSchema', static::MODEL_VALIDATION)) {
             Constraints::validate(SchemaValidator::snapshot($json), ['jsonSchema' => static::MODEL_VALIDATION['jsonSchema']], static::class);
         }
-        $propertyMap = $this->declaredMap('PROPERTY_MAP');
+        $propertyMap = static::PROPERTY_MAP;
         foreach (get_object_vars($json) as $key => $value) {
             $name = (string) $key;
             $propertyName = $propertyMap[$name] ?? $name;
@@ -51,29 +62,14 @@ class DTO implements \JsonSerializable, \Stringable
             }
         }
 
-        // Schema-required fields are checked both when hydrating incoming JSON
-        // and again before encoding a manually created outbound DTO.
-        // Legacy Request/Response subclasses can still override validate().
-        // A neutral DTO does not infer direction from the PHP class name.
-        if (self::$deferred === 0) {
-            $this->validate();
-        }
+        // The model checks itself, one level: what it requires, its own rules and the rules of the model as a whole.
+        // Models and collections inside it were checked as they were built, so nothing is walked twice.
+        $this->validateLevel('neutral');
     }
 
     /**
-     * Whether a model or collection being built from an answer leaves its validation to the caller (see readingResponse()).
-     *
-     * @internal Used by the runtime itself; not covered by the backward-compatibility promise.
-     */
-    public static function isDeferred(): bool
-    {
-        return self::$deferred > 0;
-    }
-
-    /**
-     * Runs $work reading an API's answer: validation is deferred (the caller validates the whole tree once, in the
-     * direction it knows, instead of once per level while it is built) and a property the model does not declare
-     * is ignored, so an API that adds a field does not break clients generated before it.
+     * Runs $work reading an API's answer: a property the model does not declare is ignored, so an API that adds a
+     * field does not break clients generated before it.
      *
      * @internal Used by the runtime itself; not covered by the backward-compatibility promise.
      * @template T
@@ -84,47 +80,9 @@ class DTO implements \JsonSerializable, \Stringable
     {
         self::$tolerant++;
         try {
-            return self::deferringValidation($work);
+            return $work();
         } finally {
             self::$tolerant--;
-        }
-    }
-
-    /**
-     * Runs $work with model validation deferred (see readingResponse()).
-     *
-     * @internal Used by the runtime itself; not covered by the backward-compatibility promise.
-     * @template T
-     * @param \Closure(): T $work
-     * @return T
-     */
-    public static function deferringValidation(\Closure $work): mixed
-    {
-        self::$deferred++;
-        try {
-            return $work();
-        } finally {
-            self::$deferred--;
-        }
-    }
-
-    /**
-     * Runs $work with validation on, whatever the caller deferred: choosing between alternative schemas needs a
-     * model that does not fit to fail as it is built.
-     *
-     * @internal Used by the runtime itself; not covered by the backward-compatibility promise.
-     * @template T
-     * @param \Closure(): T $work
-     * @return T
-     */
-    public static function validating(\Closure $work): mixed
-    {
-        $saved = self::$deferred;
-        self::$deferred = 0;
-        try {
-            return $work();
-        } finally {
-            self::$deferred = $saved;
         }
     }
 
@@ -138,49 +96,12 @@ class DTO implements \JsonSerializable, \Stringable
         return $result;
     }
 
-    /**
-     * The array a generated class declares in constant $name, or [] when it does not.
-     * Looked up once per class: constants cannot change, and models are validated on every use.
-     *
-     * @return array<mixed>
-     */
-    private function declared(string $name): array
-    {
-        $value = self::$declared[static::class][$name]
-            ??= defined(static::class . "::$name") ? constant(static::class . "::$name") : [];
-        return is_array($value) ? $value : [];
-    }
-
-    /** @return list<string> */
-    private function declaredNames(string $name): array
-    {
-        /** @var list<string> $names */
-        $names = $this->declared($name);
-        return $names;
-    }
-
-    /** @return array<string, string> */
-    private function declaredMap(string $name): array
-    {
-        /** @var array<string, string> $map */
-        $map = $this->declared($name);
-        return $map;
-    }
-
-    /** @return array<string, mixed> */
-    private function declaredRules(string $name): array
-    {
-        /** @var array<string, mixed> $rules */
-        $rules = $this->declared($name);
-        return $rules;
-    }
-
     /** @return list<string> Fields that do not travel in the given direction (readOnly in requests, writeOnly in responses). */
     private function directionalFields(bool $request, bool $response): array
     {
         return $request
-            ? $this->declaredNames('READ_ONLY_FIELDS')
-            : ($response ? $this->declaredNames('WRITE_ONLY_FIELDS') : []);
+            ? static::READ_ONLY_FIELDS
+            : ($response ? static::WRITE_ONLY_FIELDS : []);
     }
 
     private function hydrateAdditional(mixed $value, string $where): mixed
@@ -198,7 +119,7 @@ class DTO implements \JsonSerializable, \Stringable
 
     public function setAdditionalProperty(string $name, mixed $value): void
     {
-        if (property_exists($this, $name) || array_key_exists($name, $this->declaredMap('PROPERTY_MAP'))) {
+        if (property_exists($this, $name) || array_key_exists($name, static::PROPERTY_MAP)) {
             throw new \InvalidArgumentException("Property " . static::class . "::$name is declared; assign it directly.");
         }
         if (!defined(static::class . '::ADDITIONAL_PROPERTIES_TYPE')) {
@@ -206,7 +127,7 @@ class DTO implements \JsonSerializable, \Stringable
         }
         $where = static::class . "::$name";
         $converted = $this->hydrateAdditional($value, $where);
-        Constraints::validate($converted, $this->declaredRules('ADDITIONAL_PROPERTIES_VALIDATION'), $where);
+        Constraints::validate($converted, static::ADDITIONAL_PROPERTIES_VALIDATION, $where);
         AdditionalPropertyStore::put($this, $name, $converted);
     }
 
@@ -241,11 +162,11 @@ class DTO implements \JsonSerializable, \Stringable
         // A field marked readOnly or writeOnly is required only when the
         // surrounding operation supplies its direction (response or request).
         $skipped = !$request && !$response
-            ? array_merge($this->declaredNames('READ_ONLY_FIELDS'), $this->declaredNames('WRITE_ONLY_FIELDS'))
+            ? array_merge(static::READ_ONLY_FIELDS, static::WRITE_ONLY_FIELDS)
             : $this->directionalFields($request, $response);
         foreach ($required as $name) {
             if ($request && array_key_exists($name, $defined) && $defined[$name] === null) {
-                foreach ($this->declaredRules('OPERATION_FIELDS') as $names) {
+                foreach (static::OPERATION_FIELDS as $names) {
                     if (is_array($names) && in_array($name, $names, true)) {
                         throw new \UnexpectedValueException("Required wire parameter " . static::class . "::$name cannot be omitted as null.");
                     }
@@ -258,9 +179,9 @@ class DTO implements \JsonSerializable, \Stringable
     }
 
     /**
-     * Run optional, declarative constraints and validate nested DTOs.
-     * Undefined optional fields are skipped; a nullable field can be null.
-     * Generated DTO classes declare rules, never duplicate implementations.
+     * Checks the whole model on demand: what it requires, every rule, and every model, collection and map inside it.
+     * Nothing calls this by itself: a model checks its own level when it is built, and each rule when a value
+     * is assigned (see assigning()), so this is for a check you want to make explicitly.
      */
     public function validate(): void
     {
@@ -277,11 +198,38 @@ class DTO implements \JsonSerializable, \Stringable
         $this->validateWithMode(false, true);
     }
 
-    private function validateWithMode(bool $request = false, bool $response = false): void
+    /**
+     * Checks this model and nothing below it: the one check an operation input gets when a request is sent.
+     *
+     * @internal Used by the runtime itself; not covered by the backward-compatibility promise.
+     */
+    public function validateLevel(string $mode): void
     {
         $fields = $this->fields();
-        $this->assertRequiredFields($fields, $request, $response);
+        $this->assertRequiredFields($fields, $mode === 'request', $mode === 'response');
+        $this->checkModelRules($fields, $mode);
+        if (!static::VALIDATES_ON_ASSIGNMENT) {
+            $this->checkFieldRules($fields, $mode);
+        }
+    }
+
+    private function validateWithMode(bool $request = false, bool $response = false): void
+    {
         $mode = $request ? 'request' : ($response ? 'response' : 'neutral');
+        $fields = $this->fields();
+        $this->assertRequiredFields($fields, $request, $response);
+        $this->checkModelRules($fields, $mode);
+        $this->checkFieldRules($fields, $mode);
+        foreach ($fields as $value) {
+            if ((is_object($value) && !$value instanceof \UnitEnum) || is_array($value)) {
+                self::validateNestedValue($value, $mode);
+            }
+        }
+    }
+
+    /** @param array<string, mixed> $fields */
+    private function checkModelRules(array $fields, string $mode): void
+    {
         if (static::MODEL_VALIDATION !== []) {
             Constraints::validate($this->serializeValidated($mode), static::MODEL_VALIDATION, static::class, $mode);
         }
@@ -290,19 +238,23 @@ class DTO implements \JsonSerializable, \Stringable
             $property = constant(static::class . '::DISCRIMINATOR_PROPERTY');
             /** @var array<string, class-string> $mapping */
             $mapping = constant(static::class . '::DISCRIMINATOR_MAPPING');
-            $json = Serializer::fields($fields, [], $this->declaredMap('WIRE_PROPERTY_MAP'), 'neutral');
+            $json = Serializer::fields($fields, [], static::WIRE_PROPERTY_MAP, 'neutral');
             $selected = Discriminator::select($json, $property, $mapping, static::class);
             if (!$this instanceof $selected) {
                 throw new \UnexpectedValueException('Discriminator disagrees with the hydrated class at ' . static::class . '.');
             }
         }
-        $additionalRules = $this->declaredRules('ADDITIONAL_PROPERTIES_VALIDATION');
-        if ($additionalRules !== []) {
+        if (static::ADDITIONAL_PROPERTIES_VALIDATION !== []) {
             foreach (AdditionalPropertyStore::all($this) as $name => $value) {
-                Constraints::validate($value, $additionalRules, static::class . "::$name", $mode);
+                Constraints::validate($value, static::ADDITIONAL_PROPERTIES_VALIDATION, static::class . "::$name", $mode);
             }
         }
-        $skipped = static::VALIDATION === [] ? [] : $this->directionalFields($request, $response);
+    }
+
+    /** @param array<string, mixed> $fields */
+    private function checkFieldRules(array $fields, string $mode): void
+    {
+        $skipped = static::VALIDATION === [] ? [] : $this->directionalFields($mode === 'request', $mode === 'response');
         foreach (static::VALIDATION as $field => $rules) {
             if (!property_exists($this, $field)) {
                 throw new \LogicException("Validation refers to an unknown field " . static::class . "::$field.");
@@ -312,18 +264,28 @@ class DTO implements \JsonSerializable, \Stringable
             }
             Constraints::validate($fields[$field], $rules, static::class . "::$field", $mode);
         }
-        foreach ($fields as $value) {
-            if ((is_object($value) && !$value instanceof \UnitEnum) || is_array($value)) {
-                self::validateNestedValue($value, $mode);
-            }
+    }
+
+    /**
+     * Checks one value against the rules of its property. The `set` hook of a property that has rules calls it
+     * (generated models, PHP 8.4), so a value is checked once, when it is assigned or hydrated.
+     *
+     * @internal Used by generated models; not covered by the backward-compatibility promise.
+     */
+    final protected function assigning(string $field, mixed $value): void
+    {
+        $rules = static::VALIDATION[$field] ?? null;
+        if ($rules === null || ($value === null && !$this->rulesApplyToNull($field, $rules))) {
+            return;
         }
+        Constraints::validate($value, $rules, static::class . "::$field", 'neutral');
     }
 
     /** @param array<string,mixed> $rules */
     private function rulesApplyToNull(string $field, array $rules): bool
     {
         if (!array_key_exists('const', $rules) && !array_key_exists('enum', $rules) && !array_key_exists('schema', $rules) && !array_key_exists('jsonSchema', $rules)) { return false; }
-        foreach ($this->declaredRules('OPERATION_FIELDS') as $names) {
+        foreach (static::OPERATION_FIELDS as $names) {
             if (is_array($names) && in_array($field, $names, true)) { return false; }
         }
         return true;
@@ -361,28 +323,25 @@ class DTO implements \JsonSerializable, \Stringable
 
     public function jsonSerializeForRequest(): object
     {
-        $this->validateForRequest();
         return $this->serializeValidated('request');
     }
 
     public function jsonSerializeForResponse(): object
     {
-        $this->validateForResponse();
         return $this->serializeValidated('response');
     }
 
     /** @internal Called by Serializer after the owning model has been validated. */
     public function serializeValidated(string $mode): object
     {
-        $excluded = $this->declaredNames($mode === 'request' ? 'READ_ONLY_FIELDS' : 'WRITE_ONLY_FIELDS');
-        return Serializer::fields($this->fields(), $excluded, $this->declaredMap('WIRE_PROPERTY_MAP'), $mode);
+        $excluded = $mode === 'request' ? static::READ_ONLY_FIELDS : static::WRITE_ONLY_FIELDS;
+        return Serializer::fields($this->fields(), $excluded, static::WIRE_PROPERTY_MAP, $mode);
     }
 
     /** @internal Multipart fields preserve direct PSR uploads, which are not JSON values. */
     public function multipartSerializeForRequest(): object
     {
-        $this->validateForRequest();
-        return Serializer::fields($this->fields(), $this->declaredNames('READ_ONLY_FIELDS'), $this->declaredMap('WIRE_PROPERTY_MAP'), 'request', true);
+        return Serializer::fields($this->fields(), static::READ_ONLY_FIELDS, static::WIRE_PROPERTY_MAP, 'request', true);
     }
 
     public function __toString(): string

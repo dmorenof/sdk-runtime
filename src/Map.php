@@ -30,7 +30,7 @@ class Map implements \ArrayAccess, \Countable, \IteratorAggregate, \JsonSerializ
         foreach (is_object($values) ? get_object_vars($values) : $values as $key => $value) {
             $this->offsetSet($key, $value);
         }
-        $this->validate();
+        Constraints::validate($this, static::MAP_VALIDATION, static::class);
     }
 
     public function offsetExists(mixed $offset): bool

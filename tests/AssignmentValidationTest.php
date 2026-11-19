@@ -47,7 +47,7 @@ final class AssignmentValidationTest extends TestCase
             final class RealHookedUser extends \Dmorenof\SdkRuntime\DTO
             {
                 public static int $checks = 0;
-                protected const array VALIDATION = ['name' => ['minLength' => 3], 'age' => ['minimum' => 18]];
+                protected const array VALIDATION = ['name' => ['minLength' => 3], 'age' => ['minimum' => 18], 'nick' => ['minLength' => 2]];
                 public const array REQUIRED_FIELDS = ['name'];
                 public string $name {
                     set {
@@ -57,6 +57,12 @@ final class AssignmentValidationTest extends TestCase
                     }
                 }
                 public ?int $age = null;
+                public ?string $nick {
+                    set {
+                        $this->assigning('nick', $value);
+                        $this->nick = $value;
+                    }
+                }
             }
             PHP);
         }
@@ -88,5 +94,14 @@ final class AssignmentValidationTest extends TestCase
         $user = new $class((object) ['name' => 'Ada']);
         $user->validate();
         self::assertSame('Ada', $user->name);
+    }
+
+    public function testAHookedPropertyNeverSetStaysAbsentInsteadOfBecomingNull(): void
+    {
+        $class = self::realHookedClass();
+        $user = new $class((object) ['name' => 'Ada']);
+        self::assertSame(['name' => 'Ada', 'age' => null], json_decode(json_encode($user, JSON_THROW_ON_ERROR), true));
+        $user->nick = 'Ad';
+        self::assertSame('Ad', json_decode(json_encode($user, JSON_THROW_ON_ERROR), true)['nick']);
     }
 }

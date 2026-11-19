@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.4.2] — 2026-11-19
+
+- Fix: the documented type of `DTO::OPERATION_FIELDS` was wrong (`location => wire name => property`, not a list), so PHPStan rejected the constant in generated parameter classes.
+
 ## [1.4.1] — 2026-11-19
 
 - Fix: a property that has a `set` hook and was never set is no longer reported as `null`. PHP 8.4's `get_object_vars()` does that, so a model with hooks sent explicit nulls for every unset optional field and failed on object parameters; the runtime now reads a model's fields with `foreach`, which leaves them out.

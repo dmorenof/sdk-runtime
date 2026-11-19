@@ -25,7 +25,7 @@ class DTO implements \JsonSerializable, \Stringable
     protected const array READ_ONLY_FIELDS = [];
     /** @var list<string> Fields that are present in no response. */
     protected const array WRITE_ONLY_FIELDS = [];
-    /** @var array<string, list<string>> Where each parameter of an operation input travels. */
+    /** @var array<string, array<string, string>> Where each parameter of an operation input travels: location => wire name => property. */
     protected const array OPERATION_FIELDS = [];
     /** @var array<string, mixed> Rules for the values of undeclared (additional) properties. */
     protected const array ADDITIONAL_PROPERTIES_VALIDATION = [];

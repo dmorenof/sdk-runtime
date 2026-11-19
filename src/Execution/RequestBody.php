@@ -26,7 +26,7 @@ final class RequestBody
      */
     public static function prepare(Operation $spec, mixed $body, bool $present): array
     {
-        $kind = self::bodyKind($spec);
+        $kind = OperationPlan::of($spec)->bodyKind ??= self::bodyKind($spec);
         $body = self::checkedBody($spec, $kind, $body, $present);
         return $present ? self::serializeBody($spec, $kind, $body) : [null, null];
     }

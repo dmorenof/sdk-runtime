@@ -10,6 +10,33 @@ The runtime checks data against the API's schema at three points, so mistakes su
 
 Message format: `Validation <rule> failed at <where> (<limit>).` For example `Validation maxLength failed at Acme\Accounts\DTOs\NewUser::name (limit 50).`
 
+## When a model is validated
+
+A model is a tree: a model can hold models and collections, and validating one validates everything below it. Each level is checked **once** per event below; nothing is checked when you assign a property (PHP's own type check applies, the rules do not).
+
+| Event | What is validated | How often |
+| --- | --- | --- |
+| You call an operation with a body or parameters object | The body and the parameters object, in request mode (read-only fields skipped), before anything is sent | Once per call |
+| An answer arrives | The model it hydrates into, in response mode (write-only fields skipped) | Once per call |
+| An error answer with a documented model | The error model | Once, when the exception is built |
+| `new Model($json)` or `Model::fromValue($json)` | The whole tree | Once, when the top model is built (nested models do not repeat it) |
+| `$model->validate()`, `validateForRequest()`, `validateForResponse()` | The whole tree | Each time you call it |
+| `json_encode($model)` or `(string) $model` | The whole tree, then it is serialized | Each time: a model is mutable, so the result of an earlier check cannot be reused |
+| `$collection[] = $item`, `new Collection([...])` | The new items' type and item rules | At that moment, and again when a model holding the collection is validated |
+| A streamed answer | Each item, as it arrives | Once per item |
+
+A model with no rules, no required fields and nothing nested that could have them is skipped at no cost. Not validated: a model you only read, a model you only assign to, and models inside a request you never send.
+
+## Validation on assignment (PHP 8.4)
+
+An SDK generated with `--php=8.4` checks the rules of a property when a value is **assigned or hydrated**, with a `set` hook:
+
+```php
+$user->name = 'Al';   // throws now: minLength 3. The value is not stored.
+```
+
+Each value is checked once, against its own property's rules, without walking anything. The table above still applies for what the hooks cannot cover: the presence of required fields (a field never assigned has no assignment to check) and model-level rules are checked when the model is validated, and the rules that need a whole collection (`minItems`, `uniqueItems`) when the collection is built or validated. Such a model does not check its field rules a second time on `validate()`, `json_encode()` or when a request is sent. An SDK generated for PHP 8.3 keeps the previous behavior.
+
 ## Rules
 
 Rules come from the API's schema. You do not write them; this is what they mean.

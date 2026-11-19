@@ -17,6 +17,9 @@ final class Hydrator
     /** @var array<class-string, array<string, array{string, bool}>> Property => [type name, nullable] of a plain (non-union) type. */
     private static array $namedTypes = [];
 
+    /** @var array<class-string, string> Collection class => the type of its items; asked once per class. */
+    private static array $expectedTypes = [];
+
     /** @var array<string, string> Class name => what it hydrates as (see classKind()); asked once per class. */
     private static array $classKinds = [];
 
@@ -250,7 +253,7 @@ final class Hydrator
         if (!is_array($value) || !array_is_list($value)) {
             throw new \UnexpectedValueException("Expected a JSON array at $where.");
         }
-        $expectedType = (new $kind())->getExpectedType();
+        $expectedType = self::$expectedTypes[$kind] ??= (new $kind())->getExpectedType();
         $items = [];
         foreach ($value as $index => $item) {
             $items[] = self::hydrate($item, $expectedType, false, $where . "[$index]");

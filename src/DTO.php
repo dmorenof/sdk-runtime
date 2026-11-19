@@ -48,21 +48,31 @@ class DTO implements \JsonSerializable, \Stringable
         if (array_key_exists('jsonSchema', static::MODEL_VALIDATION)) {
             Constraints::validate(SchemaValidator::snapshot($json), ['jsonSchema' => static::MODEL_VALIDATION['jsonSchema']], static::class);
         }
-        $propertyMap = static::PROPERTY_MAP;
         foreach (get_object_vars($json) as $key => $value) {
-            $name = (string) $key;
-            $propertyName = $propertyMap[$name] ?? $name;
-            $where = static::class . "::$name";
-            if (property_exists($this, $propertyName)) {
-                $this->{$propertyName} = Hydrator::hydrateProperty($this, $propertyName, $value, $where);
-            } elseif (self::$tolerant === 0 || defined(static::class . '::ADDITIONAL_PROPERTIES_TYPE')) {
-                AdditionalPropertyStore::put($this, $name, $this->hydrateAdditional($value, $where));
-            }
+            $this->assignMember((string) $key, $value);
         }
 
         // The model checks itself, one level: what it requires, its own rules and the rules of the model as a whole.
         // Models and collections inside it were checked as they were built, so nothing is walked twice.
         $this->validateLevel('neutral');
+    }
+
+    /**
+     * Sets one member of a JSON object on the model: the property it maps to, or an additional property.
+     * A generated model overrides this with a `match` that converts the common cases inline, and hands every other
+     * member to `parent::assignMember()`, which handles whatever the model declares.
+     *
+     * @internal Used by generated models; not covered by the backward-compatibility promise.
+     */
+    protected function assignMember(string $name, mixed $value): void
+    {
+        $propertyName = static::PROPERTY_MAP[$name] ?? $name;
+        $where = static::class . "::$name";
+        if (property_exists($this, $propertyName)) {
+            $this->{$propertyName} = Hydrator::hydrateProperty($this, $propertyName, $value, $where);
+        } elseif (self::$tolerant === 0 || defined(static::class . '::ADDITIONAL_PROPERTIES_TYPE')) {
+            AdditionalPropertyStore::put($this, $name, $this->hydrateAdditional($value, $where));
+        }
     }
 
     /**

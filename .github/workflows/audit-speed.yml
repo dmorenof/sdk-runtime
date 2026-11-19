@@ -90,8 +90,8 @@ jobs:
       - name: Profile our SDK (self time per function)
         if: ${{ inputs.profile }}
         env:
-          AUDIT_AUTOLOAD: /tmp/gen/vendor/autoload.php
-          AUDIT_OUT: /tmp/audit-out
+          AUDIT_AUTOLOAD: ${{ inputs.checkout && '/tmp/gen2/vendor/autoload.php' || '/tmp/gen/vendor/autoload.php' }}
+          AUDIT_OUT: ${{ inputs.checkout && '/tmp/audit-out2' || '/tmp/audit-out' }}
         run: |
           mkdir -p /tmp/prof
           php -m | grep -i xdebug || { echo 'Xdebug is not loaded'; exit 1; }

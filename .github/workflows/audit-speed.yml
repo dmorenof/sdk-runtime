@@ -64,7 +64,7 @@ jobs:
           composer show dmorenof/sdk-runtime | grep -E '^(name|versions)'
           composer show dmorenof/sdk-generator | grep -E '^(name|versions)'
           mkdir -p /tmp/audit-out2
-          php /tmp/gen2/vendor/bin/generate-sdk.php audit/specs/accounts-openapi30.json /tmp/audit-out2/ours-accounts-openapi30 'Ours' ours/accounts
+          php /tmp/gen2/vendor/bin/generate-sdk.php "$GITHUB_WORKSPACE/audit/specs/accounts-openapi30.json" /tmp/audit-out2/ours-accounts-openapi30 'Ours' ours/accounts
           ln -s /tmp/audit-out/oag-accounts-openapi30 /tmp/audit-out2/oag-accounts-openapi30
           sed -n 1,200p /tmp/audit-out2/ours-accounts-openapi30/src/DTOs/User.php
       - name: Measure

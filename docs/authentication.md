@@ -14,7 +14,7 @@ Users::configure($config);
 
 The scheme names are the ones in the API's specification (`components.securitySchemes`). A name the API does not use is ignored. If an operation requires credentials and none of its alternatives can be satisfied, nothing is sent and the call throws `InvalidArgumentException: No configured credentials satisfy this operation security requirement.` Operations the API leaves open (or marks as optionally authenticated) never need credentials.
 
-> **Generator support.** sdk-generator 1.3.0 and later generate SDKs for APIs that declare `oauth2` or `openIdConnect` schemes, besides `apiKey` (header, query, cookie) and `http` `basic` and `bearer`. Give the scheme's name a token or a token provider (below). The generator does not copy the scheme's endpoints or scopes into the SDK, so you build the provider with the URLs and scopes you need. Earlier generator versions reject those schemes.
+> **Generator support.** sdk-generator 1.9.0 and later also generate SDKs for APIs that declare a `mutualTLS` scheme (OpenAPI 3.1). sdk-generator 1.3.0 and later generate SDKs for APIs that declare `oauth2` or `openIdConnect` schemes, besides `apiKey` (header, query, cookie) and `http` `basic` and `bearer`. Give the scheme's name a token or a token provider (below). The generator does not copy the scheme's endpoints or scopes into the SDK, so you build the provider with the URLs and scopes you need. Earlier generator versions reject those schemes.
 
 ## What each credential looks like
 
@@ -24,6 +24,7 @@ The scheme names are the ones in the API's specification (`components.securitySc
 | HTTP bearer | the token as a string |
 | HTTP basic | `new BasicAuthCredentials($username, $password)` |
 | OAuth2, OpenID Connect or any token that expires | a token provider (below), or the token as a string |
+| Mutual TLS (`mutualTLS`) | `ClientCertificate::fromFiles($certificate, $key, $passphrase)`, or `ClientCertificate::configuredOnTheClient()` (below) |
 
 Strings may not be empty or contain line breaks. Credentials never appear in `var_dump`, logs or exception messages: debug output only lists *which* schemes are configured.
 
@@ -140,6 +141,28 @@ new SecurityCredentials(['BearerAuth' => new VaultToken($vault)]);
 
 `invalidate()` is called after a `401`; the request is then replayed once with a fresh `accessToken()` (only if its body can be sent again).
 
+## Mutual TLS (client certificates)
+
+A `mutualTLS` scheme (OpenAPI 3.1) sends no header: the client proves who it is in the TLS handshake with a certificate. The credential is a `ClientCertificate`:
+
+```php
+use Dmorenof\SdkRuntime\Security\ClientCertificate;
+
+$config->securityCredentials = new SecurityCredentials([
+    'Mtls' => ClientCertificate::fromFiles('/etc/ssl/client.pem', '/etc/ssl/client.key', $passphrase),
+]);
+```
+
+`fromFiles()` takes the PEM certificate (which may also hold the key), optionally a separate PEM private key, and the key's passphrase if it has one. The default Guzzle transport hands them to the handshake of each call that requires the scheme, and of no other call. If the call is redirected to another host, the certificate is not presented there. The files are read by cURL when the call is made, so a missing or unreadable file shows up as a cURL error.
+
+A PSR-18 client other than Guzzle cannot take a certificate per call, and neither can a custom transport. Set the certificate up on that client, and tell the SDK so:
+
+```php
+$config->securityCredentials = new SecurityCredentials(['Mtls' => ClientCertificate::configuredOnTheClient()]);
+```
+
+That satisfies the requirement and adds nothing to the call. Passing `fromFiles()` to such a client is an error (`LogicException`), not a call without a certificate.
+
 ## Not supported yet
 
-OAuth2 `password` and `implicit` flows, OpenID Connect discovery, scope checking, and mutual TLS (client certificates) are not implemented. For mutual TLS, configure the certificate on your PSR-18 client (`httpClient`).
+OAuth2 `password` and `implicit` flows, OpenID Connect discovery and scope checking are not implemented.

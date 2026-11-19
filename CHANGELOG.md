@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.7.0] — 2026-11-19
+
+- **Mutual TLS.** A `mutualTLS` security scheme (OpenAPI 3.1) is satisfied with a `ClientCertificate`: `ClientCertificate::fromFiles($certificate, $privateKey, $passphrase)`, which the default Guzzle transport presents in the TLS handshake of each call that requires the scheme (and only to the host the call was made to), or `ClientCertificate::configuredOnTheClient()` for a PSR-18 client or a custom transport that presents its own. See [authentication](docs/authentication.md#mutual-tls-client-certificates).
+- Additive API: `ClientCertificate`; `Psr18Transport::sendResponse()` takes an optional third argument, the certificate; `SecurityCredentials::forScheme()` can return a `ClientCertificate`.
+
 ## [1.6.1] — 2026-11-19
 
 - Faster calls, no change in behavior (about 6% less time per call on PHP 8.4, measured by the `Audit speed` workflow): when no middleware, default headers, retries or redirects are configured, `Psr18Transport` sends a call as one dispatch instead of going through its layers (the redirect loop, the exchange, the retry loop); and a call with no query string builds its URL without the query serializer.

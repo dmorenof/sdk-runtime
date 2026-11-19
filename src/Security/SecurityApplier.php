@@ -35,7 +35,7 @@ final class SecurityApplier
      *
      * @param array<string, list<string>> $requirement
      * @param array<string, array{type:string,scheme:?string,location:?string,parameterName:?string}> $schemes
-     * @return list<array{string, array{type:string,scheme:?string,location:?string,parameterName:?string}, string|BasicAuthCredentials|TokenProviderInterface}>|null
+     * @return list<array{string, array{type:string,scheme:?string,location:?string,parameterName:?string}, string|BasicAuthCredentials|TokenProviderInterface|ClientCertificate}>|null
      */
     private static function satisfy(SecurityCredentials $credentials, array $requirement, array $schemes): ?array
     {
@@ -52,15 +52,24 @@ final class SecurityApplier
     }
 
     /**
-     * @param list<array{string, array{type:string,scheme:?string,location:?string,parameterName:?string}, string|BasicAuthCredentials|TokenProviderInterface}> $selected
+     * @param list<array{string, array{type:string,scheme:?string,location:?string,parameterName:?string}, string|BasicAuthCredentials|TokenProviderInterface|ClientCertificate}> $selected
      */
     private static function build(array $selected): AppliedSecurity
     {
         $headers = [];
         $query = [];
         $providers = [];
+        $certificate = null;
         foreach ($selected as [$name, $scheme, $credential]) {
-            if (($scheme['type'] === 'http' && $scheme['scheme'] === 'bearer') || in_array($scheme['type'], ['oauth2', 'openIdConnect'], true)) {
+            if ($scheme['type'] === 'mutualTLS') {
+                if (!$credential instanceof ClientCertificate) {
+                    throw new \InvalidArgumentException("Mutual TLS credential $name must be a ClientCertificate.");
+                }
+                if ($certificate !== null && $certificate !== $credential) {
+                    throw new \InvalidArgumentException("Conflicting client certificates for mutual TLS scheme $name.");
+                }
+                $certificate = $credential;
+            } elseif (($scheme['type'] === 'http' && $scheme['scheme'] === 'bearer') || in_array($scheme['type'], ['oauth2', 'openIdConnect'], true)) {
                 if ($credential instanceof TokenProviderInterface) {
                     $providers[] = $credential;
                     $credential = $credential->accessToken();
@@ -80,7 +89,7 @@ final class SecurityApplier
                 throw new \LogicException("Unsupported generated security scheme $name.");
             }
         }
-        return new AppliedSecurity($headers, $query, $providers);
+        return new AppliedSecurity($headers, $query, $providers, $certificate);
     }
 
     /**
@@ -88,7 +97,7 @@ final class SecurityApplier
      * @param array<string, string> $headers
      * @param array<string, string> $query
      */
-    private static function applyApiKey(string $name, array $scheme, string|BasicAuthCredentials|TokenProviderInterface $credential, array &$headers, array &$query): void
+    private static function applyApiKey(string $name, array $scheme, string|BasicAuthCredentials|TokenProviderInterface|ClientCertificate $credential, array &$headers, array &$query): void
     {
         if (!is_string($credential) || $credential === '') {
             throw new \InvalidArgumentException("API key credential $name must be a nonempty string.");

@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.6.1] — 2026-11-19
+
+- Faster calls, no change in behavior (about 6% less time per call on PHP 8.4, measured by the `Audit speed` workflow): when no middleware, default headers, retries or redirects are configured, `Psr18Transport` sends a call as one dispatch instead of going through its layers (the redirect loop, the exchange, the retry loop); and a call with no query string builds its URL without the query serializer.
+
 ## [1.6.0] — 2026-11-19
 
 - `Hydrator::models()` (internal) builds a model from each JSON object of a list, for a generated model (sdk-generator 1.8) that has checked every item is an object, so a list of nested models is hydrated without the general dispatch per item.

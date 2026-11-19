@@ -272,6 +272,10 @@ abstract class ApiClient
      */
     private function requestUrl(Operation $spec, PreparedRequest $request, array $securityQuery, ?string &$baseUrl): string
     {
+        if ($securityQuery === [] && $request->query === [] && $spec->queryAllowReserved === []) {
+            $baseUrl ??= $this->servers->urlFor($spec); // No query string to build: the common case of a call with only path parameters.
+            return rtrim($baseUrl, '/') . $request->path;
+        }
         $query = $request->query;
         $path = $request->path;
         $formats = $spec->querySerialization;

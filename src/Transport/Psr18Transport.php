@@ -30,6 +30,9 @@ final class Psr18Transport implements TransportInterface
 
     private readonly RedirectPolicy $redirects;
 
+    /** Nothing wraps the send: no middleware, default headers, retries or redirects. A call is then one dispatch. */
+    private readonly bool $plain;
+
     public function __construct(
         protected ClientInterface $client,
         private Psr18Options $options = new Psr18Options(),
@@ -39,6 +42,8 @@ final class Psr18Transport implements TransportInterface
         };
         $this->retries = $options->retryPolicy ?? new RetryPolicy(maxAttempts: 1);
         $this->redirects = $options->redirectPolicy ?? RedirectPolicy::none();
+        $this->plain = $options->middleware === [] && $options->defaultHeaders === []
+            && $this->retries->maxAttempts === 1 && $this->redirects->maxRedirects === 0;
     }
 
     /** @param array<string, string> $headers */
@@ -56,6 +61,19 @@ final class Psr18Transport implements TransportInterface
      */
     public function sendResponse(RequestInterface $request, bool $stream = false): ResponseInterface
     {
+        if ($this->plain) {
+            // What exchange() and sendWithRetries() do for one attempt with nothing around it, without the layers.
+            $body = $request->getBody();
+            if ($body->isSeekable()) {
+                $body->rewind();
+            }
+            $response = $this->dispatch($request, $stream);
+            $answer = $response->getBody();
+            if ($answer->isSeekable()) {
+                $answer->rewind();
+            }
+            return $response;
+        }
         if ($this->options->defaultHeaders !== []) {
             /** @var array<string, string> $own */
             $own = array_map(static fn (array $values): string => implode(', ', $values), $request->getHeaders());

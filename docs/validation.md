@@ -27,6 +27,16 @@ A model is a tree: a model can hold models and collections, and validating one v
 
 A model with no rules, no required fields and nothing nested that could have them is skipped at no cost. Not validated: a model you only read, a model you only assign to, and models inside a request you never send.
 
+## Validation on assignment (PHP 8.4)
+
+An SDK generated with `--php=8.4` checks the rules of a property when a value is **assigned or hydrated**, with a `set` hook:
+
+```php
+$user->name = 'Al';   // throws now: minLength 3. The value is not stored.
+```
+
+Each value is checked once, against its own property's rules, without walking anything. The table above still applies for what the hooks cannot cover: the presence of required fields (a field never assigned has no assignment to check) and model-level rules are checked when the model is validated, and the rules that need a whole collection (`minItems`, `uniqueItems`) when the collection is built or validated. Such a model does not check its field rules a second time on `validate()`, `json_encode()` or when a request is sent. An SDK generated for PHP 8.3 keeps the previous behavior.
+
 ## Rules
 
 Rules come from the API's schema. You do not write them; this is what they mean.

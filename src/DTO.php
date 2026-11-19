@@ -13,6 +13,11 @@ class DTO implements \JsonSerializable, \Stringable
 {
     /** @var list<string> Field names that must be present. A model that requires none declares nothing. */
     protected const array REQUIRED_FIELDS = [];
+    /**
+     * True in a model whose properties with rules check each value as it is assigned (a `set` hook calling
+     * assigning(), PHP 8.4). Its rules are then not checked again when the model is validated.
+     */
+    protected const bool VALIDATES_ON_ASSIGNMENT = false;
     /** @var array<string, array<string, mixed>> Field => rules (see Constraints). */
     protected const array VALIDATION = [];
     /** @var array<string,mixed> */
@@ -320,8 +325,9 @@ class DTO implements \JsonSerializable, \Stringable
                 Constraints::validate($value, $additionalRules, static::class . "::$name", $mode);
             }
         }
-        $skipped = static::VALIDATION === [] ? [] : $this->directionalFields($request, $response);
-        foreach (static::VALIDATION as $field => $rules) {
+        $checked = static::VALIDATES_ON_ASSIGNMENT ? [] : static::VALIDATION;
+        $skipped = $checked === [] ? [] : $this->directionalFields($request, $response);
+        foreach ($checked as $field => $rules) {
             if (!property_exists($this, $field)) {
                 throw new \LogicException("Validation refers to an unknown field " . static::class . "::$field.");
             }
@@ -360,7 +366,7 @@ class DTO implements \JsonSerializable, \Stringable
             }
         }
         $discriminated = defined(static::class . '::DISCRIMINATOR_BASE') && constant(static::class . '::DISCRIMINATOR_BASE') !== static::class;
-        $trivial = $nested === [] && static::REQUIRED_FIELDS === [] && static::VALIDATION === [] && static::MODEL_VALIDATION === []
+        $trivial = $nested === [] && static::REQUIRED_FIELDS === [] && (static::VALIDATES_ON_ASSIGNMENT || static::VALIDATION === []) && static::MODEL_VALIDATION === []
             && !$discriminated && !defined(static::class . '::ADDITIONAL_PROPERTIES_TYPE')
             && !defined(static::class . '::ADDITIONAL_PROPERTIES_VALIDATION');
         return ['trivial' => $trivial, 'nested' => $nested];
@@ -385,6 +391,21 @@ class DTO implements \JsonSerializable, \Stringable
             }
         }
         return false;
+    }
+
+    /**
+     * Checks one value against the rules of its property. The `set` hook of a property that has rules calls it
+     * (sdk-generator --php=8.4), so a value is checked when it is assigned or hydrated, once, without walking anything.
+     *
+     * @internal Used by generated models; not covered by the backward-compatibility promise.
+     */
+    final protected function assigning(string $field, mixed $value): void
+    {
+        $rules = static::VALIDATION[$field] ?? null;
+        if ($rules === null || ($value === null && !$this->rulesApplyToNull($field, $rules))) {
+            return;
+        }
+        Constraints::validate($value, $rules, static::class . "::$field", 'neutral');
     }
 
     /** @param array<string,mixed> $rules */

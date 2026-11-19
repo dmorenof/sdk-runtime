@@ -32,7 +32,8 @@ jobs:
         run: |
           mkdir -p /tmp/gen && cd /tmp/gen
           composer require dmorenof/sdk-generator --no-interaction --no-progress
-          composer show dmorenof/sdk-generator dmorenof/sdk-runtime | grep -E '^(name|versions)'
+          composer show dmorenof/sdk-generator | grep -E '^(name|versions)'
+          composer show dmorenof/sdk-runtime | grep -E '^(name|versions)'
       - name: Generate both SDKs from the same specification
         run: |
           OUT=/tmp/audit-out; mkdir -p "$OUT"

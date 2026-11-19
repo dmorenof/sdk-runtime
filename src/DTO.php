@@ -149,11 +149,12 @@ class DTO implements \JsonSerializable, \Stringable
      */
     public function initializedProperties(): array
     {
-        /** @var iterable<string, mixed> $properties An object iterates its accessible properties, initialized ones only. */
-        $properties = $this;
         $values = [];
-        foreach ($properties as $name => $value) {
-            $values[$name] = $value;
+        // An array cast holds initialized properties only; the names of non-public ones start with a NUL byte.
+        foreach ((array) $this as $name => $value) {
+            if (is_string($name) && $name !== '' && $name[0] !== "\0") {
+                $values[$name] = $value;
+            }
         }
         return $values;
     }

@@ -20,6 +20,7 @@ abstract class Dmorenof\SdkRuntime\ApiClient
     method public lastResponse(): ?Dmorenof\SdkRuntime\Transport\ResponseInfo
     method public resource(string $type): self
     method public static connect(Dmorenof\SdkRuntime\Configuration|string $configuration): static
+    method public static openIdDiscovery(string $scheme, Dmorenof\SdkRuntime\Security\DiscoveryOptions $options = \Dmorenof\SdkRuntime\Security\DiscoveryOptions::__set_state(array( 'http' => NULL, 'ttl' => 3600, 'clock' => NULL, ))): Dmorenof\SdkRuntime\Security\OpenIdDiscovery
     method public static serverUrl(string|int $server = 0, array $variables = array ( )): string
     property protected Dmorenof\SdkRuntime\Security\SecurityCredentials $securityCredentials
     property protected Dmorenof\SdkRuntime\Transport\TransportInterface $transport
@@ -167,6 +168,12 @@ final readonly class Dmorenof\SdkRuntime\Security\ClientCertificate
     method public static configuredOnTheClient(): self
     method public static fromFiles(string $certificate, ?string $privateKey = NULL, ?string $password = NULL): self
 
+final readonly class Dmorenof\SdkRuntime\Security\DiscoveryOptions
+    method public __construct(?Psr\Http\Client\ClientInterface $http = NULL, int $ttl = 3600, ?Closure $clock = NULL)
+    property public readonly ?Closure $clock
+    property public readonly ?Psr\Http\Client\ClientInterface $http
+    property public readonly int $ttl
+
 final class Dmorenof\SdkRuntime\Security\InMemoryTokenStore implements Dmorenof\SdkRuntime\Security\TokenStoreInterface
     method public delete(string $key): void
     method public get(string $key): ?Dmorenof\SdkRuntime\Security\OAuth2Token
@@ -240,6 +247,24 @@ final readonly class Dmorenof\SdkRuntime\Security\OAuth2Token
     property public readonly ?int $expiresAt
     property public readonly ?string $refreshToken
     property public readonly string $accessToken
+
+final readonly class Dmorenof\SdkRuntime\Security\OpenIdConfiguration
+    method public __construct(string $issuer, ?string $authorizationEndpoint, ?string $tokenEndpoint, array $codeChallengeMethods = array ( ), array $scopes = array ( ))
+    method public endpoints(): Dmorenof\SdkRuntime\Security\OAuth2Endpoints
+    method public supportsPkce(): bool
+    property public readonly ?string $authorizationEndpoint
+    property public readonly ?string $tokenEndpoint
+    property public readonly array $codeChallengeMethods
+    property public readonly array $scopes
+    property public readonly string $issuer
+
+final class Dmorenof\SdkRuntime\Security\OpenIdDiscovery
+    method public __construct(string $configurationUrl, ?string $issuer = NULL, Dmorenof\SdkRuntime\Security\DiscoveryOptions $options = \Dmorenof\SdkRuntime\Security\DiscoveryOptions::__set_state(array( 'http' => NULL, 'ttl' => 3600, 'clock' => NULL, )))
+    method public __debugInfo(): array
+    method public configuration(): Dmorenof\SdkRuntime\Security\OpenIdConfiguration
+    method public forget(): void
+    method public static forIssuer(string $issuer, Dmorenof\SdkRuntime\Security\DiscoveryOptions $options = \Dmorenof\SdkRuntime\Security\DiscoveryOptions::__set_state(array( 'http' => NULL, 'ttl' => 3600, 'clock' => NULL, ))): self
+    method public static forUrl(string $configurationUrl, Dmorenof\SdkRuntime\Security\DiscoveryOptions $options = \Dmorenof\SdkRuntime\Security\DiscoveryOptions::__set_state(array( 'http' => NULL, 'ttl' => 3600, 'clock' => NULL, ))): self
 
 final class Dmorenof\SdkRuntime\Security\ReauthorizationRequiredException extends Dmorenof\SdkRuntime\Security\OAuth2Exception
 

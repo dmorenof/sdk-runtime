@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.9.0] — 2026-11-20
+
+- **OpenID Connect discovery.** `OpenIdDiscovery::forIssuer($issuer)` (or `forUrl($openIdConnectUrl)`) fetches the provider's configuration document and `configuration()->endpoints()` gives the `OAuth2Endpoints` the OAuth2 flows take. The document is believed only when it comes over TLS, is a JSON object and names the issuer it was fetched for (or, from a URL, one on the same host); it is kept for an hour and read up to 1 MiB. ID tokens are not validated. An SDK whose contract declares an `openIdConnect` scheme offers `Client::openIdDiscovery($scheme)` (sdk-generator 1.10). See [authentication](docs/authentication.md#openid-connect-discovery).
+- Additive API: `OpenIdDiscovery`, `OpenIdConfiguration`, `DiscoveryOptions`, `ApiClient::openIdDiscovery()`; the scheme metadata of a generated client may carry an `openIdConnectUrl`.
+
 ## [1.8.0] — 2026-11-19
 
 - **OAuth2 password and implicit grants.** `OAuth2Password` (with `ResourceOwner`) is a token provider for the resource owner password credentials grant: cached, renewed with its refresh token, and a new login when it cannot be renewed. `OAuth2Implicit` builds the authorization URL (`start()`) and takes the token from the fragment of the URL the user was sent back to (`complete()`); it has no refresh token. Both are discouraged by RFC 9700 and dropped by OAuth 2.1: the documentation says so, and says when to use them. See [authentication](docs/authentication.md).

@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.10.0] — 2026-11-20
+
+- **Scope checking.** The OAuth2 providers (and `OAuth2Implicit`) keep the scopes their token was granted: the `scope` of the token response, or the scopes requested when it names none, and a renewed token keeps its scopes. Before a call is sent, the scopes the operation requires (the contract's `security` requirements) are compared with them, and a missing one raises `InsufficientScopeException` (`scheme`, `missing`, `granted`) without sending anything. Only when the scopes are known: a string token, a provider that is not a `ScopeAwareTokenProvider`, or a token whose scopes were not named or requested are trusted. A scheme with alternatives tries each before failing. `ApiException::missingScopes()` and `isInsufficientScope()` read an `insufficient_scope` challenge (RFC 6750) from a `403`. See [authentication](docs/authentication.md#scopes).
+- Additive API: `ScopeAwareTokenProvider`, `InsufficientScopeException`, `OAuth2Token::$scopes`, `ApiException::missingScopes()` and `isInsufficientScope()`. The generator needs no change: it already emits each operation's scopes.
+
 ## [1.9.0] — 2026-11-20
 
 - **OpenID Connect discovery.** `OpenIdDiscovery::forIssuer($issuer)` (or `forUrl($openIdConnectUrl)`) fetches the provider's configuration document and `configuration()->endpoints()` gives the `OAuth2Endpoints` the OAuth2 flows take. The document is believed only when it comes over TLS, is a JSON object and names the issuer it was fetched for (or, from a URL, one on the same host); it is kept for an hour and read up to 1 MiB. ID tokens are not validated. An SDK whose contract declares an `openIdConnect` scheme offers `Client::openIdDiscovery($scheme)` (sdk-generator 1.10). See [authentication](docs/authentication.md#openid-connect-discovery).

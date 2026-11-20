@@ -27,6 +27,8 @@ abstract class Dmorenof\SdkRuntime\ApiClient
 
 class Dmorenof\SdkRuntime\ApiException extends RuntimeException
     method public __construct(Dmorenof\SdkRuntime\Transport\HttpResponse $response, string $operation, mixed $payload = NULL, ?Throwable $previous = NULL)
+    method public isInsufficientScope(): bool
+    method public missingScopes(): array
     property public readonly ?Dmorenof\SdkRuntime\DTO $error
     property public readonly Dmorenof\SdkRuntime\Transport\HttpResponse $response
     property public readonly mixed $payload
@@ -179,12 +181,19 @@ final class Dmorenof\SdkRuntime\Security\InMemoryTokenStore implements Dmorenof\
     method public get(string $key): ?Dmorenof\SdkRuntime\Security\OAuth2Token
     method public set(string $key, Dmorenof\SdkRuntime\Security\OAuth2Token $token): void
 
-final class Dmorenof\SdkRuntime\Security\OAuth2AuthorizationCode implements Dmorenof\SdkRuntime\Security\TokenProviderInterface
+final class Dmorenof\SdkRuntime\Security\InsufficientScopeException extends Dmorenof\SdkRuntime\Security\OAuth2Exception
+    method public __construct(string $scheme, array $missing, array $granted)
+    property public readonly array $granted
+    property public readonly array $missing
+    property public readonly string $scheme
+
+final class Dmorenof\SdkRuntime\Security\OAuth2AuthorizationCode implements Dmorenof\SdkRuntime\Security\ScopeAwareTokenProvider, Dmorenof\SdkRuntime\Security\TokenProviderInterface
     method public __construct(Dmorenof\SdkRuntime\Security\OAuth2Endpoints $endpoints, Dmorenof\SdkRuntime\Security\OAuth2Client $client, Dmorenof\SdkRuntime\Security\OAuth2Options $options = \Dmorenof\SdkRuntime\Security\OAuth2Options::__set_state(array( 'scopes' => array ( ), 'http' => NULL, 'store' => NULL, 'subject' => '', 'leeway' => 30, 'clock' => NULL, )))
     method public __debugInfo(): array
     method public complete(Dmorenof\SdkRuntime\Security\AuthorizationRequest $request, array $callback): Dmorenof\SdkRuntime\Security\OAuth2Token
     method public final accessToken(): string
     method public final forget(): void
+    method public final grantedScopes(): ?array
     method public final invalidate(): void
     method public isAuthorized(): bool
     method public start(array $extra = array ( )): Dmorenof\SdkRuntime\Security\AuthorizationRequest
@@ -197,11 +206,12 @@ final readonly class Dmorenof\SdkRuntime\Security\OAuth2Client
     property public readonly bool $secretInBody
     property public readonly string $id
 
-final class Dmorenof\SdkRuntime\Security\OAuth2ClientCredentials implements Dmorenof\SdkRuntime\Security\TokenProviderInterface
+final class Dmorenof\SdkRuntime\Security\OAuth2ClientCredentials implements Dmorenof\SdkRuntime\Security\ScopeAwareTokenProvider, Dmorenof\SdkRuntime\Security\TokenProviderInterface
     method public __construct(Dmorenof\SdkRuntime\Security\OAuth2Endpoints $endpoints, Dmorenof\SdkRuntime\Security\OAuth2Client $client, Dmorenof\SdkRuntime\Security\OAuth2Options $options = \Dmorenof\SdkRuntime\Security\OAuth2Options::__set_state(array( 'scopes' => array ( ), 'http' => NULL, 'store' => NULL, 'subject' => '', 'leeway' => 30, 'clock' => NULL, )))
     method public __debugInfo(): array
     method public final accessToken(): string
     method public final forget(): void
+    method public final grantedScopes(): ?array
     method public final invalidate(): void
 
 final readonly class Dmorenof\SdkRuntime\Security\OAuth2Endpoints
@@ -214,11 +224,12 @@ class Dmorenof\SdkRuntime\Security\OAuth2Exception extends RuntimeException
     method public __construct(string $message, int $status = 0, ?Throwable $previous = NULL)
     method public isRejection(): bool
 
-final class Dmorenof\SdkRuntime\Security\OAuth2Implicit implements Dmorenof\SdkRuntime\Security\TokenProviderInterface
+final class Dmorenof\SdkRuntime\Security\OAuth2Implicit implements Dmorenof\SdkRuntime\Security\ScopeAwareTokenProvider, Dmorenof\SdkRuntime\Security\TokenProviderInterface
     method public __construct(string $authorizationUrl, Dmorenof\SdkRuntime\Security\OAuth2Client $client, Dmorenof\SdkRuntime\Security\OAuth2Options $options = \Dmorenof\SdkRuntime\Security\OAuth2Options::__set_state(array( 'scopes' => array ( ), 'http' => NULL, 'store' => NULL, 'subject' => '', 'leeway' => 30, 'clock' => NULL, )))
     method public __debugInfo(): array
     method public accessToken(): string
     method public complete(Dmorenof\SdkRuntime\Security\AuthorizationRequest $request, string $redirectedUrl): Dmorenof\SdkRuntime\Security\OAuth2Token
+    method public grantedScopes(): ?array
     method public invalidate(): void
     method public isAuthorized(): bool
     method public start(array $extra = array ( )): Dmorenof\SdkRuntime\Security\AuthorizationRequest
@@ -233,17 +244,19 @@ final readonly class Dmorenof\SdkRuntime\Security\OAuth2Options
     property public readonly int $leeway
     property public readonly string $subject
 
-final class Dmorenof\SdkRuntime\Security\OAuth2Password implements Dmorenof\SdkRuntime\Security\TokenProviderInterface
+final class Dmorenof\SdkRuntime\Security\OAuth2Password implements Dmorenof\SdkRuntime\Security\ScopeAwareTokenProvider, Dmorenof\SdkRuntime\Security\TokenProviderInterface
     method public __construct(Dmorenof\SdkRuntime\Security\OAuth2Endpoints $endpoints, Dmorenof\SdkRuntime\Security\OAuth2Client $client, Dmorenof\SdkRuntime\Security\ResourceOwner $owner, Dmorenof\SdkRuntime\Security\OAuth2Options $options = \Dmorenof\SdkRuntime\Security\OAuth2Options::__set_state(array( 'scopes' => array ( ), 'http' => NULL, 'store' => NULL, 'subject' => '', 'leeway' => 30, 'clock' => NULL, )))
     method public __debugInfo(): array
     method public final accessToken(): string
     method public final forget(): void
+    method public final grantedScopes(): ?array
     method public final invalidate(): void
 
 final readonly class Dmorenof\SdkRuntime\Security\OAuth2Token
-    method public __construct(string $accessToken, ?int $expiresAt = NULL, ?string $refreshToken = NULL)
+    method public __construct(string $accessToken, ?int $expiresAt = NULL, ?string $refreshToken = NULL, ?array $scopes = NULL)
     method public __debugInfo(): array
     method public isValid(int $now, int $leeway = 0): bool
+    property public readonly ?array $scopes
     property public readonly ?int $expiresAt
     property public readonly ?string $refreshToken
     property public readonly string $accessToken
@@ -273,6 +286,9 @@ final readonly class Dmorenof\SdkRuntime\Security\ResourceOwner
     method public __debugInfo(): array
     property public readonly string $password
     property public readonly string $username
+
+interface Dmorenof\SdkRuntime\Security\ScopeAwareTokenProvider
+    method public grantedScopes(): ?array
 
 final readonly class Dmorenof\SdkRuntime\Security\SecurityCredentials
     method public __construct(array $credentials = array ( ))

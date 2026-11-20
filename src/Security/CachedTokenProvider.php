@@ -11,7 +11,7 @@ namespace Dmorenof\SdkRuntime\Security;
  * @internal Extension point for the runtime's own providers: not covered by the backward-compatibility promise
  *           (see docs/PUBLIC_API.md). Its public methods are part of the providers that extend it.
  */
-abstract class CachedTokenProvider implements TokenProviderInterface
+abstract class CachedTokenProvider implements ScopeAwareTokenProvider
 {
     private readonly TokenStoreInterface $store;
 
@@ -39,12 +39,17 @@ abstract class CachedTokenProvider implements TokenProviderInterface
         }
         if ($token?->refreshToken !== null) {
             try {
-                return $this->save($this->endpoint->request(['grant_type' => 'refresh_token', 'refresh_token' => $token->refreshToken], $token->refreshToken));
+                return $this->save($this->endpoint->request(['grant_type' => 'refresh_token', 'refresh_token' => $token->refreshToken], $token->refreshToken, $token->scopes));
             } catch (OAuth2Exception $failure) {
                 $this->refreshFailed($failure);
             }
         }
         return $this->save($this->obtain($token));
+    }
+
+    final public function grantedScopes(): ?array
+    {
+        return $this->stored()?->scopes;
     }
 
     final public function invalidate(): void

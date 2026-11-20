@@ -15,14 +15,22 @@ final class SecurityApplier
      */
     public static function apply(SecurityCredentials $credentials, array $requirements, array $schemes): AppliedSecurity
     {
+        $insufficient = null;
         foreach ($requirements as $requirement) {
             if ($requirement === []) {
                 return new AppliedSecurity();
             }
             $selected = self::satisfy($credentials, $requirement, $schemes);
             if ($selected !== null) {
-                return self::build($selected);
+                try {
+                    return self::build($selected);
+                } catch (InsufficientScopeException $lacking) {
+                    $insufficient ??= $lacking; // Another alternative may need less: try it before giving up.
+                }
             }
+        }
+        if ($insufficient !== null) {
+            throw $insufficient;
         }
         if ($requirements === []) {
             return new AppliedSecurity();
@@ -35,24 +43,24 @@ final class SecurityApplier
      *
      * @param array<string, list<string>> $requirement
      * @param array<string, array{type:string,scheme:?string,location:?string,parameterName:?string}> $schemes
-     * @return list<array{string, array{type:string,scheme:?string,location:?string,parameterName:?string}, string|BasicAuthCredentials|TokenProviderInterface|ClientCertificate}>|null
+     * @return list<array{string, array{type:string,scheme:?string,location:?string,parameterName:?string}, string|BasicAuthCredentials|TokenProviderInterface|ClientCertificate, list<string>}>|null
      */
     private static function satisfy(SecurityCredentials $credentials, array $requirement, array $schemes): ?array
     {
         $selected = [];
-        foreach ($requirement as $name => $_scopes) {
+        foreach ($requirement as $name => $scopes) {
             $credential = $credentials->forScheme($name);
             if ($credential === null) {
                 return null;
             }
             $scheme = $schemes[$name] ?? throw new \LogicException("Missing generated security scheme $name.");
-            $selected[] = [$name, $scheme, $credential];
+            $selected[] = [$name, $scheme, $credential, $scopes];
         }
         return $selected;
     }
 
     /**
-     * @param list<array{string, array{type:string,scheme:?string,location:?string,parameterName:?string}, string|BasicAuthCredentials|TokenProviderInterface|ClientCertificate}> $selected
+     * @param list<array{string, array{type:string,scheme:?string,location:?string,parameterName:?string}, string|BasicAuthCredentials|TokenProviderInterface|ClientCertificate, list<string>}> $selected
      */
     private static function build(array $selected): AppliedSecurity
     {
@@ -60,7 +68,7 @@ final class SecurityApplier
         $query = [];
         $providers = [];
         $certificate = null;
-        foreach ($selected as [$name, $scheme, $credential]) {
+        foreach ($selected as [$name, $scheme, $credential, $scopes]) {
             if ($scheme['type'] === 'mutualTLS') {
                 if (!$credential instanceof ClientCertificate) {
                     throw new \InvalidArgumentException("Mutual TLS credential $name must be a ClientCertificate.");
@@ -72,7 +80,9 @@ final class SecurityApplier
             } elseif (($scheme['type'] === 'http' && $scheme['scheme'] === 'bearer') || in_array($scheme['type'], ['oauth2', 'openIdConnect'], true)) {
                 if ($credential instanceof TokenProviderInterface) {
                     $providers[] = $credential;
-                    $credential = $credential->accessToken();
+                    $provider = $credential;
+                    $credential = $provider->accessToken();
+                    self::assertScopes($name, $scopes, $provider);
                 }
                 if (!is_string($credential) || $credential === '') {
                     throw new \InvalidArgumentException("Bearer credential $name must be a nonempty string or a token provider.");
@@ -90,6 +100,27 @@ final class SecurityApplier
             }
         }
         return new AppliedSecurity($headers, $query, $providers, $certificate);
+    }
+
+    /**
+     * Fails before the call when the token is known to lack a scope the operation requires. A provider that does not
+     * say which scopes its token has is trusted: nothing can be checked, and the API has the last word.
+     *
+     * @param list<string> $required
+     */
+    private static function assertScopes(string $name, array $required, TokenProviderInterface $provider): void
+    {
+        if ($required === [] || !$provider instanceof ScopeAwareTokenProvider) {
+            return;
+        }
+        $granted = $provider->grantedScopes();
+        if ($granted === null) {
+            return;
+        }
+        $missing = array_values(array_diff($required, $granted));
+        if ($missing !== []) {
+            throw new InsufficientScopeException($name, $missing, $granted);
+        }
     }
 
     /**

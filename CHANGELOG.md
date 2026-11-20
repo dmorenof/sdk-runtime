@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.10.1] — 2026-11-20
+
+- Fix: `OpenIdDiscovery::forIssuer()` refused the document of a provider whose issuer ends in a slash (Auth0 does), because it compared the issuer in the document with the one you gave after removing the slash. The issuer is now matched exactly as given, which is what OpenID Connect Discovery requires; the document's URL is still built from the issuer without its final slash. Give such an issuer with its slash.
+- The default HTTP client of the discovery has a 15 s timeout (5 s to connect), so fetching a document cannot hang an application at start-up.
+
 ## [1.10.0] — 2026-11-20
 
 - **Scope checking.** The OAuth2 providers (and `OAuth2Implicit`) keep the scopes their token was granted: the `scope` of the token response, or the scopes requested when it names none, and a renewed token keeps its scopes. Before a call is sent, the scopes the operation requires (the contract's `security` requirements) are compared with them, and a missing one raises `InsufficientScopeException` (`scheme`, `missing`, `granted`) without sending anything. Only when the scopes are known: a string token, a provider that is not a `ScopeAwareTokenProvider`, or a token whose scopes were not named or requested are trusted. A scheme with alternatives tries each before failing. `ApiException::missingScopes()` and `isInsufficientScope()` read an `insufficient_scope` challenge (RFC 6750) from a `403`. See [authentication](docs/authentication.md#scopes).

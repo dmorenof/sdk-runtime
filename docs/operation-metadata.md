@@ -110,7 +110,7 @@ protected const array SECURITY_SCHEMES = [
 ];
 ```
 
-`apiKey` supports `header`, `query` and `cookie`. The runtime sends `oauth2` and `openIdConnect` schemes as bearer tokens, but sdk-generator 1.0.0 does not emit those scheme types yet (see [Authentication](authentication.md)).
+`apiKey` supports `header`, `query` and `cookie`. The runtime sends `oauth2` and `openIdConnect` schemes as bearer tokens (sdk-generator 1.3.0 and later emit them; an `openIdConnect` scheme also carries its `openIdConnectUrl`, and `mutualTLS` is emitted from 1.9.0) (see [Authentication](authentication.md)). A security requirement lists the scopes the operation needs, which the runtime checks against the token's before sending.
 
 ## Models
 

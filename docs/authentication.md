@@ -177,7 +177,7 @@ $endpoints = Client::openIdDiscovery('OAuth')->configuration()->endpoints();
 
 `configuration()` returns an `OpenIdConfiguration` with `issuer`, `authorizationEndpoint`, `tokenEndpoint`, the PKCE methods and the scopes the provider lists, `endpoints()` (the `OAuth2Endpoints` the flows take, with the issuer the authorization code flow checks in the callback) and `supportsPkce()`. The document is kept for an hour (`DiscoveryOptions(ttl: ...)`), fetched with Guzzle unless you pass a PSR-18 client (`DiscoveryOptions(http: ...)`), and read up to 1 MiB.
 
-A document is believed only when it is what it claims, so it cannot send you to another provider's endpoints: it must come over TLS (`https`, or `http` toward localhost), be a JSON object, and name an issuer equal to the issuer you asked for. When you gave a URL instead of an issuer, the issuer must be on the same host as the URL. Every endpoint in it must be a TLS URL too. Anything else raises `OAuth2Exception`.
+A document is believed only when it is what it claims, so it cannot send you to another provider's endpoints: it must come over TLS (`https`, or `http` toward localhost), be a JSON object, and name an issuer equal to the issuer you asked for, exactly as you gave it (a provider whose issuer ends in a slash, like Auth0, is given with it). When you gave a URL instead of an issuer, the issuer must be on the same host as the URL. Every endpoint in it must be a TLS URL too. Anything else raises `OAuth2Exception`.
 
 What this does not do: it does not validate ID tokens (JWT signatures, `nonce`, claims). The SDK uses the access token to call the API; if you need to authenticate a user from an ID token, validate it with a JWT library and the provider's `jwks_uri`.
 

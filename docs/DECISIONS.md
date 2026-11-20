@@ -111,3 +111,16 @@ What follows from it: building from JSON assigns through the hooks, then checks 
 - `get_object_vars()` reports an uninitialized hooked property as `null`; the runtime reads a model's fields from an array cast, which leaves them out (1.4.1).
 - A hooked property cannot be edited in place or unset (both are Errors), so the generator puts no hook on native array properties: lists are checked when the model is built and by typed collections.
 - Publishing the runtime before the generator's CI had run against it cost three versions in one afternoon (1.4.0 to 1.4.2). From now on a runtime release is proposed only after the generator's CI has passed against its branch.
+
+### D21. Security: what each scheme asks of the SDK, and what it does not do
+- **Mutual TLS** is a credential (`ClientCertificate`), not a header. The default Guzzle transport presents it per call, only to the host the call was made to; a client that cannot take one per call is told so (`configuredOnTheClient()` says the client has its own). Passing files to such a client is an error, never a call without the certificate.
+- **OAuth2 password and implicit grants** exist because APIs still declare them, and the generator refused none of them. They are documented as discouraged (RFC 9700) and offered only as providers; nothing recommends them.
+- **OpenID Connect discovery** believes a document only when it comes over TLS, is a JSON object and names the issuer it was fetched for exactly (from a bare URL: one on the same host). A provider with a final slash in its issuer is given with it.
+- **ID tokens are not validated.** Checking a JWT (signature, `nonce`, claims, key rotation) is security-critical code for a dedicated library; an SDK needs the access token to call an API. The documentation says so and points to `jwks_uri`.
+- **Scopes are checked only when known.** The token keeps the scopes the server granted (or the ones requested when it says none). A string token or a provider that cannot tell is trusted, and the API has the last word; the SDK never guesses, and never asks for more scopes by itself.
+
+### D22. Speed: structure, not tricks
+The profile showed Guzzle at about half of a call and our code at a third. Micro-optimizations that did not show up in the CI measurement were dropped. What paid off: generated models convert the common JSON members inline (about 10%), and a call with nothing around the send is one dispatch (about 6%). The measurement is the `Audit speed` workflow, in the same runner against OpenAPI Generator; a change that does not move it is not kept.
+
+### D23. Releases
+A version is published when the work is finished and proven: the runtime's CI, and the generator's CI (tests, PHPStan on generated SDKs, smoke scripts) against the runtime branch before the runtime is published. A patch that does not touch what generated code uses may skip the second step; 1.10.1 (the issuer match of the discovery) did.

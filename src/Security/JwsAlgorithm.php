@@ -125,10 +125,10 @@ final class JwsAlgorithm
     {
         $length = strlen($content);
         if ($length < 0x80) {
-            return chr($tag) . chr($length) . $content;
+            return pack('CC', $tag, $length) . $content;
         }
         $octets = ltrim(pack('N', $length), "\0");
-        return chr($tag) . chr(0x80 | strlen($octets)) . $octets . $content;
+        return pack('CC', $tag, 0x80 | strlen($octets)) . $octets . $content;
     }
 
     private static function pem(string $der): string

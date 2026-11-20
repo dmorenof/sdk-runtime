@@ -40,4 +40,10 @@ final readonly class OAuth2Options
             throw new \InvalidArgumentException('OAuth2 leeway cannot be negative.');
         }
     }
+
+    /** The same options for one end user of a shared store. */
+    public function withSubject(string $subject): self
+    {
+        return new self($this->scopes, $this->http, $this->store, $subject, $this->leeway, $this->clock);
+    }
 }

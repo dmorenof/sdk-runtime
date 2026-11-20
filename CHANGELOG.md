@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.8.0] — 2026-11-19
+
+- **OAuth2 password and implicit grants.** `OAuth2Password` (with `ResourceOwner`) is a token provider for the resource owner password credentials grant: cached, renewed with its refresh token, and a new login when it cannot be renewed. `OAuth2Implicit` builds the authorization URL (`start()`) and takes the token from the fragment of the URL the user was sent back to (`complete()`); it has no refresh token. Both are discouraged by RFC 9700 and dropped by OAuth 2.1: the documentation says so, and says when to use them. See [authentication](docs/authentication.md).
+- Additive API: `OAuth2Password`, `OAuth2Implicit`, `ResourceOwner`, `OAuth2Options::withSubject()`.
+
 ## [1.7.0] — 2026-11-19
 
 - **Mutual TLS.** A `mutualTLS` security scheme (OpenAPI 3.1) is satisfied with a `ClientCertificate`: `ClientCertificate::fromFiles($certificate, $privateKey, $passphrase)`, which the default Guzzle transport presents in the TLS handshake of each call that requires the scheme (and only to the host the call was made to), or `ClientCertificate::configuredOnTheClient()` for a PSR-18 client or a custom transport that presents its own. See [authentication](docs/authentication.md#mutual-tls-client-certificates).

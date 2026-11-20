@@ -52,6 +52,8 @@ The values of one call split by where they travel: `new RequestInput(path: [], q
 | `OAuth2Endpoints`, `OAuth2Client`, `OAuth2Options` | What both providers are built from: where the server is, who the application is, and the optional settings |
 | `OAuth2ClientCredentials` | Machine-to-machine tokens: `new OAuth2ClientCredentials($endpoints, $client, $options)`; cached, renewed, replayed after 401. Also `forget()` |
 | `OAuth2AuthorizationCode` | User sign-in with PKCE: same three arguments; `start()`, `complete($request, $callback)`, `isAuthorized()`, `forget()` |
+| `OAuth2Password` | The password grant, discouraged (RFC 9700): `new OAuth2Password($endpoints, $client, new ResourceOwner($user, $password), $options)`; cached, renewed with its refresh token, logs in again when it cannot |
+| `OAuth2Implicit` | The implicit grant, discouraged (RFC 9700): `new OAuth2Implicit($authorizationUrl, $client, $options)`; `start()`, `complete($request, $redirectedUrl)`, `isAuthorized()`; no refresh token |
 | `AuthorizationRequest` | State of a started flow: `$url`, `$state`, `$codeVerifier`, `$expiresAt`; `toArray()`, `fromArray()` |
 | `OAuth2Token` | `$accessToken`, `$expiresAt`, `$refreshToken`, `isValid($now, $leeway)` |
 | `TokenStoreInterface`, `InMemoryTokenStore` | `get`, `set`, `delete` by key |

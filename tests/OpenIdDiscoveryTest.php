@@ -71,7 +71,22 @@ final class OpenIdDiscoveryTest extends TestCase
         self::assertSame(self::ISSUER . '/authorize', $configuration->authorizationEndpoint);
         self::assertSame(self::ISSUER . '/token', $configuration->tokenEndpoint);
         self::assertSame(['openid', 'profile'], $configuration->scopes);
+        self::assertSame(self::ISSUER . '/keys', $configuration->jwksUri);
         self::assertTrue($configuration->supportsPkce());
+    }
+
+    public function testTheKeysAndSigningAlgorithmsOfTheProviderAreRead(): void
+    {
+        $http = $this->http([self::document(['id_token_signing_alg_values_supported' => ['RS256', 'ES256']])]);
+        $configuration = OpenIdDiscovery::forIssuer(self::ISSUER, new DiscoveryOptions($http))->configuration();
+        self::assertSame(['RS256', 'ES256'], $configuration->idTokenSigningAlgorithms);
+    }
+
+    public function testAnInsecureKeysUriIsRefused(): void
+    {
+        $http = $this->http([self::document(['jwks_uri' => 'http://login.example.com/keys'])]);
+        $this->expectException(OAuth2Exception::class);
+        OpenIdDiscovery::forIssuer(self::ISSUER, new DiscoveryOptions($http))->configuration();
     }
 
     public function testAnIssuerWithAFinalSlashIsMatchedExactly(): void

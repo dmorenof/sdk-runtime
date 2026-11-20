@@ -106,7 +106,8 @@ final class OAuth2Implicit implements ScopeAwareTokenProvider
         $expiresAt = is_string($expiresIn) && ctype_digit($expiresIn) ? $this->now() + (int) $expiresIn : null;
         // A response without `scope` grants what was requested (RFC 6749 section 4.2.2).
         $scopes = isset($response['scope']) && is_string($response['scope']) ? OAuth2TokenEndpoint::scopes($response['scope']) : null;
-        $token = new OAuth2Token($accessToken, $expiresAt, null, $scopes ?? ($this->options->scopes !== [] ? $this->options->scopes : null));
+        $idToken = isset($response['id_token']) && is_string($response['id_token']) && $response['id_token'] !== '' ? $response['id_token'] : null;
+        $token = new OAuth2Token($accessToken, $expiresAt, null, $scopes ?? ($this->options->scopes !== [] ? $this->options->scopes : null), $idToken);
         $this->store->set($this->storeKey, $token);
         return $token;
     }

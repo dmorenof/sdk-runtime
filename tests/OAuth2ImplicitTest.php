@@ -68,8 +68,18 @@ final class OAuth2ImplicitTest extends TestCase
         self::assertSame('abc', $token->accessToken);
         self::assertSame(4600, $token->expiresAt);
         self::assertNull($token->refreshToken);
+        self::assertNull($token->idToken);
         self::assertTrue($flow->isAuthorized());
         self::assertSame('abc', $flow->accessToken());
+    }
+
+    public function testTheIdTokenInTheFragmentIsKeptForValidation(): void
+    {
+        $flow = self::flow();
+        $request = $flow->start();
+        $token = $flow->complete($request, self::REDIRECT . '#access_token=abc&id_token=a.b.c&state=' . rawurlencode($request->state));
+        self::assertSame('a.b.c', $token->idToken);
+        self::assertStringNotContainsString('a.b.c', print_r($token, true));
     }
 
     public function testAnExpiredTokenCannotBeRenewedSoTheUserAuthorizesAgain(): void

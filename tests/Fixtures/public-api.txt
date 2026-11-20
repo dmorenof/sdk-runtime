@@ -176,6 +176,32 @@ final readonly class Dmorenof\SdkRuntime\Security\DiscoveryOptions
     property public readonly ?Psr\Http\Client\ClientInterface $http
     property public readonly int $ttl
 
+final readonly class Dmorenof\SdkRuntime\Security\IdToken
+    method public __construct(array $claims)
+    method public __debugInfo(): array
+    method public audience(): array
+    method public claim(string $name): mixed
+    method public expiresAt(): int
+    method public issuer(): string
+    method public subject(): string
+    property public readonly array $claims
+
+final class Dmorenof\SdkRuntime\Security\IdTokenException extends Dmorenof\SdkRuntime\Security\OAuth2Exception
+
+final readonly class Dmorenof\SdkRuntime\Security\IdTokenOptions
+    const public SUPPORTED_ALGORITHMS
+    method public __construct(?Psr\Http\Client\ClientInterface $http = NULL, array $algorithms = self::SUPPORTED_ALGORITHMS, int $leeway = 60, int $keysTtl = 3600, ?Closure $clock = NULL)
+    property public readonly ?Closure $clock
+    property public readonly ?Psr\Http\Client\ClientInterface $http
+    property public readonly array $algorithms
+    property public readonly int $keysTtl
+    property public readonly int $leeway
+
+final class Dmorenof\SdkRuntime\Security\IdTokenValidator
+    method public __construct(Dmorenof\SdkRuntime\Security\OpenIdConfiguration $configuration, string $clientId, Dmorenof\SdkRuntime\Security\IdTokenOptions $options = \Dmorenof\SdkRuntime\Security\IdTokenOptions::__set_state(array( 'http' => NULL, 'algorithms' => array ( 0 => 'RS256', 1 => 'RS384', 2 => 'RS512', 3 => 'ES256', 4 => 'ES384', 5 => 'ES512', ), 'leeway' => 60, 'keysTtl' => 3600, 'clock' => NULL, )))
+    method public __debugInfo(): array
+    method public validate(string $idToken, ?string $nonce = NULL, ?string $accessToken = NULL): Dmorenof\SdkRuntime\Security\IdToken
+
 final class Dmorenof\SdkRuntime\Security\InMemoryTokenStore implements Dmorenof\SdkRuntime\Security\TokenStoreInterface
     method public delete(string $key): void
     method public get(string $key): ?Dmorenof\SdkRuntime\Security\OAuth2Token
@@ -253,21 +279,24 @@ final class Dmorenof\SdkRuntime\Security\OAuth2Password implements Dmorenof\SdkR
     method public final invalidate(): void
 
 final readonly class Dmorenof\SdkRuntime\Security\OAuth2Token
-    method public __construct(string $accessToken, ?int $expiresAt = NULL, ?string $refreshToken = NULL, ?array $scopes = NULL)
+    method public __construct(string $accessToken, ?int $expiresAt = NULL, ?string $refreshToken = NULL, ?array $scopes = NULL, ?string $idToken = NULL)
     method public __debugInfo(): array
     method public isValid(int $now, int $leeway = 0): bool
     property public readonly ?array $scopes
     property public readonly ?int $expiresAt
+    property public readonly ?string $idToken
     property public readonly ?string $refreshToken
     property public readonly string $accessToken
 
 final readonly class Dmorenof\SdkRuntime\Security\OpenIdConfiguration
-    method public __construct(string $issuer, ?string $authorizationEndpoint, ?string $tokenEndpoint, array $codeChallengeMethods = array ( ), array $scopes = array ( ))
+    method public __construct(string $issuer, ?string $authorizationEndpoint, ?string $tokenEndpoint, array $codeChallengeMethods = array ( ), array $scopes = array ( ), ?string $jwksUri = NULL, array $idTokenSigningAlgorithms = array ( ))
     method public endpoints(): Dmorenof\SdkRuntime\Security\OAuth2Endpoints
     method public supportsPkce(): bool
     property public readonly ?string $authorizationEndpoint
+    property public readonly ?string $jwksUri
     property public readonly ?string $tokenEndpoint
     property public readonly array $codeChallengeMethods
+    property public readonly array $idTokenSigningAlgorithms
     property public readonly array $scopes
     property public readonly string $issuer
 

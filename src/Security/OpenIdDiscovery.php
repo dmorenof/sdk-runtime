@@ -106,6 +106,8 @@ final class OpenIdDiscovery
             $this->endpoint($data, 'token_endpoint'),
             self::strings($data['code_challenge_methods_supported'] ?? null),
             self::strings($data['scopes_supported'] ?? null),
+            $this->endpoint($data, 'jwks_uri'),
+            self::strings($data['id_token_signing_alg_values_supported'] ?? null),
         );
     }
 

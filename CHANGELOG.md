@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.11.1] — 2026-11-20
+
+- Fix: `multipleOf` refused valid numbers. The schema validator compares floats with a fixed scale, so 392.4 was not a multiple of 0.00001 (the real answer of a currency-rates API did exactly that, and the whole answer was refused as invalid). A number is now compared with the rounding error a double can carry at its size; integers use the remainder. A value that is not a number is not constrained by it, and a divisor that is not positive is a contract error (`LogicException`).
+
 ## [1.11.0] — 2026-11-20
 
 - **ID token validation.** `IdTokenValidator` (`new IdTokenValidator($configuration, $clientId)`, then `validate($idToken, nonce:, accessToken:)`) checks an OpenID Connect ID token the way Core 3.1.3.7 asks: the signature with the keys of the provider's `jwks_uri` (RS256/384/512 and ES256/384/512, through OpenSSL; `none`, `HS*`, `PS*`, `crit` and keys carried by the token are refused; RSA under 2048 bits is not used), `iss`, `aud`/`azp`, `exp`/`iat`/`nbf` with a leeway, `sub`, `nonce` and `at_hash`. It returns an `IdToken` or raises `IdTokenException`. Keys are cached and refetched for an unknown `kid` at most once a minute. See [authentication](docs/authentication.md#id-tokens).

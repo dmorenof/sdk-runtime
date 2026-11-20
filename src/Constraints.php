@@ -11,7 +11,7 @@ namespace Dmorenof\SdkRuntime;
 final class Constraints
 {
     /** Rules checked by the JSON Schema validator rather than by assert(). */
-    private const array JSON_SCHEMA_RULES = ['exclusiveMinimum' => 0, 'exclusiveMaximum' => 0, 'multipleOf' => 0, 'uniqueItems' => 0, 'minProperties' => 0, 'maxProperties' => 0, 'const' => 0, 'enum' => 0];
+    private const array JSON_SCHEMA_RULES = ['exclusiveMinimum' => 0, 'exclusiveMaximum' => 0, 'uniqueItems' => 0, 'minProperties' => 0, 'maxProperties' => 0, 'const' => 0, 'enum' => 0];
 
     private static ?\Opis\JsonSchema\Validator $jsonValidator = null;
     /** @var array<string,\Opis\JsonSchema\Schema> */
@@ -144,6 +144,7 @@ final class Constraints
             $valid = match ($rule) {
                 'minLength', 'maxLength' => self::stringLength($value, $rule, $limit, $where),
                 'minimum', 'maximum' => self::number($value, $rule, $limit, $where),
+                'multipleOf' => self::isMultipleOf($value, $limit, $where),
                 'minItems', 'maxItems' => self::itemCount($value, $rule, $limit, $where),
                 default => throw new \LogicException("Unknown validation rule $rule for $where."),
             };
@@ -209,6 +210,29 @@ final class Constraints
             throw new \UnexpectedValueException("Expected number for $rule at $where.");
         }
         return $rule === 'minimum' ? $value >= $limit : $value <= $limit;
+    }
+
+    /**
+     * `multipleOf` for a number (any other value is not constrained by it). The quotient of two floats is only
+     * as exact as the floats: 392.4 / 0.00001 is not 39240000, so it is compared with the rounding error a double
+     * can carry at that size, which a fixed scale (the schema validator's) cannot do for large values.
+     */
+    private static function isMultipleOf(mixed $value, int|float $divisor, string $where): bool
+    {
+        if ($divisor <= 0) {
+            throw new \LogicException("Invalid multipleOf constraint for $where.");
+        }
+        if (is_int($value) && is_int($divisor)) {
+            return $value % $divisor === 0;
+        }
+        if (!is_int($value) && !is_float($value)) {
+            return true;
+        }
+        $quotient = $value / $divisor;
+        if (!is_finite($quotient)) {
+            return false;
+        }
+        return abs($quotient - round($quotient)) <= max(1.0E-9, abs($quotient) * 8 * PHP_FLOAT_EPSILON);
     }
 
     private static function itemCount(mixed $value, string $rule, int|float $limit, string $where): bool

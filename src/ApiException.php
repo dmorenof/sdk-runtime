@@ -61,7 +61,7 @@ class ApiException extends \RuntimeException
         }
         $parameters = [];
         foreach ($found as $match) {
-            $parameters[strtolower($match[1])] ??= ($match[3] ?? '') !== '' ? $match[3] : stripslashes($match[2]);
+            $parameters[strtolower($match[1])] ??= ($match[3] ?? '') !== '' ? $match[3] : stripslashes($match[2] ?? '');
         }
         return $parameters;
     }

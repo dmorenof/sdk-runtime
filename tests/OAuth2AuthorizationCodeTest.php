@@ -202,6 +202,16 @@ final class OAuth2AuthorizationCodeTest extends TestCase
         self::clientCredentials('http://auth.example.com/token', $this->http([]));
     }
 
+    public function testTheIdTokenOfTheResponseIsKeptForValidation(): void
+    {
+        $response = new Response(200, [], json_encode(['access_token' => 'a1', 'token_type' => 'Bearer', 'id_token' => 'h.p.s'], JSON_THROW_ON_ERROR));
+        [$flow] = $this->flow([$response]);
+        $request = $flow->start();
+        $token = $flow->complete($request, ['code' => 'c', 'state' => $request->state]);
+        self::assertSame('h.p.s', $token->idToken);
+        self::assertStringNotContainsString('h.p.s', print_r($token, true));
+    }
+
     public function testCompleteExchangesTheCodeWithTheVerifierAndStoresTheToken(): void
     {
         [$flow, $http] = $this->flow([self::token('a1', 3600, 'r1')]);

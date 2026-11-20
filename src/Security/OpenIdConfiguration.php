@@ -9,6 +9,8 @@ final readonly class OpenIdConfiguration
     /**
      * @param list<string> $codeChallengeMethods PKCE methods the provider supports; empty when it does not say.
      * @param list<string> $scopes Scopes the provider supports; empty when it does not say.
+     * @param ?string $jwksUri Where the provider publishes the keys its ID tokens are signed with.
+     * @param list<string> $idTokenSigningAlgorithms Algorithms the provider signs ID tokens with; empty when it does not say.
      */
     public function __construct(
         public string $issuer,
@@ -16,6 +18,8 @@ final readonly class OpenIdConfiguration
         public ?string $tokenEndpoint,
         public array $codeChallengeMethods = [],
         public array $scopes = [],
+        public ?string $jwksUri = null,
+        public array $idTokenSigningAlgorithms = [],
     ) {}
 
     /**

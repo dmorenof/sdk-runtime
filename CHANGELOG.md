@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.11.0] — 2026-11-20
+
+- **ID token validation.** `IdTokenValidator` (`new IdTokenValidator($configuration, $clientId)`, then `validate($idToken, nonce:, accessToken:)`) checks an OpenID Connect ID token the way Core 3.1.3.7 asks: the signature with the keys of the provider's `jwks_uri` (RS256/384/512 and ES256/384/512, through OpenSSL; `none`, `HS*`, `PS*`, `crit` and keys carried by the token are refused; RSA under 2048 bits is not used), `iss`, `aud`/`azp`, `exp`/`iat`/`nbf` with a leeway, `sub`, `nonce` and `at_hash`. It returns an `IdToken` or raises `IdTokenException`. Keys are cached and refetched for an unknown `kid` at most once a minute. See [authentication](docs/authentication.md#id-tokens).
+- `OAuth2Token::$idToken` holds the `id_token` of a token response (authorization code, password) or of the implicit fragment, unvalidated. `OpenIdConfiguration` has `jwksUri` and `idTokenSigningAlgorithms`, read from the discovery document.
+- Additive API: `IdTokenValidator`, `IdToken`, `IdTokenOptions`, `IdTokenException`; new defaulted trailing parameters of `OAuth2Token` and `OpenIdConfiguration`.
+
 ## [1.10.1] — 2026-11-20
 
 - Fix: `OpenIdDiscovery::forIssuer()` refused the document of a provider whose issuer ends in a slash (Auth0 does), because it compared the issuer in the document with the one you gave after removing the slash. The issuer is now matched exactly as given, which is what OpenID Connect Discovery requires; the document's URL is still built from the issuer without its final slash. Give such an issuer with its slash.

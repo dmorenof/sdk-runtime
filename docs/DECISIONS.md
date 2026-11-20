@@ -116,7 +116,7 @@ What follows from it: building from JSON assigns through the hooks, then checks 
 - **Mutual TLS** is a credential (`ClientCertificate`), not a header. The default Guzzle transport presents it per call, only to the host the call was made to; a client that cannot take one per call is told so (`configuredOnTheClient()` says the client has its own). Passing files to such a client is an error, never a call without the certificate.
 - **OAuth2 password and implicit grants** exist because APIs still declare them, and the generator refused none of them. They are documented as discouraged (RFC 9700) and offered only as providers; nothing recommends them.
 - **OpenID Connect discovery** believes a document only when it comes over TLS, is a JSON object and names the issuer it was fetched for exactly (from a bare URL: one on the same host). A provider with a final slash in its issuer is given with it.
-- **ID tokens are not validated.** Checking a JWT (signature, `nonce`, claims, key rotation) is security-critical code for a dedicated library; an SDK needs the access token to call an API. The documentation says so and points to `jwks_uri`.
+- **ID tokens are not validated automatically** (superseded in part by D24: a validator is offered, never applied behind your back). An SDK needs the access token to call an API.
 - **Scopes are checked only when known.** The token keeps the scopes the server granted (or the ones requested when it says none). A string token or a provider that cannot tell is trusted, and the API has the last word; the SDK never guesses, and never asks for more scopes by itself.
 
 ### D22. Speed: structure, not tricks
@@ -124,3 +124,10 @@ The profile showed Guzzle at about half of a call and our code at a third. Micro
 
 ### D23. Releases
 A version is published when the work is finished and proven: the runtime's CI, and the generator's CI (tests, PHPStan on generated SDKs, smoke scripts) against the runtime branch before the runtime is published. A patch that does not touch what generated code uses may skip the second step; 1.10.1 (the issuer match of the discovery) did.
+
+### D24. ID token validation
+Requested explicitly, replacing the earlier decision not to validate them.
+- **Own verifier on OpenSSL, no new dependency.** A JWT library would add a dependency to every generated SDK for a feature most never use. The verifier is small (JWS compact form, RS/ES algorithms, JWK to public key) and cryptography stays in OpenSSL. It was checked against tokens made by PyJWT/cryptography (fixtures in `tests/fixtures/id-tokens.json`), not only against itself.
+- **Closed allow-list, keys only from the provider.** `none`, `HS*`, `PS*` (OpenSSL's `openssl_verify` has no PSS) and `crit` are refused; keys in the token header are never used; RSA under 2048 bits is refused; the key must suit the algorithm. The provider's `jwks_uri` is cached and refetched for an unknown `kid` at most once a minute.
+- **Explicit, not implicit.** The token is exposed (`OAuth2Token::$idToken`) and validated only when asked: the SDK needs the access token, and an ID token needs your `nonce`, which only you know.
+- **Not done:** PS256 and EdDSA, encrypted ID tokens (JWE), `max_age`/`auth_time`/`acr` checks, logout tokens. Say so in the docs; use a JWT library for those.

@@ -66,7 +66,8 @@ final class OAuth2TokenEndpoint
         $requested = isset($form['scope']) ? self::scopes($form['scope']) : ($previousScopes ?? ($this->options->scopes !== [] ? $this->options->scopes : null));
         // RFC 6749 section 5.1: a response without `scope` grants what was requested.
         $scopes = isset($data['scope']) && is_string($data['scope']) ? (self::scopes($data['scope']) ?? $requested) : $requested;
-        return new OAuth2Token($accessToken, $expiresAt, $refresh, $scopes);
+        $idToken = isset($data['id_token']) && is_string($data['id_token']) && $data['id_token'] !== '' ? $data['id_token'] : null;
+        return new OAuth2Token($accessToken, $expiresAt, $refresh, $scopes, $idToken);
     }
 
     /**

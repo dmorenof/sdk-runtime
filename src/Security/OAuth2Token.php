@@ -8,12 +8,14 @@ final readonly class OAuth2Token
     /**
      * @param int|null $expiresAt Unix timestamp; null when the server declared no lifetime.
      * @param list<string>|null $scopes The scopes the token was granted; null when that is not known.
+     * @param ?string $idToken The OpenID Connect ID token that came with it, not validated: see IdTokenValidator.
      */
     public function __construct(
         public string $accessToken,
         public ?int $expiresAt = null,
         public ?string $refreshToken = null,
         public ?array $scopes = null,
+        public ?string $idToken = null,
     ) {
         if ($accessToken === '' || preg_match('/[\r\n]/', $accessToken) === 1) {
             throw new \InvalidArgumentException('Invalid OAuth2 access token.');
@@ -28,6 +30,6 @@ final readonly class OAuth2Token
     /** @return array<string, string> Never exposes token values. */
     public function __debugInfo(): array
     {
-        return ['expiresAt' => (string) $this->expiresAt, 'hasRefreshToken' => $this->refreshToken !== null ? 'yes' : 'no', 'scopes' => implode(' ', $this->scopes ?? [])];
+        return ['expiresAt' => (string) $this->expiresAt, 'hasRefreshToken' => $this->refreshToken !== null ? 'yes' : 'no', 'hasIdToken' => $this->idToken !== null ? 'yes' : 'no', 'scopes' => implode(' ', $this->scopes ?? [])];
     }
 }

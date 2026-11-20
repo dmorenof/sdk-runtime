@@ -179,7 +179,33 @@ $endpoints = Client::openIdDiscovery('OAuth')->configuration()->endpoints();
 
 A document is believed only when it is what it claims, so it cannot send you to another provider's endpoints: it must come over TLS (`https`, or `http` toward localhost), be a JSON object, and name an issuer equal to the issuer you asked for, exactly as you gave it (a provider whose issuer ends in a slash, like Auth0, is given with it). When you gave a URL instead of an issuer, the issuer must be on the same host as the URL. Every endpoint in it must be a TLS URL too. Anything else raises `OAuth2Exception`.
 
-What this does not do: it does not validate ID tokens (JWT signatures, `nonce`, claims). The SDK uses the access token to call the API; if you need to authenticate a user from an ID token, validate it with a JWT library and the provider's `jwks_uri`.
+The configuration also carries `jwksUri` (where the provider publishes the keys its ID tokens are signed with) and `idTokenSigningAlgorithms`.
+
+## ID tokens
+
+The SDK calls the API with the access token. If you also sign users in, the token response carries an ID token (`OAuth2Token::$idToken`; the implicit grant takes it from the fragment). It is kept as it came: **it is not trusted until `IdTokenValidator` accepts it.**
+
+```php
+use Dmorenof\SdkRuntime\Security\IdTokenValidator;
+
+$configuration = OpenIdDiscovery::forIssuer('https://accounts.example.com')->configuration();
+$validator = new IdTokenValidator($configuration, 'my-client-id');
+
+$token = $flow->complete($request, $_GET);
+$idToken = $validator->validate($token->idToken, nonce: $nonceYouSent, accessToken: $token->accessToken);
+$idToken->subject();           // who signed in
+$idToken->claim('email');      // any other claim
+```
+
+`validate()` checks (OpenID Connect Core 3.1.3.7) the signature with the provider's keys; `iss` equal to the provider's issuer; `aud` holding your client id (with several audiences, `azp` must be it too); `exp`, `iat` and `nbf` with a 60 s leeway; a `sub`; the `nonce` you sent, when you pass it (pass it whenever you sent one); and `at_hash` against the access token, when both are present. Any failure raises `IdTokenException` and the message names the check, never the token.
+
+How it stays safe:
+
+- The keys come only from the provider's `jwks_uri` (TLS, up to 1 MiB, kept for an hour). Keys inside the token (`jwk`, `jku`, `x5u`) are never used. A token with an unknown `kid` makes the keys be fetched again, at most once a minute, so rotation works and forged `kid`s cannot hammer the provider.
+- Only RS256/384/512 and ES256/384/512 are accepted (`IdTokenOptions(algorithms: [...])` narrows them). `none`, shared-secret (`HS*`) and RSA-PSS (`PS*`) tokens are refused, as are headers with `crit`. A key must suit the algorithm (type, curve, `use`, `alg`), and RSA keys under 2048 bits are not used.
+- Tokens over 16 KiB are refused. Signatures are verified with OpenSSL; no cryptography is implemented here.
+
+`IdTokenOptions` sets the PSR-18 client for the keys, the accepted algorithms, the leeway and the keys' time to live. If your provider signs with something else (PS256, EdDSA), validate with a JWT library and its `jwks_uri` instead.
 
 ## Scopes
 
@@ -253,6 +279,3 @@ $config->securityCredentials = new SecurityCredentials(['Mtls' => ClientCertific
 
 That satisfies the requirement and adds nothing to the call. Passing `fromFiles()` to such a client is an error (`LogicException`), not a call without a certificate.
 
-## Not supported yet
-
-ID token validation is not implemented.

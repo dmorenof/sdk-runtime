@@ -42,13 +42,18 @@ final class OpenIdDiscovery
         if ($issuer !== null) {
             OAuth2Endpoints::assertUrl($issuer, 'issuer');
         }
-        $this->http = $options->http ?? new \GuzzleHttp\Client(['http_errors' => false]);
+        // A document fetched when an SDK starts up must not hang it: bounded waits for the default client.
+        $this->http = $options->http ?? new \GuzzleHttp\Client(['http_errors' => false, 'timeout' => 15, 'connect_timeout' => 5]);
     }
 
-    /** The provider with this issuer: its document is at the issuer's URL followed by `/.well-known/openid-configuration`. */
+    /**
+     * The provider with this issuer: its document is at the issuer's URL, without a final slash, followed by
+     * `/.well-known/openid-configuration`; the issuer it names must be this one exactly (a provider whose issuer ends
+     * in a slash, like Auth0, is given with it).
+     */
     public static function forIssuer(string $issuer, DiscoveryOptions $options = new DiscoveryOptions()): self
     {
-        return new self(rtrim($issuer, '/') . self::WELL_KNOWN, rtrim($issuer, '/'), $options);
+        return new self(rtrim($issuer, '/') . self::WELL_KNOWN, $issuer, $options);
     }
 
     /** The provider whose document is at this URL, as the `openIdConnectUrl` of an OpenAPI security scheme. */

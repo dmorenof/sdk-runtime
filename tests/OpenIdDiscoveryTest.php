@@ -63,7 +63,7 @@ final class OpenIdDiscoveryTest extends TestCase
     public function testTheDocumentIsFetchedFromTheWellKnownUrlOfTheIssuer(): void
     {
         $http = $this->http([self::document()]);
-        $configuration = OpenIdDiscovery::forIssuer(self::ISSUER . '/', new DiscoveryOptions($http))->configuration();
+        $configuration = OpenIdDiscovery::forIssuer(self::ISSUER, new DiscoveryOptions($http))->configuration();
         self::assertSame('GET', $http->requests[0]->getMethod());
         self::assertSame(self::ISSUER . '/.well-known/openid-configuration', (string) $http->requests[0]->getUri());
         self::assertSame('application/json', $http->requests[0]->getHeaderLine('Accept'));
@@ -72,6 +72,19 @@ final class OpenIdDiscoveryTest extends TestCase
         self::assertSame(self::ISSUER . '/token', $configuration->tokenEndpoint);
         self::assertSame(['openid', 'profile'], $configuration->scopes);
         self::assertTrue($configuration->supportsPkce());
+    }
+
+    public function testAnIssuerWithAFinalSlashIsMatchedExactly(): void
+    {
+        $slash = 'https://tenant.auth0.example/';
+        $document = static fn (string $issuer): Response => new Response(200, [], json_encode(['issuer' => $issuer, 'token_endpoint' => 'https://tenant.auth0.example/oauth/token'], JSON_THROW_ON_ERROR));
+        $http = $this->http([$document($slash)]);
+        $configuration = OpenIdDiscovery::forIssuer($slash, new DiscoveryOptions($http))->configuration();
+        self::assertSame($slash, $configuration->issuer);
+        self::assertSame('https://tenant.auth0.example/.well-known/openid-configuration', (string) $http->requests[0]->getUri());
+
+        $this->expectException(OAuth2Exception::class); // asked for with the slash, answered without it
+        OpenIdDiscovery::forIssuer($slash, new DiscoveryOptions($this->http([$document('https://tenant.auth0.example')])))->configuration();
     }
 
     public function testTheEndpointsFeedTheOAuth2Flows(): void

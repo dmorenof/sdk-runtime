@@ -31,7 +31,7 @@ Application code and generated SDKs may rely on these classes: constructors, pub
 
 - `SecurityCredentials`, `BasicAuthCredentials`, `ClientCertificate`.
 - `TokenProviderInterface`, `TokenStoreInterface`, `InMemoryTokenStore`, `OAuth2Token`, `OAuth2ClientCredentials`, `OAuth2Endpoints`, `OAuth2Client`, `OAuth2Options`.
-- `OAuth2AuthorizationCode` (authorization code with PKCE), `OAuth2Password` and `ResourceOwner` (password grant), `OAuth2Implicit` (implicit grant), `OpenIdDiscovery`, `OpenIdConfiguration` and `DiscoveryOptions` (OpenID Connect discovery), `AuthorizationRequest`, `OAuth2Exception`, `ReauthorizationRequiredException`.
+- `OAuth2AuthorizationCode` (authorization code with PKCE), `OAuth2Password` and `ResourceOwner` (password grant), `OAuth2Implicit` (implicit grant), `OpenIdDiscovery`, `OpenIdConfiguration` and `DiscoveryOptions` (OpenID Connect discovery), `AuthorizationRequest`, `ScopeAwareTokenProvider`, `OAuth2Exception`, `InsufficientScopeException`, `ReauthorizationRequiredException`.
 
 **Transport**
 

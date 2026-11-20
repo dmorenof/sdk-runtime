@@ -20,7 +20,7 @@ use GuzzleHttp\Psr7\Query;
  *     $flow->complete($request, $redirectedUrl); // the full URL the user was sent back to, fragment included
  *     new SecurityCredentials(['OAuth' => $flow])
  */
-final class OAuth2Implicit implements TokenProviderInterface
+final class OAuth2Implicit implements ScopeAwareTokenProvider
 {
     private const array RESERVED = ['response_type', 'client_id', 'redirect_uri', 'scope', 'state'];
 
@@ -104,7 +104,9 @@ final class OAuth2Implicit implements TokenProviderInterface
         }
         $expiresIn = $response['expires_in'] ?? null;
         $expiresAt = is_string($expiresIn) && ctype_digit($expiresIn) ? $this->now() + (int) $expiresIn : null;
-        $token = new OAuth2Token($accessToken, $expiresAt);
+        // A response without `scope` grants what was requested (RFC 6749 section 4.2.2).
+        $scopes = isset($response['scope']) && is_string($response['scope']) ? OAuth2TokenEndpoint::scopes($response['scope']) : null;
+        $token = new OAuth2Token($accessToken, $expiresAt, null, $scopes ?? ($this->options->scopes !== [] ? $this->options->scopes : null));
         $this->store->set($this->storeKey, $token);
         return $token;
     }
@@ -123,6 +125,11 @@ final class OAuth2Implicit implements TokenProviderInterface
             throw new ReauthorizationRequiredException('No valid OAuth2 token for this user: complete the authorization flow first.');
         }
         return $token->accessToken;
+    }
+
+    public function grantedScopes(): ?array
+    {
+        return $this->stored()?->scopes;
     }
 
     public function invalidate(): void

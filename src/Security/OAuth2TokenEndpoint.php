@@ -33,8 +33,9 @@ final class OAuth2TokenEndpoint
     /**
      * @param array<string, string> $form Grant parameters (grant_type, code, refresh_token, ...).
      * @param ?string $previousRefreshToken Kept when the response does not rotate it.
+     * @param list<string>|null $previousScopes The scopes of the token being renewed: a response that names none grants them again.
      */
-    public function request(array $form, ?string $previousRefreshToken = null): OAuth2Token
+    public function request(array $form, ?string $previousRefreshToken = null, ?array $previousScopes = null): OAuth2Token
     {
         $headers = ['Content-Type' => 'application/x-www-form-urlencoded', 'Accept' => 'application/json'];
         if ($this->client->secret === null) {
@@ -62,6 +63,29 @@ final class OAuth2TokenEndpoint
         $expiresAt = is_int($expiresIn) || (is_string($expiresIn) && ctype_digit($expiresIn)) ? $this->now() + (int) $expiresIn : null;
         $refresh = isset($data['refresh_token']) && is_string($data['refresh_token']) && $data['refresh_token'] !== ''
             ? $data['refresh_token'] : $previousRefreshToken;
-        return new OAuth2Token($accessToken, $expiresAt, $refresh);
+        $requested = isset($form['scope']) ? self::scopes($form['scope']) : ($previousScopes ?? ($this->options->scopes !== [] ? $this->options->scopes : null));
+        // RFC 6749 section 5.1: a response without `scope` grants what was requested.
+        $scopes = isset($data['scope']) && is_string($data['scope']) ? (self::scopes($data['scope']) ?? $requested) : $requested;
+        return new OAuth2Token($accessToken, $expiresAt, $refresh, $scopes);
+    }
+
+    /**
+     * The scope tokens of a space-separated `scope` value (RFC 6749 section 3.3), or null when it holds anything else.
+     *
+     * @internal Shared with OAuth2Implicit; not covered by the backward-compatibility promise.
+     * @return list<string>|null
+     */
+    public static function scopes(string $value): ?array
+    {
+        $tokens = preg_split('/ +/', trim($value, ' '), -1, PREG_SPLIT_NO_EMPTY);
+        if ($tokens === false) {
+            return null;
+        }
+        foreach ($tokens as $token) {
+            if (preg_match('/^[\x21\x23-\x5B\x5D-\x7E]+$/D', $token) !== 1) {
+                return null;
+            }
+        }
+        return $tokens;
     }
 }

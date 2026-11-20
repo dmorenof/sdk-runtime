@@ -181,6 +181,38 @@ A document is believed only when it is what it claims, so it cannot send you to 
 
 What this does not do: it does not validate ID tokens (JWT signatures, `nonce`, claims). The SDK uses the access token to call the API; if you need to authenticate a user from an ID token, validate it with a JWT library and the provider's `jwks_uri`.
 
+## Scopes
+
+A contract says which scopes each operation needs (for example `security: [{OAuth: [read, write]}]`). The OAuth2 providers keep the scopes their token was granted: the `scope` the token endpoint answers with, or, when it says none, the scopes you requested (RFC 6749 section 5.1), and a renewed token keeps the scopes it had. Before a call is sent, the runtime compares:
+
+```php
+use Dmorenof\SdkRuntime\Security\InsufficientScopeException;
+
+try {
+    Reports::create($report);                  // the operation requires the `reports:write` scope
+} catch (InsufficientScopeException $e) {
+    $e->scheme;    // 'OAuth'
+    $e->missing;   // ['reports:write']
+    $e->granted;   // ['reports:read']
+}
+```
+
+Nothing is sent in that case, and the message names the scopes, never the token. Ask for the scopes you need in `OAuth2Options(scopes: [...])`.
+
+The check is made only when the scopes are known. A token you pass as a string, a provider of your own that does not implement `ScopeAwareTokenProvider`, and a token for which the server named no scope while none were requested are trusted: the API has the last word. When a scheme lists alternatives (any one of them will do), the runtime tries each in turn and fails only if none is met.
+
+The API may refuse a call for a scope the SDK could not know about. Such an answer is an `ApiException`, and it can tell you what is missing (RFC 6750 section 3.1, a `403` with `error="insufficient_scope"` in `WWW-Authenticate`):
+
+```php
+catch (ApiException $e) {
+    if ($e->isInsufficientScope()) {
+        $needed = $e->missingScopes();         // what the API asks for, when it says
+    }
+}
+```
+
+The runtime does not ask for more scopes by itself: authorize again (authorization code, implicit) or build the provider with the scopes you need.
+
 ## Your own token source
 
 Anything that returns a bearer string can be a provider:
@@ -223,4 +255,4 @@ That satisfies the requirement and adds nothing to the call. Passing `fromFiles(
 
 ## Not supported yet
 
-Scope checking and ID token validation are not implemented.
+ID token validation is not implemented.

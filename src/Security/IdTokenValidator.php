@@ -118,18 +118,22 @@ final class IdTokenValidator
         $this->assertAudience($claims['aud'] ?? null, $claims['azp'] ?? null);
         $now = $this->options->clock !== null ? ($this->options->clock)() : time();
         $leeway = $this->options->leeway;
-        foreach (['exp', 'iat'] as $required) {
-            if (!is_int($claims[$required] ?? null) && !is_float($claims[$required] ?? null)) {
-                throw new IdTokenException("The ID token has no valid $required.");
-            }
+        $exp = $claims['exp'] ?? null;
+        $iat = $claims['iat'] ?? null;
+        if (!is_int($exp) && !is_float($exp)) {
+            throw new IdTokenException('The ID token has no valid exp.');
         }
-        if ($claims['exp'] + $leeway <= $now) {
+        if (!is_int($iat) && !is_float($iat)) {
+            throw new IdTokenException('The ID token has no valid iat.');
+        }
+        if ($exp + $leeway <= $now) {
             throw new IdTokenException('The ID token has expired.');
         }
-        if ($claims['iat'] - $leeway > $now) {
+        if ($iat - $leeway > $now) {
             throw new IdTokenException('The ID token was issued in the future.');
         }
-        if (isset($claims['nbf']) && (!(is_int($claims['nbf']) || is_float($claims['nbf'])) || $claims['nbf'] - $leeway > $now)) {
+        $nbf = $claims['nbf'] ?? null;
+        if ($nbf !== null && (!(is_int($nbf) || is_float($nbf)) || $nbf - $leeway > $now)) {
             throw new IdTokenException('The ID token is not valid yet.');
         }
         if ($nonce !== null && !(is_string($claims['nonce'] ?? null) && hash_equals($nonce, $claims['nonce']))) {

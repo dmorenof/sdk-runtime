@@ -30,7 +30,11 @@ final class JwsAlgorithm
         return self::ALGORITHMS[$algorithm]['hash'] ?? null;
     }
 
-    /** Whether this key can be used for signatures made with this algorithm (`kty`, `crv`, `use`, `alg`). */
+    /**
+     * Whether this key can be used for signatures made with this algorithm (`kty`, `crv`, `use`, `alg`).
+     *
+     * @param array<mixed> $jwk
+     */
     public static function suits(string $algorithm, array $jwk): bool
     {
         $spec = self::ALGORITHMS[$algorithm] ?? null;
@@ -41,7 +45,7 @@ final class JwsAlgorithm
             && (!isset($jwk['alg']) || $jwk['alg'] === $algorithm);
     }
 
-    /** @param array<string, mixed> $jwk A key that {@see suits()} the algorithm. */
+    /** @param array<mixed> $jwk A key that {@see suits()} the algorithm. */
     public static function verify(string $algorithm, array $jwk, string $signingInput, string $signature): bool
     {
         $spec = self::ALGORITHMS[$algorithm] ?? null;
@@ -64,7 +68,7 @@ final class JwsAlgorithm
         return openssl_verify($signingInput, $signature, $key, $spec['hash']) === 1;
     }
 
-    /** @param array<string, mixed> $jwk */
+    /** @param array<mixed> $jwk */
     private static function rsaKey(array $jwk): ?string
     {
         $n = self::b64($jwk['n'] ?? null);
@@ -77,7 +81,7 @@ final class JwsAlgorithm
         return self::pem(self::der(0x30, $algorithm . self::der(0x03, "\0" . $key)));
     }
 
-    /** @param array<string, mixed> $jwk */
+    /** @param array<mixed> $jwk */
     private static function ecKey(array $jwk, int $size, string $curveOid): ?string
     {
         $x = self::b64($jwk['x'] ?? null);

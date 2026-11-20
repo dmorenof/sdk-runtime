@@ -71,7 +71,7 @@ final class IdTokenValidator
         return new IdToken($claims);
     }
 
-    /** @return array{array<string, mixed>, array<string, mixed>, string, string} */
+    /** @return array{array<mixed>, array<mixed>, string, string} */
     private function parse(string $token): array
     {
         $parts = explode('.', $token);
@@ -87,7 +87,7 @@ final class IdTokenValidator
         return [$header, $claims, $parts[0] . '.' . $parts[1], $signature];
     }
 
-    /** @return array<string, mixed>|null */
+    /** @return array<mixed>|null */
     private static function json(string $segment): ?array
     {
         $bytes = JwsAlgorithm::b64($segment);
@@ -105,7 +105,7 @@ final class IdTokenValidator
         throw new IdTokenException('The ID token signature is not valid for any of the provider\'s keys.');
     }
 
-    /** @param array<string, mixed> $claims */
+    /** @param array<mixed> $claims */
     private function assertClaims(array $claims, ?string $nonce): void
     {
         if (($claims['iss'] ?? null) !== $this->configuration->issuer) {

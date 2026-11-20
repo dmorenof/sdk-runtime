@@ -20,7 +20,7 @@ final class JwkSet
     private const int MAX_KEYS = 100;
 
     private readonly ClientInterface $http;
-    /** @var list<array<string, mixed>>|null */
+    /** @var list<array<mixed>>|null */
     private ?array $keys = null;
     private int $fetchedAt = 0;
 
@@ -33,7 +33,7 @@ final class JwkSet
     /**
      * The keys with this `kid`, or all of them when the token names none.
      *
-     * @return list<array<string, mixed>>
+     * @return list<array<mixed>>
      * @throws OAuth2Exception The keys could not be fetched.
      */
     public function find(?string $kid): array
@@ -52,7 +52,7 @@ final class JwkSet
         return $found;
     }
 
-    /** @return list<array<string, mixed>> */
+    /** @return list<array<mixed>> */
     private function matching(?string $kid): array
     {
         return array_values(array_filter($this->keys ?? [], static fn(array $key): bool => $kid === null || ($key['kid'] ?? null) === $kid));

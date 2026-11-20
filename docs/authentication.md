@@ -14,7 +14,7 @@ Users::configure($config);
 
 The scheme names are the ones in the API's specification (`components.securitySchemes`). A name the API does not use is ignored. If an operation requires credentials and none of its alternatives can be satisfied, nothing is sent and the call throws `InvalidArgumentException: No configured credentials satisfy this operation security requirement.` Operations the API leaves open (or marks as optionally authenticated) never need credentials.
 
-> **Generator support.** sdk-generator 1.9.0 and later also generate SDKs for APIs that declare a `mutualTLS` scheme (OpenAPI 3.1). sdk-generator 1.3.0 and later generate SDKs for APIs that declare `oauth2` or `openIdConnect` schemes, besides `apiKey` (header, query, cookie) and `http` `basic` and `bearer`. Give the scheme's name a token or a token provider (below). The generator does not copy the scheme's endpoints or scopes into the SDK, so you build the provider with the URLs and scopes you need. Earlier generator versions reject those schemes.
+> **Generator support.** sdk-generator 1.10.0 and later put the `openIdConnectUrl` of a scheme in the generated client, for `Client::openIdDiscovery()`. sdk-generator 1.9.0 and later also generate SDKs for APIs that declare a `mutualTLS` scheme (OpenAPI 3.1). sdk-generator 1.3.0 and later generate SDKs for APIs that declare `oauth2` or `openIdConnect` schemes, besides `apiKey` (header, query, cookie) and `http` `basic` and `bearer`. Give the scheme's name a token or a token provider (below). The generator does not copy the scheme's endpoints or scopes into the SDK, so you build the provider with the URLs and scopes you need. Earlier generator versions reject those schemes.
 
 ## What each credential looks like
 
@@ -158,6 +158,29 @@ $config->securityCredentials = new SecurityCredentials(['OAuth' => $flow]);
 
 `complete()` checks that the request has not expired, that the URL is the registered redirect URI, that the response is not an error, and that `state` matches, and refuses a token that is not a Bearer token. When `accessToken()` finds no valid token it raises `ReauthorizationRequiredException`.
 
+## OpenID Connect discovery
+
+An OpenID Connect provider publishes its endpoints in a configuration document at `/.well-known/openid-configuration`. `OpenIdDiscovery` fetches it, so you name the issuer instead of copying URLs, and the OAuth2 flows above take the result:
+
+```php
+use Dmorenof\SdkRuntime\Security\OpenIdDiscovery;
+
+$endpoints = OpenIdDiscovery::forIssuer('https://accounts.example.com')->configuration()->endpoints();
+$flow = new OAuth2AuthorizationCode($endpoints, new OAuth2Client($clientId, $secret, 'https://app.example.com/callback'));
+```
+
+When the API's contract declares an `openIdConnect` scheme, its generated SDK knows the document's URL (the scheme's `openIdConnectUrl`), and offers the discovery for it without a connected client, since the endpoints are what you build the credentials from:
+
+```php
+$endpoints = Client::openIdDiscovery('OAuth')->configuration()->endpoints();
+```
+
+`configuration()` returns an `OpenIdConfiguration` with `issuer`, `authorizationEndpoint`, `tokenEndpoint`, the PKCE methods and the scopes the provider lists, `endpoints()` (the `OAuth2Endpoints` the flows take, with the issuer the authorization code flow checks in the callback) and `supportsPkce()`. The document is kept for an hour (`DiscoveryOptions(ttl: ...)`), fetched with Guzzle unless you pass a PSR-18 client (`DiscoveryOptions(http: ...)`), and read up to 1 MiB.
+
+A document is believed only when it is what it claims, so it cannot send you to another provider's endpoints: it must come over TLS (`https`, or `http` toward localhost), be a JSON object, and name an issuer equal to the issuer you asked for. When you gave a URL instead of an issuer, the issuer must be on the same host as the URL. Every endpoint in it must be a TLS URL too. Anything else raises `OAuth2Exception`.
+
+What this does not do: it does not validate ID tokens (JWT signatures, `nonce`, claims). The SDK uses the access token to call the API; if you need to authenticate a user from an ID token, validate it with a JWT library and the provider's `jwks_uri`.
+
 ## Your own token source
 
 Anything that returns a bearer string can be a provider:
@@ -200,4 +223,4 @@ That satisfies the requirement and adds nothing to the call. Passing `fromFiles(
 
 ## Not supported yet
 
-OpenID Connect discovery and scope checking are not implemented.
+Scope checking and ID token validation are not implemented.

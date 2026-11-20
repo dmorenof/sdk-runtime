@@ -10,6 +10,8 @@ use Dmorenof\SdkRuntime\Execution\RequestBuilder;
 use Dmorenof\SdkRuntime\Execution\ResponseDecoder;
 use Dmorenof\SdkRuntime\Execution\ServerSelection;
 use Dmorenof\SdkRuntime\Security\AppliedSecurity;
+use Dmorenof\SdkRuntime\Security\DiscoveryOptions;
+use Dmorenof\SdkRuntime\Security\OpenIdDiscovery;
 use Dmorenof\SdkRuntime\Security\SecurityApplier;
 use Dmorenof\SdkRuntime\Security\SecurityCredentials;
 use Dmorenof\SdkRuntime\Streaming\StreamDecoder;
@@ -33,7 +35,7 @@ abstract class ApiClient
 {
     /**
      * Security scheme definitions, keyed by name; each SDK overrides this.
-     * @var array<string, array{type: string, scheme: string|null, location: string|null, parameterName: string|null}>
+     * @var array<string, array{type: string, scheme: string|null, location: string|null, parameterName: string|null, openIdConnectUrl?: string|null}>
      */
     protected const array SECURITY_SCHEMES = [];
 
@@ -103,6 +105,22 @@ abstract class ApiClient
         $shared->retryPolicy = null;
         $shared->redirectPolicy = null;
         return new $type($shared);
+    }
+
+    /**
+     * OpenID Connect discovery for a security scheme the API declares with an `openIdConnectUrl`. It needs no connected
+     * client, since the endpoints it finds are what you build the credentials of the connection from:
+     *
+     *     $endpoints = Client::openIdDiscovery('OAuth')->configuration()->endpoints();
+     */
+    public static function openIdDiscovery(string $scheme, DiscoveryOptions $options = new DiscoveryOptions()): OpenIdDiscovery
+    {
+        $definition = static::SECURITY_SCHEMES[$scheme] ?? null;
+        $url = $definition['openIdConnectUrl'] ?? null;
+        if ($definition === null || $definition['type'] !== 'openIdConnect' || !is_string($url)) {
+            throw new \InvalidArgumentException("The API declares no OpenID Connect discovery URL for the security scheme $scheme.");
+        }
+        return OpenIdDiscovery::forUrl($url, $options);
     }
 
     /**

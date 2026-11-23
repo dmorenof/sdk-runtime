@@ -1,110 +1,51 @@
 # Pendientes — sdk-runtime
 
-> **Estado:** hoja de ruta; NO equivale a funcionalidades implementadas.
+> **Estado (2026-11-23):** publicada la **1.11.1**. En la rama de trabajo, sin publicar, está la **1.12.0** (el cambio D25: la llamada solo serializa y la respuesta se da por buena).
 >
-> **Línea base estable:** `dmorenof/sdk-runtime` **v0.31.0** (usada por `dmorenof/sdk-generator` v0.40.0).
+> **Qué es este fichero:** lo que **falta**. Lo que ya está hecho y publicado no se repite aquí: está en [CHANGELOG.md](CHANGELOG.md) y en [docs/DECISIONS.md](docs/DECISIONS.md). Cada punto de abajo se comprobó en el código en la fecha de arriba; si deja de ser cierto, se borra.
 >
-> **Criterio de actualización:** `[x]` significa implementado y verificado con pruebas y CI; anotar la versión publicada. Las tareas parcialmente cubiertas conservan `[ ]` con el detalle de lo hecho y lo que falta.
->
-> **Principio:** el runtime concentra transporte, ejecución, seguridad, hidratación y validación. Los SDKs generados solo declaran tipos y metadatos de operación. Reutilizar PHP, Guzzle, PSR y opis/json-schema antes de escribir utilidades propias (ver [AGENTS.md](AGENTS.md)). Los metadatos nuevos se añaden al final de `Operation` sin cambiar posiciones de constructores.
+> **Principio:** el runtime concentra transporte, ejecución, seguridad e hidratación. Los SDKs generados solo declaran tipos y metadatos de operación. Se reutiliza PHP, Guzzle, PSR y Opis antes de escribir utilidad propia.
 
-## Leyenda
+## Regla de publicación
 
-Igual en los tres repositorios (runtime, generador y casafari-sdk):
+Una versión se publica cuando el trabajo está **terminado y probado**, y solo cuando el titular lo confirma. No se suben versiones intermedias. El runtime se prueba contra la CI del generador antes de publicarse (D23).
 
-- **P0:** bloquea que el runtime sirva para cualquier API; abordar primero.
-- **P1:** compatibilidad amplia y requisitos de producción.
-- **P2:** funciones avanzadas o compatibilidad heredada.
-- **P3:** utilidades adicionales.
-- **Parcial:** existe una implementación limitada; la casilla sigue abierta.
+## Hecho (resumen; el detalle está en el CHANGELOG)
 
-## Orden global de trabajo (acordado 2026-11-10)
+- **Contrato público congelado** desde la 1.0.0 ([docs/PUBLIC_API.md](docs/PUBLIC_API.md)).
+- **Seguridad:** apiKey, HTTP basic/bearer, OAuth2 (client credentials, authorization code con PKCE, password, implicit), OpenID Connect con descubrimiento y **validación de ID tokens**, mTLS, comprobación de scopes.
+- **Transporte:** Guzzle/PSR-18, reintentos con `Retry-After` (opt-in), redirecciones (opt-in), middleware, streaming de cuerpos y respuestas, servidores relativos y variables.
+- **Modelos:** hidratación tipada, enums, colecciones y mapas, validación de reglas al asignar con *hooks* de PHP 8.4.
 
-Idéntico en los tres repositorios. Cada fase se publica por avances terminados (runtime primero).
+## Pendiente (verificado en el código)
 
-1. **sdk-runtime:** cubrir lo necesario para servir a cualquier API y congelar su API pública (1.0).
-2. **sdk-generator:** cumplir las especificaciones más importantes (Swagger 2.0, OpenAPI 3.0/3.1) sobre ese runtime.
-3. **casafari-sdk:** evaluar y, si procede, migrar a un SDK generado.
+**Autenticación**
+- [ ] OAuth2: `refreshUrl` distinto del `tokenUrl`.
 
-Durante las fases 1 y 2, el SDK de Casafari generado sigue pasando como prueba de aceptación en CI del generador.
+**Transporte**
+- [ ] Opciones de timeout configurables por cliente (hoy: el cliente PSR-18 que se inyecte; solo el descubrimiento OIDC fija sus propios límites).
+- [ ] Persistencia general de cookies (no hay *cookie jar*) y cookies estructuradas, JSON, arrays y objetos.
+- [ ] Método HTTP `QUERY`.
+- [ ] Políticas completas para respuestas sin contenido (HEAD/205 y combinaciones restantes).
 
-## 0. Línea base ya disponible (v0.31.0)
-
-- [x] `ApiClient::connect()`, `resource()`, `withMiddleware()` y ejecución común de operaciones; Guzzle por defecto y cualquier cliente PSR-18.
-- [x] Seguridad Basic, Bearer y API key (header, query, cookie) con alternativas AND/OR; credenciales ocultas en depuración.
-- [x] DTO/Request/Response, TypedArray, Map, AnyOf, OneOf; hidratación y validación direccional (readOnly/writeOnly), discriminadores.
-- [x] Serialización de parámetros: listas, objetos planos, deepObject, label/matrix, simple, delimitadas, allowReserved/allowEmptyValue, cookies escalares, content JSON/text.
-- [x] Cuerpos: JSON raíz con `null` explícito frente a ausente, urlencoded, multipart (partes JSON y streams), text/plain y binario por streams PSR-7.
-- [x] Respuestas: selección exacta/rango/default, mezcla JSON/binario/sin contenido, MIME concretos, errores declarados (`ApiException::payload`).
-- [x] Servidores literales con `serverOverrides` por conexión.
-- [x] Validación JSON Schema acotada vía opis/json-schema (rangos numéricos, unicidad, const, contadores).
-
-## 1. [P0] Autenticación
-
-- [x] **Sin publicar —** OAuth2 `clientCredentials` con obtención de token, Basic o body, scopes y caché (`OAuth2ClientCredentials`).
-- [x] **Sin publicar —** Interfaz de almacén de tokens inyectable (`TokenStoreInterface`, memoria por defecto) y expiración con margen.
-- [x] **Sin publicar —** Renovación con `refresh_token` y un único reintento tras 401. Pendiente: `refreshUrl` distinto del `tokenUrl`.
-- [x] **Sin publicar —** OAuth2 `authorizationCode` con PKCE S256 (`OAuth2AuthorizationCode`): URL de autorización, `state`, errores, issuer (RFC 9207), intercambio del código, renovación con rotación y reautorización explícita. La redirección del navegador queda en la aplicación. Pendiente: DPoP, PAR y device authorization.
-- [ ] OAuth2 `password` e `implicit` solo por compatibilidad heredada.
-- [ ] OpenID Connect y descubrimiento de configuración.
-- [ ] Scopes: asociación y comprobación.
-- [ ] mTLS: certificados y claves de cliente.
-- [ ] Almacenamiento seguro de credenciales y redacción en logs/excepciones.
-
-## 2. [P0] Respuesta y transporte
-
-- [x] **Sin publicar —** Acceso tipado a cabeceras de respuesta declaradas (`ApiClient::lastResponse()`, `ResponseHeaders`, metadato `responseHeaders`) y `Set-Cookie`. Pendiente en el generador: emitir `responseHeaders` desde `responses[*].headers`.
-- [x] **Sin publicar —** Política configurable de redirecciones `3xx`, opt-in y sin seguir por defecto como en 0.31 (`RedirectPolicy`, `withRedirectPolicy()`): límites, cambio de método, reenvío de cuerpo, cabeceras seguras entre orígenes y rechazo de downgrade.
-- [ ] Reintentos y backoff para 429/5xx y errores de red, con respeto de `Retry-After`; desactivados por defecto.
-- [ ] Timeouts y opciones de transporte documentados y configurables por cliente.
-- [ ] **Parcial — Respuestas sin contenido:** estados explícitos cubiertos; faltan políticas para HEAD/205 y combinaciones restantes.
-- [ ] Persistencia general de cookies.
-
-## 3. [P1] Negociación y formatos
-
-- [x] **Sin publicar —** Selección de representación de respuesta entre alternativas declaradas (`alternatives`, `MediaType`) con wildcards `type/*`, `*/*` y `application/*+json`; `Accept` generado desde todas las alternativas. Pendiente: elegir explícitamente el `Content-Type` de la **petición** entre alternativas, pesos q en `Accept` y emitir `alternatives` desde el generador.
-- [ ] Interfaz de códecs para modelos XML/CSV estructurados (hoy son strings opacos).
-- [ ] **Parcial — Sin publicar:** cuerpos crudos no seekables (un solo envío) y respuestas en streaming con generadores perezosos. Faltan los errores binarios sin buffer completo, entradas multipart no seekables y la reconexión automática de SSE.
+**Formatos**
+- [ ] Códecs para modelos XML y CSV estructurados (hoy son cadenas opacas).
 - [ ] Transcodificación de charsets.
+- [ ] Multipart secuencial (`itemSchema`/`itemEncoding`), errores binarios sin buffer completo, multipart con entradas no seekables y reconexión automática de SSE.
 
-## 4. [P1] Servidores
+**Modelos**
+- [ ] Política configurable para propiedades JSON desconocidas (hoy: una respuesta las ignora y un modelo que construyes las rechaza; no se puede cambiar).
+- [ ] Diferencias de `pattern` entre JSON Schema (ECMA-262) y PCRE.
 
-- [x] **Sin publicar —** Servidores relativos resueltos frente a la base URL (como directorio, RFC 3986), con `serverOverrides` sobre la URL final.
-- [x] **Sin publicar —** Selección entre varios servidores (`servers`, `useServer()`) y variables con nombre (`withServerVariables()`, defaults y `enum`), más `SERVERS`/`serverUrl()` para los servidores raíz. Pendiente en el generador: emitir `servers` y `SERVERS` desde el contrato.
+**Limitaciones conocidas de PHP 8.4 (no se pueden arreglar aquí)**
+- Una propiedad con *hook* no se puede `unset` ni editar en sitio, así que las listas nativas no tienen *hook* y sus reglas no se comprueban al asignar (use colecciones tipadas).
 
-## 5. [P1] Validación JSON Schema
+## En rama, sin publicar (1.12.0)
 
-- [ ] **Parcial:** numéricos, unicidad, const escalar/null y contadores cubiertos. Faltan `contains`/`minContains`, const complejo y `not`.
-- [ ] `if`/`then`/`else`, `dependentRequired`/`dependentSchemas`.
-- [ ] `prefixItems` y tuplas; `patternProperties`, `propertyNames`.
-- [ ] `unevaluatedProperties`/`unevaluatedItems`.
-- [ ] Uniones nativas de objetos/arrays.
-- [x] **Sin publicar —** Validadores de `format` con política explícita: regla declarativa `format` (anotación salvo que se pida), delegando en el `FormatResolver` de Opis (fecha, hora, date-time, duration, email, hostname, ip, uri, uuid, json-pointer, regex) y añadiendo `byte`, `int32` e `int64`; ver [docs/FORMATS.md](docs/FORMATS.md). Pendiente en el generador: emitir la regla de forma opcional (`--validate-formats`) y, aparte, la conversión opcional a clases PHP.
-- [ ] Diferencias de `pattern` entre JSON Schema y PCRE.
-- [ ] Política configurable para propiedades JSON desconocidas (ignorar, conservar, rechazar).
-
-## 5b. [P2] Funciones avanzadas
-
-- [x] **Sin publicar —** Streaming `text/event-stream` (SSE), `application/jsonl` y `application/json-seq` como `Generator` perezoso (`encoding` `sse`/`jsonl`/`json-seq`, `ServerSentEvent`). Pendiente en el generador: emitir esos `encoding` y el tipo de retorno `Generator`.
-- [ ] Método HTTP `QUERY` y métodos adicionales.
-- [ ] Multipart secuencial (`itemSchema`/`itemEncoding`).
-- [ ] Cookies estructuradas/JSON y arrays/objetos en cookies.
-
-## 6. [P0] Cierre 1.0
-
-- [x] **Sin publicar —** API pública definida en tres niveles (estable, contrato con el generador, interna) y marcada con `@internal`; ver [docs/PUBLIC_API.md](docs/PUBLIC_API.md). Instantánea por reflexión `tests/Fixtures/public-api.txt` verificada por `tests/PublicApiTest.php`.
-- [x] **Sin publicar —** Política de compatibilidad (SemVer desde 1.0) y de deprecaciones documentada en [docs/PUBLIC_API.md](docs/PUBLIC_API.md). Falta revisar con calma la superficie antes de publicar: cada línea de la instantánea será promesa de 1.x.
-- [ ] Prueba de compatibilidad con SDKs generados por versiones 0.x anteriores del generador.
-- [ ] Registro en Packagist y verificación de instalación aislada.
-- [ ] Documentación de uso del runtime independiente del generador.
-- [ ] Cobertura de pruebas y PHPStan máximo en la matriz PHP 8.3–8.5 y dependencias mínimas (ya en CI; mantener).
-
-## Cierre de 0.2.0 → 1.0.0 (decidido 2026-11-10)
-
-- La línea de trabajo es `feature/p0-contract-fidelity` (runtime) coordinada con `release/0.2.0` (generador). Al terminarla, runtime y generador se publican como **v1.0.0**, runtime primero.
-- **Sin PR:** la entrega es una release (cambio de `VERSION` → tag inmutable y GitHub Release por el workflow existente). Si la protección de `main` exigiera un PR, se trata como trámite técnico (ver [AGENTS.md](AGENTS.md)).
-- Hasta entonces se acumula sin publicar; `VERSION`, tags y la línea base estable (v0.31.0) no se tocan.
-- **Antes de la 1.0.0** (obligatorio): PHPUnit y los 19 smoke de HTTP real ya se han ejecutado por primera vez sobre todo lo acumulado (PHP 8.3.6, dependencias del `composer.lock`, orden aleatorio y modo estricto: 489 pruebas verdes). Falta: PHPStan nivel máximo, matriz PHP 8.4/8.5, dependencias mínimas e instalación aislada, que solo puede dar el CI de GitHub; congelar la API pública (apartado 6).
+- La llamada solo serializa y la respuesta se da por buena (D25); `DTO::isReadingResponse()` interno.
+- Una colección construida desde una respuesta no se comprueba dos veces.
+- `.gitattributes` con `export-ignore`: el paquete instalado pierde tests, docs de desarrollo, `audit/` y `ci/` (de 2,1 MB a 0,6 MB). Se conservan los servidores de prueba que usan los *smoke* del generador.
+- Workflow `audit-casafari` (memoria, CPU y disco frente a OpenAPI Generator sobre el contrato real de Casafari).
 
 ## Historial de seguimiento
 
@@ -112,3 +53,5 @@ Durante las fases 1 y 2, el SDK de Casafari generado sigue pasando como prueba d
 | --- | --- | --- |
 | 2026-11-10 | Se crea esta hoja de ruta con la leyenda común y el orden global runtime → generador → Casafari. | Conversación de planificación |
 | 2026-11-11 | Revisión de limpieza de lo acumulado (reutilización, responsabilidad única, eficiencia) con comparación lado a lado del código anterior y el nuevo; corrige `MediaType::normalize()`, un `TypeError` con SSE sin tipo, la fuga de credenciales con middleware entre orígenes y la renovación OAuth ante errores transitorios. | Ver CHANGELOG |
+| 2026-11-23 | Se reescribe la hoja de ruta: lo hecho remite al CHANGELOG y solo quedan como pendientes los puntos comprobados en el código. Se fija la regla de publicación. | Revisión de limpieza |
+

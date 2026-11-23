@@ -1,0 +1,18 @@
+# What `composer install` downloads is `git archive`: leave out what only development needs.
+# The test servers (tests/*-http-server.php) stay: the generator's smoke tests run them from the installed package.
+/.github export-ignore
+/.gitattributes export-ignore
+/.gitignore export-ignore
+/AGENTS.md export-ignore
+/CONTRIBUTING.md export-ignore
+/RELEASING.md export-ignore
+/pendientes.md export-ignore
+/phpstan.neon export-ignore
+/phpunit.xml export-ignore
+/audit export-ignore
+/ci export-ignore
+/tests/*Test.php export-ignore
+/tests/*-smoke.php export-ignore
+/tests/Fixtures export-ignore
+/tests/fixtures export-ignore
+/tests/Support export-ignore

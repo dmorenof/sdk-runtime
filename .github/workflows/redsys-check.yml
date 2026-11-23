@@ -1,0 +1,27 @@
+name: Redsys SDK check (TEMPORARY)
+
+# TEMPORARY: runs the tests of the Redsys SDK (written in /_redsys_tmp until it has its own repository) on PHP 8.4 and 8.5
+# against this branch of the runtime. Removed together with /_redsys_tmp.
+on:
+  push:
+    branches: [claude/busy-franklin-9x9zpa]
+    paths: ['_redsys_tmp/**', '.github/workflows/redsys-check.yml']
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        php: ['8.4', '8.5']
+    steps:
+      - uses: actions/checkout@v7
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          tools: composer:v2
+          coverage: none
+      - run: composer install --working-dir=_redsys_tmp --no-interaction --prefer-dist --no-progress
+      - run: _redsys_tmp/vendor/bin/phpunit --configuration _redsys_tmp/phpunit.xml.dist --bootstrap _redsys_tmp/vendor/autoload.php _redsys_tmp/tests

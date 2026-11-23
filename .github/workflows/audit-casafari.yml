@@ -3,9 +3,6 @@ name: Audit Casafari (memory, CPU, disk)
 # Manual: our SDK of the real Casafari contract against the one OpenAPI Generator makes from the same file, on the same
 # runner, each call in a clean PHP 8.4 process with the same mocked answer. See docs/AUDIT.md.
 on:
-  push:
-    branches: ['claude/busy-franklin-9x9zpa']
-    paths: ['.github/workflows/audit-casafari.yml']
   workflow_dispatch:
     inputs:
       calls:
@@ -26,7 +23,7 @@ permissions:
 
 env:
   # Set runtime_ref to measure a branch of sdk-runtime before it is published.
-  SDK_RUNTIME_REF: ${{ github.event_name == 'push' && 'claude/busy-franklin-9x9zpa' || inputs.runtime_ref }}
+  SDK_RUNTIME_REF: ${{ inputs.runtime_ref }}
 
 jobs:
   casafari:

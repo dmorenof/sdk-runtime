@@ -3,23 +3,27 @@
 [![PHP package CI](https://github.com/dmorenof/sdk-runtime/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/dmorenof/sdk-runtime/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-The shared engine behind every SDK made by [sdk-generator](https://github.com/dmorenof/sdk-generator). A generated SDK holds only what is specific to its API (models, operations, names); sending requests, authentication, validation, errors, retries and streaming live here, written and tested once. PHP 8.4+.
+**The engine for typed PHP API clients, from an OpenAPI file or by hand.** Transport, authentication (API key, basic, bearer, OAuth2 with automatic renewal, OpenID Connect with ID-token validation, mutual TLS), typed models validated where you assign, errors, retries, redirects, streaming and timeouts live here, written and tested once; an SDK holds only what is specific to its API. It is the base of every SDK made by [sdk-generator](https://github.com/dmorenof/sdk-generator), and you can [write your own client on it](docs/writing-an-sdk-by-hand.md) for an API that has no specification. PHP 8.4+.
 
-The runtime holds no global state: each client owns its transport and credentials.
+A client holds its own transport and credentials, and nothing is shared between clients.
 
 ## Why use it
 
-Measured on a real contract (Casafari, 46 operations) against OpenAPI Generator 7.26, on PHP 8.4:
+Measured against OpenAPI Generator 7.26 on PHP 8.4, with the SDK each generator makes from the same published contract, a clean process per measurement and the same real answer served to both:
 
 | | This runtime + generator | OpenAPI Generator |
 | --- | ---: | ---: |
-| Generated code | **1.10 MB** | 4.74 MB |
-| Everything installed | **3.96 MB** | 6.2 MB |
-| Peak memory, a call that builds nested models | **2.5 MB** | 10 MB |
-| Time of a call | **0.74×** (flat) to 1.01× (nested) | |
-| Starting the client | **0.57–0.96×** the time | |
+| **PokeAPI** (102 operations): code + dependencies on disk | **3.6 MB** | 6.7 MB |
+| PokeAPI: one Pokémon (350 KB of JSON), time per call | **0.47×** (4.2 ms) | 8.8 ms |
+| PokeAPI: peak memory of that call | **0.68×** (9.8 MB) | 14.4 MB |
+| **met.no** (Swagger, 6 operations): time per call | **0.34×–0.37×** | |
+| **Casafari** (46 operations): code + dependencies on disk | **4.0 MB** | 6.2 MB |
+| Casafari: peak memory, nested models | **2.5 MB** | 10 MB |
+| Memory growth over thousands of calls | **4 KiB** | 163–3,130 KiB |
 
-And less to write: OAuth2 tokens are fetched and renewed for you, models are plain typed properties (no getters and setters), and retries, redirects and proxies are one `Configuration`. It needs PHP 8.4 and is a deliberate subset of OpenAPI. The honest limits, the method and how to repeat the measurement are in [Why this runtime](docs/why.md).
+And less to write: OAuth2 tokens are fetched and renewed for you, models are plain typed properties (no getters and setters), and retries, redirects, timeouts and proxies are one `Configuration`.
+
+Where it is **not** better, said plainly: on a very small API the runtime's own weight dominates (met.no installs 2.7 MB against 1.9 MB), the first call in a fresh process is about 1.4× slower, and it needs PHP 8.4. The method, every table and how to repeat the measurements are in [Why this runtime](docs/why.md).
 
 ## In thirty seconds
 
@@ -48,6 +52,7 @@ echo $user->id;
 | Set timeouts, retries, redirects, proxies, servers | [Transport and servers](docs/transport.md) |
 | Read headers, files, streams and error bodies | [Responses](docs/responses.md) |
 | Understand validation and formats | [Validation](docs/validation.md) |
+| Write a client for an API with no specification | [Writing an API client by hand](docs/writing-an-sdk-by-hand.md) |
 | Write or change a generator | [Operation metadata](docs/operation-metadata.md) |
 | Look up a class | [API reference](docs/api-reference.md) |
 | Know what may change between versions | [Public API and versioning](docs/PUBLIC_API.md) |

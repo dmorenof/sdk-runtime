@@ -6,6 +6,7 @@
 
 - **Behavior change.** A request is no longer validated when it is sent: its parameters and body are serialized as given. An answer is no longer validated when it is read: no rule, required field, model, collection, map, header or stream-item check. Only PHP's own `TypeError` and an enum's `ValueError` refuse a value, wrapped in `InvalidResponseException`.
 - What you put in is still checked where you put it: assigning a property (hook), building a model with `new Model($json)`, changing a collection or map, and `$model->validate()`.
+- **Timeouts.** The default HTTP client now has a timeout (`Configuration::$timeout`, 30 s) and a connection timeout (`$connectTimeout`, 10 s); before, a call without a server's answer waited forever. `0` waits without limit. A `httpClient` you pass keeps its own. The OAuth2 token endpoint's default client has 15 s and 5 s, as the discovery and key-set clients already had. Additive API.
 - `DTO::isReadingResponse()` (internal) tells collections and maps to skip their rules while an answer is read.
 - The query and path parameter classes still have no `set` hooks: a range on a parameter is not checked until the generator emits them.
 

@@ -38,7 +38,7 @@ def group(name):
     if name.startswith('php::'):
         return 'PHP built-ins'
     for prefix, label in (('GuzzleHttp\\', 'Guzzle'), ('Psr\\', 'Guzzle'), ('Dmorenof\\SdkRuntime\\', 'runtime'),
-                          ('TypedArray\\', 'typedarray'), ('Ours\\', 'generated SDK')):
+                          ('TypedArray\\', 'typedarray'), ('Ours\\', 'generated SDK'), ('CasafariSDK\\', 'generated SDK')):
         if name.startswith(prefix):
             return label
     return 'other'

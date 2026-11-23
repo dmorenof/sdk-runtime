@@ -87,3 +87,35 @@ jobs:
         with:
           name: casafari-audit
           path: results-*.jsonl
+
+  profile:
+    name: Where the time of one call goes (ours, Xdebug)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7
+        with:
+          repository: dmorenof/casafari-sdk
+          ref: ${{ inputs.casafari_ref || 'master' }}
+          path: casafari
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          tools: composer:v2
+          coverage: xdebug
+      - name: Ours, installed the way a user installs it
+        run: |
+          mkdir -p /tmp/ours
+          cp casafari/composer.json /tmp/ours/
+          cp -r casafari/src casafari/lib /tmp/ours/
+          composer install --working-dir=/tmp/ours --no-dev --no-interaction --prefer-dist --no-progress --quiet
+      - name: Profile
+        run: |
+          php -m | grep -i xdebug || { echo 'Xdebug is not loaded'; exit 1; }
+          for scenario in location types; do
+            mkdir -p "/tmp/prof-$scenario"
+            AUTOLOAD=/tmp/ours/vendor/autoload.php XDEBUG_MODE=profile php -d xdebug.start_with_request=yes -d xdebug.use_compression=false \
+              -d xdebug.output_dir="/tmp/prof-$scenario" -d xdebug.profiler_output_name=cachegrind.out audit/bench-casafari.php ours "$scenario" 2000 > /dev/null
+            { echo; echo "### Profile, scenario \`$scenario\` (share of the self time; inclusive for the functions below)"; echo; echo '```'; python3 audit/profile-top.py "/tmp/prof-$scenario/cachegrind.out" 40; echo '```'; } | tee -a "$GITHUB_STEP_SUMMARY"
+          done

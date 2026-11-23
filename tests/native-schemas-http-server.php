@@ -5,7 +5,8 @@ if ($socket === false) { throw new RuntimeException($error); }
 $address = (string) stream_socket_get_name($socket, false);
 echo substr($address, strrpos($address, ':') + 1), PHP_EOL; flush();
 $record = '{"id":1.0,"value":"valid","open":{"nested":[true,null]},"nullOnly":null,"items":[1,"text",null],"empty":[]}';
-foreach (['/native', '/native', '/value', '/any', '/never', '/items', '/param/1', '/param/1'] as $index => $path) {
+// The last two are the record with a value that breaks its schema: a call only serializes, so they are sent.
+foreach (['/native', '/native', '/value', '/any', '/never', '/items', '/param/1', '/param/1', '/native', '/native'] as $index => $path) {
     $connection = stream_socket_accept($socket, 15);
     if ($connection === false) { throw new RuntimeException('Missing request.'); }
     stream_set_timeout($connection, 15); $line = trim((string) fgets($connection)); $headers = [];
@@ -13,13 +14,14 @@ foreach (['/native', '/native', '/value', '/any', '/never', '/items', '/param/1'
     $body = ''; $remaining = (int) ($headers['content-length'] ?? 0);
     while ($remaining > 0) { $chunk = fread($connection, $remaining); if ($chunk === false || $chunk === '') { throw new RuntimeException('Incomplete body.'); } $body .= $chunk; $remaining -= strlen($chunk); }
     [$method, $target] = explode(' ', $line); $url = parse_url($target);
-    $valid = $method === ($index === 1 ? 'POST' : 'GET') && ($url['path'] ?? '') === $path && ($headers['accept'] ?? '') === 'application/json';
+    $valid = $method === (in_array($index, [1, 8, 9], true) ? 'POST' : 'GET') && ($url['path'] ?? '') === $path && ($headers['accept'] ?? '') === 'application/json';
     if ($index === 1) {
         $value = json_decode($body, true, 512, JSON_THROW_ON_ERROR);
         $expected = json_decode($record, true, 512, JSON_THROW_ON_ERROR); $expected['id'] = 1;
         ksort($value); ksort($expected); $valid = $valid && $value === $expected;
+    } elseif ($index >= 8) { $valid = $valid && $body !== '';
     } else { $valid = $valid && $body === ''; }
-    if ($index >= 6) {
+    if ($index >= 6 && $index < 8) {
         parse_str($url['query'] ?? '', $query); $expected = ['json' => '1', 'plain' => 'hello'];
         if ($index === 6) { $expected['value'] = 'false'; }
         ksort($query); ksort($expected);

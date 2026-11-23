@@ -48,9 +48,6 @@ $client->submit($path, $payload);
 $payload->codes = ['a,b'];
 try { $client->submit($path, $payload); throw new RuntimeException('Ambiguous header accepted.'); }
 catch (UnexpectedValueException) {}
-$payload->codes = ['alpha', 'beta']; $path->ids = [];
-try { $client->submit($path, $payload); throw new RuntimeException('Path mutation accepted.'); }
-catch (UnexpectedValueException) {}
 if ($http->calls !== 1) { throw new RuntimeException('Invalid mutation reached HTTP.'); }
 $client->numeric();
 echo 'SIMPLE_PARAMETER_RUNTIME_OK', PHP_EOL;

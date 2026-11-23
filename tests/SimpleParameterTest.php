@@ -78,6 +78,10 @@ final class SimpleParameterTest extends TestCase {
                 self::assertSame('alpha,beta', $transport->sent[0]['headers']['X-Ids']);
                 self::assertSame('{"name":"Ada"}', $transport->sent[0]['body']);
             }
+            // A comma inside an item cannot be told from the delimiter of the list: that cannot be written, so it fails.
+            $params->codes = ['a,b'];
+            try { $client->submit($path, $params); self::fail('Ambiguous header reached transport.'); }
+            catch (\UnexpectedValueException) { self::assertCount($psr ? 0 : 1, $transport->sent); }
         }
     }
     public function testNumericWireNamesRetainTheirProtocolNames(): void {

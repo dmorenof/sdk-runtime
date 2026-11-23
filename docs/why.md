@@ -35,7 +35,7 @@ Casafari is one contract. PokeAPI is another, public and free to repeat: OpenAPI
 | Memory growth over 2,000 list calls | **4 KiB** | 1,575 KiB |
 | Starting the client | **0.21× and 0.30×** the time | 1× |
 
-Here the call *is* faster, and by a lot where the answer is big: hydrating a large nested answer is where a generated client that builds every model through setters pays most. The limits repeat: the first call in a fresh process takes about 1.4× as long on the small answer, and the dependencies weigh more. To repeat it: Actions → *Audit public APIs* (`audit-apis.yml`); the generated SDK needs `--skip-unsupported` for the operations PokeAPI's contract has that this generator does not execute (none that the measurement uses).
+Here the call *is* faster, and by a lot where the answer is big: hydrating a large nested answer is where a generated client that builds every model through setters pays most. The limits repeat: the first call in a fresh process takes about 1.4× as long on the small answer, and the dependencies weigh more. To repeat it: Actions → *Audit public APIs* (`audit-apis.yml`); all 102 operations generate (none is skipped).
 
 ## What you write
 

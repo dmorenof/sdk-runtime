@@ -65,7 +65,7 @@ $location->name;                 // string
 $params->latitude = 41.3874;     // a float; "north" is a TypeError, 91 is refused
 ```
 
-In OpenAPI Generator's model the same read is `$location->getName()`, and `$model->setLocationId('abc')` on an integer field stores the string without complaint: its setters check for `null` and nothing else.
+In OpenAPI Generator's model the same read is `$location->getName()`, and `$model->setLocationId('abc')` on an integer field stores the string without complaint: its setters have untyped parameters and check `null` and the limits the contract declares, not the PHP type of the value.
 
 **An answer that does not fit fails loudly.** If a server sends `"location_id": "abc"` for an integer, this runtime raises `InvalidResponseException` carrying the raw response; OpenAPI Generator's client turns it into `0` and carries on. (Details of what is and is not checked, and why an answer is otherwise trusted, in [Validation](validation.md).)
 

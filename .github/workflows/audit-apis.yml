@@ -36,18 +36,21 @@ jobs:
           - api: pokeapi
             title: PokeAPI (OpenAPI 3.1, 102 operations)
             contract: https://raw.githubusercontent.com/PokeAPI/pokeapi/master/openapi.yml
+            file: openapi.yml
             namespace: PokeApiSDK
             generate: ''
             answers: 'pokemon=https://pokeapi.co/api/v2/pokemon/25/ list=https://pokeapi.co/api/v2/pokemon/?limit=20'
           - api: metno
             title: met.no Locationforecast (Swagger 2.0, no host)
             contract: https://api.met.no/weatherapi/locationforecast/2.0/swagger
+            file: swagger.json
             namespace: MetNoSDK
             generate: '--server=https://api.met.no'
             answers: 'compact=https://api.met.no/weatherapi/locationforecast/2.0/compact?lat=41.39&lon=2.17 complete=https://api.met.no/weatherapi/locationforecast/2.0/complete?lat=41.39&lon=2.17'
           - api: wikimedia
             title: Wikimedia REST (Swagger 2.0, 35 operations)
             contract: https://api.apis.guru/v2/specs/wikimedia.org/1.0.0/swagger.json
+            file: swagger.json
             namespace: WikimediaSDK
             generate: ''
             answers: 'top=https://wikimedia.org/api/rest_v1/metrics/pageviews/top/en.wikipedia/all-access/2024/01/all-days article=https://wikimedia.org/api/rest_v1/metrics/pageviews/per-article/en.wikipedia/all-access/user/Albert_Einstein/daily/20240101/20240131'
@@ -68,11 +71,13 @@ jobs:
           distribution: temurin
           java-version: '17'
       - name: The contract and the real answers
+        env:
+          ANSWERS: ${{ matrix.answers }}
         run: |
           mkdir -p /tmp/api /tmp/answers
           UA='sdk-audit/1.0 (https://github.com/dmorenof/sdk-runtime; benchmark of generated SDKs)'
-          curl -fLsS --retry 5 --retry-delay 20 -A "$UA" -o /tmp/api/contract "${{ matrix.contract }}"
-          for pair in ${{ matrix.answers }}; do
+          curl -fLsS --retry 5 --retry-delay 20 -A "$UA" -o "/tmp/api/${{ matrix.file }}" "${{ matrix.contract }}"
+          for pair in $ANSWERS; do
             curl -fLsS --retry 5 --retry-delay 20 -A "$UA" -o "/tmp/answers/${pair%%=*}.json" "${pair#*=}"
             sleep 2
           done
@@ -80,7 +85,7 @@ jobs:
       - name: Ours, generated and installed the way a user installs it
         run: |
           composer install --working-dir=generator --no-interaction --prefer-dist --no-progress --quiet
-          php generator/bin/generate-sdk.php --skip-unsupported ${{ matrix.generate }} /tmp/api/contract /tmp/ours ${{ matrix.namespace }} dmorenof/audit-sdk 2>&1 | tee /tmp/ours.log | grep -v '^Compatibility warning' || true
+          php generator/bin/generate-sdk.php --skip-unsupported ${{ matrix.generate }} /tmp/api/${{ matrix.file }} /tmp/ours ${{ matrix.namespace }} dmorenof/audit-sdk 2>&1 | tee /tmp/ours.log | grep -v '^Compatibility warning' || true
           composer config --working-dir=/tmp/ours repositories.runtime vcs https://github.com/dmorenof/sdk-runtime
           composer config --working-dir=/tmp/ours minimum-stability dev
           composer require --working-dir=/tmp/ours "dmorenof/sdk-runtime:dev-${{ inputs.runtime_ref || 'claude/busy-franklin-9x9zpa' }} as 1.99.0" --no-update --no-interaction --quiet
@@ -89,7 +94,7 @@ jobs:
       - name: OpenAPI Generator 7.26.0 from the same contract
         run: |
           curl -fLsS --retry 3 -o /tmp/og.jar https://repo.maven.apache.org/maven2/org/openapitools/openapi-generator-cli/7.26.0/openapi-generator-cli-7.26.0.jar
-          java -Xms64m -Xmx1g -jar /tmp/og.jar generate --skip-validate-spec -g php -i /tmp/api/contract -o /tmp/oag \
+          java -Xms64m -Xmx1g -jar /tmp/og.jar generate --skip-validate-spec -g php -i /tmp/api/${{ matrix.file }} -o /tmp/oag \
             --additional-properties='invokerPackage=OpenAPI\Client,composerPackageName=bench/audit,library=guzzle,modern=true' \
             --global-property='modelDocs=false,apiDocs=false,modelTests=false,apiTests=false' > /tmp/og.log 2>&1
           composer install --working-dir=/tmp/oag --no-dev --no-interaction --prefer-dist --no-progress --quiet
@@ -107,9 +112,11 @@ jobs:
             echo
           } | tee -a "$GITHUB_STEP_SUMMARY"
       - name: Run
+        env:
+          ANSWERS: ${{ matrix.answers }}
         run: |
           rm -f results-*.jsonl
-          scenarios=$(for pair in ${{ matrix.answers }}; do echo "${pair%%=*}"; done)
+          scenarios=$(for pair in $ANSWERS; do echo "${pair%%=*}"; done)
           for run in $(seq 1 "${{ inputs.runs || 7 }}"); do
             for scenario in $scenarios; do
               if (( run % 2 )); then order='ours oag'; else order='oag ours'; fi

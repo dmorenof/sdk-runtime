@@ -18,11 +18,16 @@ class TypedArray extends \TypedArray\TypedArray implements \Stringable
     /** @param array<mixed> $items */
     public function __construct(array $items = [])
     {
-        foreach ($items as $item) {
-            Constraints::validate($item, static::ITEM_VALIDATION, static::class . ' item');
+        $reading = DTO::isReadingResponse();
+        if (!$reading) {
+            foreach ($items as $item) {
+                Constraints::validate($item, static::ITEM_VALIDATION, static::class . ' item');
+            }
         }
         parent::__construct($items);
-        Constraints::validate($this, static::COLLECTION_VALIDATION, static::class);
+        if (!$reading) {
+            Constraints::validate($this, static::COLLECTION_VALIDATION, static::class);
+        }
     }
 
     public function getExpectedType(): string

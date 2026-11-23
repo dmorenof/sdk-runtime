@@ -47,16 +47,14 @@ final class ApiClientTest extends TestCase
         self::assertSame('https://api.example.com/users/2', $transport->sent[1]['url']);
     }
 
-    public function testRejectsInvalidParameterBeforeSending(): void
+    public function testTheCallOnlySerializesWhatItIsGiven(): void
     {
         [$client, $transport] = $this->client(200, '{}');
 
-        try {
-            $client->getUser(0);
-            self::fail('Expected validation failure.');
-        } catch (\UnexpectedValueException) {
-            self::assertSame([], $transport->sent);
-        }
+        $client->getUser(0);
+
+        self::assertCount(1, $transport->sent);
+        self::assertSame('https://api.example.com/users/0', $transport->sent[0]['url']);
     }
 
     public function testRefusesToSendWithoutRequiredCredentials(): void

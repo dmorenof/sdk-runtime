@@ -3,7 +3,6 @@ declare(strict_types=1);
 
 namespace Dmorenof\SdkRuntime\Streaming;
 
-use Dmorenof\SdkRuntime\Constraints;
 use Dmorenof\SdkRuntime\JsonHydrator;
 use Psr\Http\Message\StreamInterface;
 
@@ -218,9 +217,7 @@ final class StreamDecoder
         if ($entry['type'] === null) {
             return json_decode($json, false, 512, JSON_THROW_ON_ERROR);
         }
-        $item = JsonHydrator::decode($json, $entry['type'], $entry['schemaNullable']);
-        Constraints::validate($item, $entry['rules'] ?? [], $where, 'response');
-        return $item;
+        return JsonHydrator::decode($json, $entry['type'], $entry['schemaNullable']);
     }
 
     /** Next chunk; '' means the end. A stalled read is an error rather than a silent truncation. */

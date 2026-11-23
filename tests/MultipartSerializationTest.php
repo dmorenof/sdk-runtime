@@ -85,12 +85,9 @@ final class MultipartSerializationTest extends TestCase
         $client = MultipartProbeClient::connect(\Dmorenof\SdkRuntime\Tests\Support\Cfg::make('https://example.test', transport: $transport));
         $body = new MultipartPayload((object) ['display-name' => 'Ada', 'ids' => [1]]);
         $body->ids[] = 0;
-        try {
-            $client->submit($body);
-            self::fail('Invalid mutation accepted.');
-        } catch (\UnexpectedValueException) {
-            self::assertSame([], $transport->sent);
-        }
+        $client->submit($body);
+        self::assertCount(1, $transport->sent, 'A call only serializes: the list is sent as it is.');
+        $transport->sent = [];
         foreach ([[null], [[1]], [INF], ['key' => 'value']] as $value) {
             $dto = new class extends DTO { public array $items; };
             $dto->items = $value;

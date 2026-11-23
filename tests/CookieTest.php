@@ -45,7 +45,7 @@ final class CookieTest extends TestCase
             catch (\UnexpectedValueException $e) { self::assertStringNotContainsString($header, $e->getMessage()); }
         }
     }
-    public function testDtoCookiesAreIndependentAndValidateMutationsInBothTransports(): void
+    public function testDtoCookiesAreIndependentInBothTransports(): void
     {
         $params = new CookieParams((object) ['theme' => 'a/b,ñ', 'enabled' => false, 'count' => 0, 'empty' => '', 'queryBody' => 'query body', 'raw' => 'caller=ok']);
         $expected = 'caller=ok; theme=a%2Fb%2C%C3%B1; enabled=false; count=0; empty=; session=a+/b==';
@@ -65,9 +65,7 @@ final class CookieTest extends TestCase
         };
         $client = new CookieClient(\Dmorenof\SdkRuntime\Tests\Support\Cfg::make('https://example.test', httpClient: $http, headers: ['COOKIE' => 'default=base'], securityCredentials: new SecurityCredentials(['Session' => 'a+/b=='])));
         $client->call($params);
-        $params->count = -1;
-        try { $client->call($params); self::fail('Mutation reached HTTP.'); }
-        catch (\UnexpectedValueException) { self::assertSame(1, $http->calls); }
+        self::assertSame(1, $http->calls);
     }
     public function testSecurityCookiesRespectAlternativesAndRejectConflicts(): void
     {

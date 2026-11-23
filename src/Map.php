@@ -30,7 +30,9 @@ class Map implements \ArrayAccess, \Countable, \IteratorAggregate, \JsonSerializ
         foreach (is_object($values) ? get_object_vars($values) : $values as $key => $value) {
             $this->offsetSet($key, $value);
         }
-        Constraints::validate($this, static::MAP_VALIDATION, static::class);
+        if (!DTO::isReadingResponse()) {
+            Constraints::validate($this, static::MAP_VALIDATION, static::class);
+        }
     }
 
     public function offsetExists(mixed $offset): bool
@@ -48,7 +50,9 @@ class Map implements \ArrayAccess, \Countable, \IteratorAggregate, \JsonSerializ
         $key = $this->normalizeKey($offset);
         $where = static::class . '[' . $key . ']';
         $converted = Hydrator::hydrate($value, static::VALUE_TYPE, static::VALUE_NULLABLE, $where);
-        Constraints::validate($converted, static::VALUE_VALIDATION, $where);
+        if (!DTO::isReadingResponse()) {
+            Constraints::validate($converted, static::VALUE_VALIDATION, $where);
+        }
         $this->values[$key] = $converted;
     }
 

@@ -20,8 +20,17 @@ final class InvalidResponseTest extends TestCase
         yield 'empty body' => ['', \JsonException::class];
         yield 'not json' => ['<html>', \JsonException::class];
         yield 'wrong scalar type' => ['{"id":"x","name":"Ada"}', \UnexpectedValueException::class];
-        yield 'missing required field' => ['{"id":1}', \UnexpectedValueException::class];
         yield 'enum value the schema does not list' => ['{"id":1,"name":"Ada","role":"root"}', \ValueError::class];
+    }
+
+    public function testAnAnswerThatLacksARequiredFieldIsReadAsItCame(): void
+    {
+        $client = TestClient::connect(Cfg::make('https://api.example.com', transport: new FakeTransport(new HttpResponse(200, '{"id":1}')), securityCredentials: new \Dmorenof\SdkRuntime\Security\SecurityCredentials(['Bearer' => 't'])));
+
+        $user = $client->getUser(1);
+
+        self::assertSame(1, $user->id);
+        self::assertFalse(isset($user->name), 'The model is not checked: the field the API left out is simply not there.');
     }
 
     /** @param class-string<\Throwable> $cause */

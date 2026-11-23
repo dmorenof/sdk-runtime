@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.12.0] — 2026-11-23
+
+**A call only serializes, and an answer is trusted.** Measured against the real Casafari contract, validating answers and requests was most of what made a call slower than OpenAPI Generator's. See D25.
+
+- **Behavior change.** A request is no longer validated when it is sent: its parameters and body are serialized as given. An answer is no longer validated when it is read: no rule, required field, model, collection, map, header or stream-item check. Only PHP's own `TypeError` and an enum's `ValueError` refuse a value, wrapped in `InvalidResponseException`.
+- What you put in is still checked where you put it: assigning a property (hook), building a model with `new Model($json)`, changing a collection or map, and `$model->validate()`.
+- `DTO::isReadingResponse()` (internal) tells collections and maps to skip their rules while an answer is read.
+- The query and path parameter classes still have no `set` hooks: a range on a parameter is not checked until the generator emits them.
+
 ## [1.11.1] — 2026-11-20
 
 - Fix: `multipleOf` refused valid numbers. The schema validator compares floats with a fixed scale, so 392.4 was not a multiple of 0.00001 (the real answer of a currency-rates API did exactly that, and the whole answer was refused as invalid). A number is now compared with the rounding error a double can carry at its size; integers use the remainder. A value that is not a number is not constrained by it, and a divisor that is not positive is a contract error (`LogicException`).

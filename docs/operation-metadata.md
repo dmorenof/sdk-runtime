@@ -61,7 +61,7 @@ The runtime reads query, header and cookie values from the parameter object's `O
 | `responseType` | `null` | Class or scalar the success body becomes. `null` = no body. A PSR-7 `ResponseInterface` class name hands the raw response over. |
 | `schemaNullable` | `false` | The JSON body may be `null`. |
 | `noContentAllowed` | `false` | An empty body returns `null`. |
-| `responseValidation` | `[]` | Rules applied to the decoded value. |
+| `responseValidation` | `[]` | Kept for compatibility; an answer is not validated, so nothing applies it. |
 | `responseMediaType` | `application/json` | Sent in `Accept`. |
 | `responseEncoding` | `json` | `json`, `text`, `binary`, or a streaming one: `jsonl`, `json-seq`, `sse` (the call then returns a `\Generator`). |
 | `responseTypes` | `[]` | Per-status entries (below). Overrides the single-response keys above. |

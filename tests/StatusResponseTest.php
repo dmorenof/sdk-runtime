@@ -62,11 +62,15 @@ final class StatusResponseTest extends TestCase
     public function testDoesNotTryAnotherSchemaWhenTheSelectedStatusBodyIsInvalid(): void
     {
         foreach ([false, true] as $psr) {
-            foreach ([[200, '{"city":"Madrid"}'], [201, '{"name":"Ada"}'], [200, 'null'], [200, ''],
-                [201, 'null'], [202, ''], [200, '{"name":42}'], [200, '{"name":"Ada","age":-1}']] as [$status, $body]) {
+            foreach ([[200, 'null'], [200, ''], [201, 'null'], [202, ''], [200, '{"name":42}']] as [$status, $body]) {
                 try { $this->client($status, $body, $psr)->fetch(); self::fail('Invalid status-specific body accepted.'); }
                 catch (\UnexpectedValueException|\InvalidArgumentException|\JsonException|\TypeError) { self::assertTrue(true); }
             }
+            // The answer is trusted: a body that lacks what the status's schema requires, or breaks one of its rules, is
+            // still read as that schema's model, never as the schema of another status.
+            self::assertInstanceOf(User::class, $this->client(200, '{"city":"Madrid"}', $psr)->fetch());
+            self::assertInstanceOf(Address::class, $this->client(201, '{"name":"Ada"}', $psr)->fetch());
+            self::assertInstanceOf(User::class, $this->client(200, '{"name":"Ada","age":-1}', $psr)->fetch());
         }
     }
     public function testUnexpectedStatusesKeepTypedAndRawApiExceptionBehavior(): void

@@ -3,7 +3,6 @@ declare(strict_types=1);
 
 namespace Dmorenof\SdkRuntime\Execution;
 
-use Dmorenof\SdkRuntime\Constraints;
 use Dmorenof\SdkRuntime\DTO;
 use Dmorenof\SdkRuntime\FormSerializer;
 use Dmorenof\SdkRuntime\Hydrator;
@@ -82,10 +81,6 @@ final class RequestBody
             }
             return $body;
         }
-        $bodyRules = $spec->requestBody['rules'] ?? [];
-        if ($body !== null || array_key_exists('schema', $bodyRules) || array_key_exists('const', $bodyRules) || array_key_exists('enum', $bodyRules) || array_key_exists('jsonSchema', $bodyRules)) {
-            Constraints::validate($body, $bodyRules, $spec->label . ' body', 'request');
-        }
         return Hydrator::hydrate($body, $spec->requestBody['type'], $spec->requestBody['nullable'], $spec->label . ' body');
     }
 
@@ -97,9 +92,6 @@ final class RequestBody
     private static function serializeBody(Operation $spec, string $kind, mixed $body): array
     {
         $contentType = $spec->requestMediaType;
-        if ($body instanceof DTO) {
-            $body->validateLevel('request'); // This model only: what is inside it was checked when it was built or assigned.
-        }
         if ($kind === 'text' || $kind === 'binary') {
             if (!is_string($body) && !$body instanceof \Psr\Http\Message\StreamInterface) { throw new \UnexpectedValueException('Raw body must contain bytes.'); }
             return [$body, $contentType];

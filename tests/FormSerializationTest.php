@@ -76,12 +76,9 @@ final class FormSerializationTest extends TestCase
         $client = FormProbeClient::connect(\Dmorenof\SdkRuntime\Tests\Support\Cfg::make('https://api.example.test', transport: $transport));
         $body = new FormPayload((object) ['display-name' => 'Ada', 'ids' => [1]]);
         $body->ids[] = 'wrong';
-        try {
-            $client->submit($body, ['ids' => 'multi']);
-            self::fail('Invalid form mutation accepted.');
-        } catch (\UnexpectedValueException) {
-            self::assertSame([], $transport->sent);
-        }
+        $client->submit($body, ['ids' => 'multi']);
+        self::assertCount(1, $transport->sent, 'A call only serializes: the list is sent as it is.');
+        $transport->sent = [];
         foreach ([[null], [[1]], [INF]] as $items) {
             $body = new FormPayload((object) ['display-name' => 'Ada', 'codes' => $items]);
             try {

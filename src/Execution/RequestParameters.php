@@ -3,7 +3,6 @@ declare(strict_types=1);
 
 namespace Dmorenof\SdkRuntime\Execution;
 
-use Dmorenof\SdkRuntime\Constraints;
 use Dmorenof\SdkRuntime\CookieHeader;
 use Dmorenof\SdkRuntime\DTO;
 use Dmorenof\SdkRuntime\Map;
@@ -25,7 +24,6 @@ final class RequestParameters
      */
     public static function prepare(Operation $spec, RequestInput $input): array
     {
-        self::validateParameters($spec, $input->path + $input->query + $input->headers);
         $plan = OperationPlan::of($spec);
         if (!$plan->parametersChecked) {
             self::assertParameterContent($spec->parameterContent, $spec);
@@ -42,17 +40,6 @@ final class RequestParameters
             'query' => array_filter($query, static fn ($value): bool => $value !== null),
             'headers' => self::stringifyAll($headers, $spec->headerSerialization),
         ];
-    }
-
-    /** @param array<string,mixed> $parameters Path, query and header values by name. */
-    private static function validateParameters(Operation $spec, array $parameters): void
-    {
-        foreach ($spec->validation as $name => $rules) {
-            $value = $parameters[$name] ?? null;
-            if ($value !== null) {
-                Constraints::validate($value, $rules, $spec->label . '.' . $name);
-            }
-        }
     }
 
     /** @param array<string,scalar|list<scalar>|DTO|Map|TypedArray|\stdClass|null> $pathParameters */

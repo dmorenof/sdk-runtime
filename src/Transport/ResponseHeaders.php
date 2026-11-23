@@ -3,7 +3,6 @@ declare(strict_types=1);
 
 namespace Dmorenof\SdkRuntime\Transport;
 
-use Dmorenof\SdkRuntime\Constraints;
 use GuzzleHttp\Cookie\SetCookie;
 
 /**
@@ -102,9 +101,6 @@ final readonly class ResponseHeaders
                 $raw === '' ? [] : explode(',', $raw),
             )
             : self::convert($raw, $spec['type'], $name);
-        if (isset($spec['rules'])) {
-            Constraints::validate($value, $spec['rules'], "response header $name", 'response');
-        }
         return $value;
     }
 

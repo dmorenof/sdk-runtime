@@ -78,12 +78,6 @@ final class SimpleParameterTest extends TestCase {
                 self::assertSame('alpha,beta', $transport->sent[0]['headers']['X-Ids']);
                 self::assertSame('{"name":"Ada"}', $transport->sent[0]['body']);
             }
-            $params->codes = ['a,b'];
-            try { $client->submit($path, $params); self::fail('Invalid header mutation reached transport.'); }
-            catch (\UnexpectedValueException) { self::assertCount($psr ? 0 : 1, $transport->sent); }
-            $params->codes = ['alpha']; $path->ids = [];
-            try { $client->submit($path, $params); self::fail('Invalid path mutation reached transport.'); }
-            catch (\UnexpectedValueException) { self::assertCount($psr ? 0 : 1, $transport->sent); }
         }
     }
     public function testNumericWireNamesRetainTheirProtocolNames(): void {

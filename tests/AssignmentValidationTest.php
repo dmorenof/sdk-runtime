@@ -81,6 +81,23 @@ final class AssignmentValidationTest extends TestCase
         $user->name = 'Al';
     }
 
+    public function testAnAnswerIsReadWithoutCheckingItsRulesOrItsRequiredFields(): void
+    {
+        $class = self::realHookedClass();
+        $class::$checks = 0;
+        // Too short a name, too young an age, and no name at all: the API said so, and the API has the last word.
+        $short = DTO::readingResponse(static fn () => new $class((object) ['name' => 'Al', 'age' => 3]));
+        $none = DTO::readingResponse(static fn () => new $class((object) ['age' => 40]));
+        self::assertSame('Al', $short->name);
+        self::assertSame(3, $short->age);
+        self::assertFalse(isset($none->name));
+        self::assertFalse(DTO::isReadingResponse(), 'Reading an answer ends with the call that reads it.');
+
+        // Assigning, by you, is checked again.
+        $this->expectException(\UnexpectedValueException::class);
+        $short->name = 'Al';
+    }
+
     public function testAPropertyWithoutAHookIsStillCheckedWhenBuilt(): void
     {
         $class = self::realHookedClass();

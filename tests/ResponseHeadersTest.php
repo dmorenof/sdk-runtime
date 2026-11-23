@@ -121,12 +121,11 @@ final class ResponseHeadersTest extends TestCase
         $headers->get('X-Need');
     }
 
-    public function testAppliesDeclaredRules(): void
+    public function testTheServerHasTheLastWordOnTheValueOfAHeader(): void
     {
         $headers = new ResponseHeaders(['X-N' => ['-1']], ['X-N' => ['type' => 'integer', 'rules' => ['minimum' => 0]]]);
 
-        $this->expectException(\Throwable::class);
-        $headers->get('X-N');
+        self::assertSame(-1, $headers->get('X-N'));
     }
 
     public function testRejectsInvalidDeclarations(): void

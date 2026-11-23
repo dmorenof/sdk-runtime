@@ -38,7 +38,7 @@ Rules that surprise people:
 - **Properties start uninitialized.** Reading one that was never set (required or not) throws `Error`. Test with `isset($model->nickname)`, or read only what the API always returns.
 - **Unknown fields in an answer are ignored.** If the API adds a field its schema does not declare, clients generated before still work. A model you build by hand from JSON (`new NewUser((object) [...])`) rejects fields it does not declare. See [Unknown properties](#unknown-properties).
 - **Dates and times are strings.** A `date-time` field is a `string` in the model; formats can be checked (see [Validation](validation.md#formats)) but are never converted to `DateTimeImmutable`.
-- **Models know their own rules.** Calling `$model->validate()` checks required fields and every declared rule (`minLength`, `pattern`, `enum`, formats…). Sending a request validates the body first.
+- **Models know their own rules.** Calling `$model->validate()` checks required fields and every declared rule (`minLength`, `pattern`, `enum`, formats…), and setting a property checks its rules. Sending a request does not validate anything, and an answer is read as the API sent it.
 
 ### Creating and reading models
 

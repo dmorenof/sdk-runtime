@@ -1,14 +1,15 @@
 # Validation
 
-A model checks itself when a value goes into it, so a mistake surfaces where it is made and not as a confusing server error. Nothing is checked again when a request is sent.
+Validation is about what **you** put into a model, and it happens where you put it: a mistake surfaces where it is made and not as a confusing server error. **A call only serializes the request, and an answer is read as the API sent it.**
 
 | When | What is checked | Failure |
 | --- | --- | --- |
 | You assign a property (`$user->age = 5`) | The rules of that property, once, through a PHP 8.4 `set` hook that the generator writes on every property that has rules | `UnexpectedValueException`; the value is not stored |
-| A model is built from JSON (an answer, or `new Model($json)`) | Each property as it is set (same hook), then which fields are required and the rules of the model as a whole. Models and collections inside it check themselves as they are built | `UnexpectedValueException` |
+| You build a model from JSON (`new Model($json)`) | Each property as it is set (same hook), then which fields are required and the rules of the model as a whole | `UnexpectedValueException` |
 | A collection or map changes (`append`, `$list[] = x`, `$map['k'] = v`) | The item rules, and the rules of the whole collection | `UnexpectedValueException` |
-| A request is sent | The parameters and the operation input (its required fields). The body is not walked | `UnexpectedValueException` (or `InvalidArgumentException` for something that cannot be sent at all); nothing is sent |
 | You ask: `$model->validate()` | Everything, including what is inside the model | `UnexpectedValueException` |
+| A request is sent | **Nothing.** The parameters and the body are serialized (JSON, a form, multipart, raw bytes) as they are. Only what cannot be put on the wire at all fails: a missing path parameter, a value a format cannot express | `InvalidArgumentException` or `UnexpectedValueException`; nothing is sent |
+| An answer is read | **Nothing of ours**: no rule, no required field, no model check. The API has the last word; if it is wrong, the API's owner fixes it at the source. Only PHP's own errors refuse a value that does not fit its type (`TypeError`), or an enum case that does not exist (`ValueError`) | `InvalidResponseException`, with the raw response and the original error as its cause |
 
 `json_encode($model)` and `(string) $model` only serialize.
 
@@ -32,7 +33,7 @@ Rules come from the API's schema. You do not write them; this is what they mean.
 | `minProperties`, `maxProperties` | objects, maps | Number of fields |
 | composition and conditions (`allOf`, `anyOf`, `oneOf`, `not`, `if`/`then`/`else`, `contains`, dependent rules, tuple prefixes, `propertyNames`…) | all | Evaluated from the original schema by an embedded JSON Schema validator |
 
-Models are checked when built from JSON and again when a request is sent, so a value you changed after loading the model is still validated. `json_encode($model)` and `(string) $model` only serialize; call `$model->validate()` first if you want the check. Direction matters: `readOnly` fields are not required or sent in a request; `writeOnly` fields are not expected in a response.
+A model you build is checked when built and when you assign to it; it is not checked again when a request is sent, so `$model->validate()` is the way to check a whole model you changed in place. `json_encode($model)` and `(string) $model` only serialize. Direction matters: `readOnly` fields are not required or sent in a request; `writeOnly` fields are not expected in a response.
 
 ## Formats
 
@@ -52,4 +53,4 @@ Supported formats, and where they differ from the standard, are listed in [FORMA
 
 ## Turning validation off
 
-There is no switch. Validation is part of the SDK's contract with its API. If a rule in a generated SDK is wrong, fix the specification or regenerate; do not bypass it.
+There is nothing to turn off in a call or in an answer: they are not validated. What you assign is, and that is the part that catches your mistakes; if a rule in a generated SDK is wrong, fix the specification or regenerate.

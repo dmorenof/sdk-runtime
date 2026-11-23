@@ -69,9 +69,6 @@ final class RequestBodiesTest extends TestCase {
         self::assertSame('null', $transport->sent[1]['body']);
         $params->body = [1]; $client->post(null, $contract, false, $params);
         self::assertSame('[1]', $transport->sent[2]['body']);
-        $params->body[] = 'wrong';
-        try { $client->post(null, $contract, false, $params); self::fail('Invalid mutation reached transport.'); }
-        catch (\UnexpectedValueException) { self::assertCount(3, $transport->sent); }
         unset($params->body); $contract['required'] = true;
         $this->expectException(\UnexpectedValueException::class); $client->post(null, $contract, false, $params);
     }

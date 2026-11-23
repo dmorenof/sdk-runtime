@@ -4,7 +4,6 @@ declare(strict_types=1);
 namespace Dmorenof\SdkRuntime\Execution;
 
 use Dmorenof\SdkRuntime\ApiException;
-use Dmorenof\SdkRuntime\Constraints;
 use Dmorenof\SdkRuntime\DTO;
 use Dmorenof\SdkRuntime\Hydrator;
 use Dmorenof\SdkRuntime\InvalidResponseException;
@@ -93,7 +92,6 @@ final class ResponseDecoder
             $result = $encoding !== 'json'
                 ? Hydrator::hydrate($response->body, $entry['type'], false, $spec->label . ' response')
                 : JsonHydrator::decode($response->body, $entry['type'], $entry['schemaNullable']);
-            Constraints::validate($result, $entry['rules'] ?? $spec->responseValidation, $spec->label . ' response', 'response');
         } catch (\JsonException|\UnexpectedValueException|\InvalidArgumentException|\ValueError|\TypeError $cause) {
             throw new InvalidResponseException($response, $spec->label, $cause);
         }
@@ -126,7 +124,6 @@ final class ResponseDecoder
                     'text', 'binary' => Hydrator::hydrate($response->body, $declared['type'], false, $label . ' error'),
                     'json' => JsonHydrator::decode($response->body, $declared['type'], $declared['schemaNullable']),
                 };
-                Constraints::validate($payload, $declared['rules'] ?? [], $label . ' error', 'response');
             } catch (\Throwable $exception) {
                 $previous = $exception;
                 $payload = null;

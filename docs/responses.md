@@ -92,7 +92,7 @@ foreach ($client->events() as $event) {       // Server-Sent Events
 }
 ```
 
-- Items are validated as they arrive. Leave the loop (`break`) to stop early; the connection closes when the generator finishes or is destroyed.
+- Items are decoded as they arrive, not validated. Leave the loop (`break`) to stop early; the connection closes when the generator finishes or is destroyed.
 - A single line or record may not exceed 1 MiB.
 - Error statuses are never streamed: they raise `ApiException` as usual.
 - Guzzle is asked not to buffer. Any other PSR-18 client decides for itself; an endless event stream needs one that streams.

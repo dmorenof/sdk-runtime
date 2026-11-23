@@ -17,9 +17,16 @@ on:
       casafari_ref:
         description: 'Ref of dmorenof/casafari-sdk to build ours from'
         default: 'master'
+      runtime_ref:
+        description: 'Branch of sdk-runtime to run ours on (default: the published runtime)'
+        default: ''
 
 permissions:
   contents: read
+
+env:
+  # On a push to this branch the runtime of the branch is measured (a change is proven before it is published).
+  SDK_RUNTIME_REF: ${{ github.event_name == 'push' && 'claude/busy-franklin-9x9zpa' || inputs.runtime_ref }}
 
 jobs:
   casafari:
@@ -46,7 +53,13 @@ jobs:
           mkdir -p /tmp/ours
           cp casafari/composer.json /tmp/ours/
           cp -r casafari/src casafari/lib /tmp/ours/
+          if [[ -n "$SDK_RUNTIME_REF" ]]; then
+            composer config --working-dir=/tmp/ours repositories.runtime vcs https://github.com/dmorenof/sdk-runtime
+            composer config --working-dir=/tmp/ours minimum-stability dev
+            composer require --working-dir=/tmp/ours "dmorenof/sdk-runtime:dev-$SDK_RUNTIME_REF as 1.99.0" --no-update --no-interaction --quiet
+          fi
           composer install --working-dir=/tmp/ours --no-dev --no-interaction --prefer-dist --no-progress --quiet
+          composer show dmorenof/sdk-runtime --working-dir=/tmp/ours | grep -E '^(name|versions|source)' | cut -c1-120
       - name: OpenAPI Generator 7.26.0 from the same contract
         run: |
           curl -fLsS --retry 3 -o /tmp/og.jar https://repo.maven.apache.org/maven2/org/openapitools/openapi-generator-cli/7.26.0/openapi-generator-cli-7.26.0.jar
@@ -109,7 +122,13 @@ jobs:
           mkdir -p /tmp/ours
           cp casafari/composer.json /tmp/ours/
           cp -r casafari/src casafari/lib /tmp/ours/
+          if [[ -n "$SDK_RUNTIME_REF" ]]; then
+            composer config --working-dir=/tmp/ours repositories.runtime vcs https://github.com/dmorenof/sdk-runtime
+            composer config --working-dir=/tmp/ours minimum-stability dev
+            composer require --working-dir=/tmp/ours "dmorenof/sdk-runtime:dev-$SDK_RUNTIME_REF as 1.99.0" --no-update --no-interaction --quiet
+          fi
           composer install --working-dir=/tmp/ours --no-dev --no-interaction --prefer-dist --no-progress --quiet
+          composer show dmorenof/sdk-runtime --working-dir=/tmp/ours | grep -E '^(name|versions|source)' | cut -c1-120
       - name: Profile
         run: |
           php -m | grep -i xdebug || { echo 'Xdebug is not loaded'; exit 1; }

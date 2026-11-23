@@ -97,12 +97,8 @@ final class UploadedFileTest extends TestCase
         self::assertStringContainsString('filename="next.txt"', $transport->sent[2]['body']);
         self::assertStringContainsString("\r\n\r\nnew bytes\r\n", $transport->sent[2]['body']);
         unset($body->file);
-        try {
-            $client->submit($body);
-            self::fail('Missing required file accepted.');
-        } catch (\UnexpectedValueException) {
-            self::assertCount(3, $transport->sent);
-        }
+        $client->submit($body);
+        self::assertCount(4, $transport->sent, 'A call only serializes: no file part is sent when there is none.');
     }
 
     public function testNullMetadataFallsBackForStringsAndEmptyUnnamedUploads(): void

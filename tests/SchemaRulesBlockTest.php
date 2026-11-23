@@ -64,7 +64,7 @@ final class SchemaRulesBlockTest extends TestCase {
         $this->expectException(\UnexpectedValueException::class);
         DTO::validateNestedValue($values, 'request');
     }
-    public function testScalarResponseRulesUseStatusSpecificAndLegacyMetadata(): void {
+    public function testTheRulesOfAScalarResponseAreNotAppliedTheAnswerIsTrusted(): void {
         foreach ([false, true] as $statusMap) {
             $client = new class(\Dmorenof\SdkRuntime\Tests\Support\Cfg::make('https://example.test', transport: new \Dmorenof\SdkRuntime\Tests\Fixtures\FakeTransport(new \Dmorenof\SdkRuntime\Transport\HttpResponse(200, '0.31')))) extends \Dmorenof\SdkRuntime\ApiClient {
                 public function fetch(bool $statusMap): mixed {
@@ -73,8 +73,7 @@ final class SchemaRulesBlockTest extends TestCase {
                         : ['responseValidation' => ['multipleOf' => 0.1]]));
                 }
             };
-            try { $client->fetch($statusMap); self::fail('Invalid scalar response accepted.'); }
-            catch (\UnexpectedValueException) { self::assertTrue(true); }
+            self::assertSame(0.31, $client->fetch($statusMap));
         }
     }
     public function testUnicodeLengthAlreadyCountsCodePointsRatherThanBytes(): void {

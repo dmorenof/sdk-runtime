@@ -167,13 +167,13 @@ final class StreamingResponseTest extends TestCase
         $generator->next();
     }
 
-    public function testItemRulesAreApplied(): void
+    public function testItemRulesAreNotAppliedTheStreamIsTrusted(): void
     {
         $generator = StreamDecoder::iterate(self::trickle("1\n-5\n"), ['type' => 'int', 'schemaNullable' => false, 'rules' => ['minimum' => 0], 'encoding' => 'jsonl'], 'numbers');
 
         self::assertSame(1, $generator->current());
-        $this->expectException(\UnexpectedValueException::class);
         $generator->next();
+        self::assertSame(-5, $generator->current());
     }
 
     public function testJsonSequenceRecordsUseTheRecordSeparator(): void

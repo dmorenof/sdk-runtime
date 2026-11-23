@@ -56,7 +56,7 @@ Source code belongs in `src/` under `Dmorenof\SdkRuntime\`; tests belong in `tes
 
 ## GitHub Flow
 
-Publish each completed, validated increment through `main`. Use a PR only when required by repository protections and complete publication in the same task. See [AGENTS.md](AGENTS.md), [CONTRIBUTING.md](CONTRIBUTING.md) and [RELEASING.md](RELEASING.md).
+Develop on a branch and open a PR. A version is published only when its work is finished and proven and the owner confirms (changing `VERSION` on `main` publishes); versions are not published piecemeal. See [AGENTS.md](AGENTS.md), [CONTRIBUTING.md](CONTRIBUTING.md) and [RELEASING.md](RELEASING.md).
 
 ## License
 

@@ -112,7 +112,7 @@ try {
 }
 
 $streamCommand = implode(' ', array_map('escapeshellarg', [PHP_BINARY, '-d', 'memory_limit=16M',
-    $directory . '/vendor/dmorenof/sdk-runtime/tests/streaming-smoke.php', $directory . '/vendor/autoload.php']));
+    dirname(__DIR__) . '/tests/streaming-smoke.php', $directory . '/vendor/autoload.php']));
 passthru($streamCommand, $streamStatus);
 if ($streamStatus !== 0) {
     throw new RuntimeException('Installed runtime multipart streaming smoke failed.');

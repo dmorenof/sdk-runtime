@@ -98,6 +98,23 @@ final class AssignmentValidationTest extends TestCase
         $short->name = 'Al';
     }
 
+    public function testACollectionYouBuildChecksItsItemsAndOneBuiltFromAnAnswerTrustsTheHydrator(): void
+    {
+        $collection = new class([1, 2]) extends \Dmorenof\SdkRuntime\TypedArray {
+            protected string $expected_type = 'integer';
+        };
+        $class = $collection::class;
+        try {
+            new $class([1, 'x']);
+            self::fail('A collection you build must check its items.');
+        } catch (\TypeError) {
+            self::addToAssertionCount(1);
+        }
+        // From an answer, the hydrator has typed each item already: the library does not check them a second time.
+        $built = DTO::readingResponse(static fn () => new $class([1, 2, 3]));
+        self::assertSame([1, 2, 3], $built->getArrayCopy());
+    }
+
     public function testAPropertyWithoutAHookIsStillCheckedWhenBuilt(): void
     {
         $class = self::realHookedClass();

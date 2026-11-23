@@ -3,6 +3,9 @@ name: Audit Casafari (memory, CPU, disk)
 # Manual: our SDK of the real Casafari contract against the one OpenAPI Generator makes from the same file, on the same
 # runner, each call in a clean PHP 8.4 process with the same mocked answer. See docs/AUDIT.md.
 on:
+  push:
+    branches: ['claude/busy-franklin-9x9zpa']
+    paths: ['.github/workflows/audit-casafari.yml', 'audit/bench-casafari.php', 'audit/bench-summary.php']
   workflow_dispatch:
     inputs:
       calls:
@@ -27,7 +30,7 @@ jobs:
       - uses: actions/checkout@v7
         with:
           repository: dmorenof/casafari-sdk
-          ref: ${{ inputs.casafari_ref }}
+          ref: ${{ inputs.casafari_ref || 'master' }}
           path: casafari
       - uses: shivammathur/setup-php@v2
         with:
@@ -68,12 +71,12 @@ jobs:
       - name: Run
         run: |
           rm -f results-*.jsonl
-          for run in $(seq 1 "${{ inputs.runs }}"); do
+          for run in $(seq 1 "${{ inputs.runs || 7 }}"); do
             for scenario in types location; do
               if (( run % 2 )); then order='ours oag'; else order='oag ours'; fi
               for tool in $order; do
                 if [[ $tool == ours ]]; then autoload=/tmp/ours/vendor/autoload.php; else autoload=/tmp/oag/vendor/autoload.php; fi
-                AUTOLOAD=$autoload php audit/bench-casafari.php "$tool" "$scenario" "${{ inputs.calls }}" >> "results-$scenario.jsonl"
+                AUTOLOAD=$autoload php audit/bench-casafari.php "$tool" "$scenario" "${{ inputs.calls || 5000 }}" >> "results-$scenario.jsonl"
               done
             done
           done

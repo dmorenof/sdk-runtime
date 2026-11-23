@@ -8,17 +8,17 @@ Everything below was measured on a real contract, not a toy: Casafari's publishe
 
 | | This runtime + generator | OpenAPI Generator |
 | --- | ---: | ---: |
-| Generated code | **1.17 MB** in 1,001 small files | 4.74 MB in 218 files |
-| Everything installed (code + dependencies) | **4.0 MB** | 6.2 MB |
-| PHP memory at the peak of a call that builds nested models | **2.4 MB** | 10 MB |
+| Generated code | **1.10 MB** in 928 small files | 4.74 MB in 218 files |
+| Everything installed (code + dependencies) | **3.96 MB** | 6.2 MB |
+| PHP memory at the peak of a call that builds nested models | **2.5 MB** | 10 MB |
 | Memory growth over 5,000 such calls | **4 KiB** | 163 KiB |
-| Process peak (RSS) for that call | **60.6 MB** | 68.4 MB |
-| Starting the client | **0.57–0.81×** the time | 1× |
-| Time of a call (a flat model; nested models) | 0.96× and 1.07× (on par) | 1× |
+| Process peak (RSS) for that call | **60.8 MB** | 68.5 MB |
+| Starting the client | **0.57–0.96×** the time | 1× |
+| Time of a call (a flat model; nested models) | **0.74×** and 1.01× | 1× |
 
-About a quarter of the generated code and 36 % less to install, because the engine (transport, authentication, hydration, errors, retries) is written once in this runtime and the SDK only declares its models and operations. A generic generator repeats that engine in every SDK it makes, and writes several variants of every call (OpenAPI Generator's PHP client has a plain, a `WithHttpInfo`, an `Async` and an `AsyncWithHttpInfo` method per operation).
+About a fifth of the generated code and 37 % less to install, because the engine (transport, authentication, hydration, errors, retries) is written once in this runtime and the SDK only declares its models and operations. A generic generator repeats that engine in every SDK it makes, and writes several variants of every call (OpenAPI Generator's PHP client has a plain, a `WithHttpInfo`, an `Async` and an `AsyncWithHttpInfo` method per operation).
 
-Two things the table does not hide: the dependencies alone weigh more here (2.6 MB against 1.3 MB, because the runtime is a full engine and not just Guzzle), and the call itself is **not** faster, it is level. What you gain is memory, disk and start-up, and above all less to write.
+Two things the table does not hide: the dependencies alone weigh more here (2.6 MB against 1.3 MB, because the runtime is a full engine and not just Guzzle), and the call is faster only on the flat model (a quarter less time); on nested models it is level. What you gain is memory, disk and start-up, and above all less to write. This is one run on a shared runner: an earlier run of the same code gave 0.96× and 1.07×, so read the calls as "between a quarter faster and level", not as a precise figure.
 
 ## What you write
 
@@ -56,7 +56,7 @@ We would rather you choose well than choose us:
 - **You are on PHP older than 8.4.** This runtime needs 8.4 (property hooks); OpenAPI Generator's client runs on PHP 8.1.
 - **Your contract uses something we refuse.** This generator is a deliberate subset of OpenAPI and rejects, with a message, what it does not support (remote `$ref`, structured XML models and some exotic compositions; see [Supported scope](https://github.com/dmorenof/sdk-generator/blob/main/docs/SUPPORTED_SCOPE.md)). OpenAPI Generator covers more of the standard.
 - **You need another language.** This is PHP only.
-- **The first call matters more than the next thousand.** A first call in a fresh process takes about 1.4× as long (5.0–5.2 ms against 3.5–3.8 ms), because more files are loaded (54–56 against 29–30); with OPcache this mostly disappears, but we did not measure that.
+- **The first call matters more than the next thousand.** A first call in a fresh process takes about 1.35–1.45× as long (4.9 ms against 3.6–3.4 ms), because more files are loaded (54–57 against 29–30); with OPcache this mostly disappears, but we did not measure that.
 - **You want answers checked.** An answer is read as the API sent it (decision D25): PHP's own type errors still refuse a value that does not fit, but a rule such as a length or a range is not checked on a response, and a field the API left out is simply not set. If your API is not trustworthy, validate in your own code.
 
 ## Why it is cheaper

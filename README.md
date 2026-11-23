@@ -13,11 +13,11 @@ Measured on a real contract (Casafari, 46 operations) against OpenAPI Generator 
 
 | | This runtime + generator | OpenAPI Generator |
 | --- | ---: | ---: |
-| Generated code | **1.17 MB** | 4.74 MB |
-| Everything installed | **4.0 MB** | 6.2 MB |
-| Peak memory, a call that builds nested models | **2.4 MB** | 10 MB |
-| Time of a call | on par (0.96–1.07×) | |
-| Starting the client | **about 0.7×** the time | |
+| Generated code | **1.10 MB** | 4.74 MB |
+| Everything installed | **3.96 MB** | 6.2 MB |
+| Peak memory, a call that builds nested models | **2.5 MB** | 10 MB |
+| Time of a call | **0.74×** (flat) to 1.01× (nested) | |
+| Starting the client | **0.57–0.96×** the time | |
 
 And less to write: OAuth2 tokens are fetched and renewed for you, models are plain typed properties (no getters and setters), and retries, redirects and proxies are one `Configuration`. It needs PHP 8.4 and is a deliberate subset of OpenAPI. The honest limits, the method and how to repeat the measurement are in [Why this runtime](docs/why.md).
 

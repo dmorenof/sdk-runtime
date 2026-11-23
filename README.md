@@ -7,6 +7,20 @@ The shared engine behind every SDK made by [sdk-generator](https://github.com/dm
 
 The runtime holds no global state: each client owns its transport and credentials.
 
+## Why use it
+
+Measured on a real contract (Casafari, 46 operations) against OpenAPI Generator 7.26, on PHP 8.4:
+
+| | This runtime + generator | OpenAPI Generator |
+| --- | ---: | ---: |
+| Generated code | **1.17 MB** | 4.74 MB |
+| Everything installed | **4.0 MB** | 6.2 MB |
+| Peak memory, a call that builds nested models | **2.4 MB** | 10 MB |
+| Time of a call | on par (0.96–1.07×) | |
+| Starting the client | **about 0.7×** the time | |
+
+And less to write: OAuth2 tokens are fetched and renewed for you, models are plain typed properties (no getters and setters), and retries, redirects and proxies are one `Configuration`. It needs PHP 8.4 and is a deliberate subset of OpenAPI. The honest limits, the method and how to repeat the measurement are in [Why this runtime](docs/why.md).
+
 ## In thirty seconds
 
 ```php
@@ -26,6 +40,7 @@ echo $user->id;
 
 | I want to… | Read |
 | --- | --- |
+| See what it costs and what it saves, measured | [Why this runtime](docs/why.md) |
 | Make my first call | [Getting started](docs/getting-started.md) |
 | Work with models, parameters and errors | [Using an SDK](docs/using-an-sdk.md) |
 | Pass parameters, upload files, send cookies | [Sending data](docs/sending-data.md) |

@@ -22,10 +22,32 @@ permissions:
   contents: read
 
 jobs:
-  pokeapi:
-    name: PokeAPI (OpenAPI 3.1, 102 operations, 284 schemas)
+  audit:
+    name: ${{ matrix.api }}
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - api: pokeapi
+            title: PokeAPI (OpenAPI 3.1, 102 operations)
+            contract: https://raw.githubusercontent.com/PokeAPI/pokeapi/master/openapi.yml
+            namespace: PokeApiSDK
+            generate: ''
+            answers: 'pokemon=https://pokeapi.co/api/v2/pokemon/25/ list=https://pokeapi.co/api/v2/pokemon/?limit=20'
+          - api: metno
+            title: met.no Locationforecast (Swagger 2.0, no host)
+            contract: https://api.met.no/weatherapi/locationforecast/2.0/swagger
+            namespace: MetNoSDK
+            generate: '--server=https://api.met.no'
+            answers: 'compact=https://api.met.no/weatherapi/locationforecast/2.0/compact?lat=41.39&lon=2.17 complete=https://api.met.no/weatherapi/locationforecast/2.0/complete?lat=41.39&lon=2.17'
+          - api: wikimedia
+            title: Wikimedia REST (Swagger 2.0, 35 operations)
+            contract: https://api.apis.guru/v2/specs/wikimedia.org/1.0.0/swagger.json
+            namespace: WikimediaSDK
+            generate: ''
+            answers: 'top=https://wikimedia.org/api/rest_v1/metrics/pageviews/top/en.wikipedia/all-access/2024/01/all-days article=https://wikimedia.org/api/rest_v1/metrics/pageviews/per-article/en.wikipedia/all-access/user/Albert_Einstein/daily/20240101/20240131'
     steps:
       - uses: actions/checkout@v7
       - uses: actions/checkout@v7
@@ -42,33 +64,37 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-      - name: The contract and two real answers
+      - name: The contract and the real answers
         run: |
           mkdir -p /tmp/api /tmp/answers
-          curl -fLsS --retry 3 -o /tmp/api/openapi.yml https://raw.githubusercontent.com/PokeAPI/pokeapi/master/openapi.yml
-          curl -fLsS --retry 3 -o /tmp/answers/pokemon.json https://pokeapi.co/api/v2/pokemon/25/
-          curl -fLsS --retry 3 -o /tmp/answers/list.json 'https://pokeapi.co/api/v2/pokemon/?limit=20'
+          UA='sdk-audit/1.0 (https://github.com/dmorenof/sdk-runtime; benchmark of generated SDKs)'
+          curl -fLsS --retry 5 --retry-delay 20 -A "$UA" -o /tmp/api/contract "${{ matrix.contract }}"
+          for pair in ${{ matrix.answers }}; do
+            curl -fLsS --retry 5 --retry-delay 20 -A "$UA" -o "/tmp/answers/${pair%%=*}.json" "${pair#*=}"
+            sleep 2
+          done
           ls -l /tmp/api /tmp/answers
       - name: Ours, generated and installed the way a user installs it
         run: |
           composer install --working-dir=generator --no-interaction --prefer-dist --no-progress --quiet
-          php generator/bin/generate-sdk.php --skip-unsupported /tmp/api/openapi.yml /tmp/ours PokeApiSDK dmorenof/pokeapi-sdk
+          php generator/bin/generate-sdk.php --skip-unsupported ${{ matrix.generate }} /tmp/api/contract /tmp/ours ${{ matrix.namespace }} dmorenof/audit-sdk 2>&1 | tee /tmp/ours.log | grep -v '^Compatibility warning' || true
           composer config --working-dir=/tmp/ours repositories.runtime vcs https://github.com/dmorenof/sdk-runtime
           composer config --working-dir=/tmp/ours minimum-stability dev
           composer require --working-dir=/tmp/ours "dmorenof/sdk-runtime:dev-${{ inputs.runtime_ref }} as 1.99.0" --no-update --no-interaction --quiet
           composer install --working-dir=/tmp/ours --no-dev --no-interaction --prefer-dist --no-progress --quiet
+          { echo '### Operations left out of ours (not executable by the generator)'; echo; grep '^Skipped' /tmp/ours.log || echo 'none'; echo; } | tee -a "$GITHUB_STEP_SUMMARY"
       - name: OpenAPI Generator 7.26.0 from the same contract
         run: |
           curl -fLsS --retry 3 -o /tmp/og.jar https://repo.maven.apache.org/maven2/org/openapitools/openapi-generator-cli/7.26.0/openapi-generator-cli-7.26.0.jar
-          java -Xms64m -Xmx1g -jar /tmp/og.jar generate --skip-validate-spec -g php -i /tmp/api/openapi.yml -o /tmp/oag \
-            --additional-properties='invokerPackage=OpenAPI\Client,composerPackageName=bench/pokeapi,library=guzzle,modern=true' \
+          java -Xms64m -Xmx1g -jar /tmp/og.jar generate --skip-validate-spec -g php -i /tmp/api/contract -o /tmp/oag \
+            --additional-properties='invokerPackage=OpenAPI\Client,composerPackageName=bench/audit,library=guzzle,modern=true' \
             --global-property='modelDocs=false,apiDocs=false,modelTests=false,apiTests=false' > /tmp/og.log 2>&1
           composer install --working-dir=/tmp/oag --no-dev --no-interaction --prefer-dist --no-progress --quiet
       - name: Disk
         run: |
           bytes() { find "$@" -type f -printf '%s\n' | paste -sd+ | bc; }
           {
-            echo '### Disk (real bytes, not disk blocks)'
+            echo '### ${{ matrix.title }}: disk (real bytes, not disk blocks)'
             echo
             echo '| | ours | OpenAPI Generator |'
             echo '|---|---:|---:|'
@@ -80,19 +106,20 @@ jobs:
       - name: Run
         run: |
           rm -f results-*.jsonl
+          scenarios=$(for pair in ${{ matrix.answers }}; do echo "${pair%%=*}"; done)
           for run in $(seq 1 "${{ inputs.runs || 7 }}"); do
-            for scenario in pokemon list; do
+            for scenario in $scenarios; do
               if (( run % 2 )); then order='ours oag'; else order='oag ours'; fi
               for tool in $order; do
                 if [[ $tool == ours ]]; then autoload=/tmp/ours/vendor/autoload.php; else autoload=/tmp/oag/vendor/autoload.php; fi
-                AUTOLOAD=$autoload ANSWERS=/tmp/answers php audit/bench-pokeapi.php "$tool" "$scenario" "${{ inputs.calls || 2000 }}" >> "results-$scenario.jsonl"
+                AUTOLOAD=$autoload ANSWERS=/tmp/answers php audit/bench-api.php "${{ matrix.api }}" "$tool" "$scenario" "${{ inputs.calls || 2000 }}" >> "results-$scenario.jsonl"
               done
             done
           done
           php -v | head -1
-          php audit/bench-summary.php results-pokemon.jsonl results-list.jsonl | tee -a "$GITHUB_STEP_SUMMARY"
+          php audit/bench-summary.php results-*.jsonl | tee -a "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@v7
         if: always()
         with:
-          name: pokeapi-audit
+          name: audit-${{ matrix.api }}
           path: results-*.jsonl

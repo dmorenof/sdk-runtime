@@ -43,6 +43,8 @@ class Dmorenof\SdkRuntime\Configuration
     property public array $middleware
     property public array $serverOverrides
     property public array $serverVariables
+    property public float $connectTimeout
+    property public float $timeout
     property public string $baseUrl
     property public string|int|null $server
 

@@ -73,7 +73,6 @@ final class ParameterContentTest extends TestCase {
         };
         $client = new ContentClient(\Dmorenof\SdkRuntime\Tests\Support\Cfg::make('https://example.test', httpClient: $http, headers: ['COOKIE' => 'default=base'])); $client->call($path, $params);
         $params->session = 'bad;cookie'; try { $client->call($path, $params); self::fail('Invalid cookie reached HTTP.'); } catch (\UnexpectedValueException) { self::assertSame(1, $http->calls); }
-        try { $client->scalar(''); self::fail('Serialization bypassed logical path validation.'); } catch (\UnexpectedValueException) { self::assertSame(1, $http->calls); }
     }
     public function testConflictingOrUnsupportedMetadataCannotReachTransport(): void {
         $legacy = new FakeTransport(new HttpResponse(204, '')); $client = new ContentClient(\Dmorenof\SdkRuntime\Tests\Support\Cfg::make('https://example.test', transport: $legacy));

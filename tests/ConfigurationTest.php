@@ -90,4 +90,32 @@ final class ConfigurationTest extends TestCase
 
         self::assertSame('api.example.com', $http->requests[0]->getUri()->getHost());
     }
+
+    /** The Guzzle client of a connection that was not given one: the transport holds it, the client holds its options. */
+    private static function guzzleOf(TestClient $client): \GuzzleHttp\Client
+    {
+        $transport = (new \ReflectionProperty(\Dmorenof\SdkRuntime\ApiClient::class, 'transport'))->getValue($client);
+        $http = (new \ReflectionProperty($transport, 'client'))->getValue($transport);
+        self::assertInstanceOf(\GuzzleHttp\Client::class, $http);
+        return $http;
+    }
+
+    public function testTheDefaultClientHasATimeoutSoACallCannotHangForever(): void
+    {
+        $http = self::guzzleOf(TestClient::connect('https://api.example.com'));
+        $options = (new \ReflectionProperty($http, 'config'))->getValue($http);
+        self::assertSame(30.0, $options['timeout']);
+        self::assertSame(10.0, $options['connect_timeout']);
+    }
+
+    public function testTheTimeoutsAreSetInTheConfiguration(): void
+    {
+        $configuration = new \Dmorenof\SdkRuntime\Configuration();
+        $configuration->baseUrl = 'https://api.example.com';
+        $configuration->timeout = 5.5;
+        $configuration->connectTimeout = 2.0;
+        $options = (new \ReflectionProperty($http = self::guzzleOf(TestClient::connect($configuration)), 'config'))->getValue($http);
+        self::assertSame(5.5, $options['timeout']);
+        self::assertSame(2.0, $options['connect_timeout']);
+    }
 }

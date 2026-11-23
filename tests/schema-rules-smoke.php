@@ -27,14 +27,16 @@ try {
         public int $id; public float $amount; public array $rows; public int $tag; public mixed $profile; public string $label;
     };
     if ($client->submit($body)->tag !== 7 || $client->scalar() !== 0.3) { throw new RuntimeException('Wrong hydrated response.'); }
-    try { $client->scalar(true); throw new RuntimeException('Invalid scalar response accepted.'); } catch (UnexpectedValueException) {}
+    // The answer is trusted: a value outside the rules of its schema is returned as it came.
+    if ($client->scalar(true) === null) { throw new RuntimeException('A scalar answer outside its rules was not read.'); }
     $prototype = new class([1, 2]) extends \Dmorenof\SdkRuntime\TypedArray { protected string $expected_type = 'integer'; protected const array COLLECTION_VALIDATION = ['uniqueItems' => true]; };
     $collection = $client->collection($prototype::class); $collection[] = 1;
     try { $collection->validateForMode(); throw new RuntimeException('Invalid collection mutation accepted.'); } catch (UnexpectedValueException) {}
     $items = new class([2, 4]) extends \Dmorenof\SdkRuntime\TypedArray { protected string $expected_type = 'integer'; protected const array ITEM_VALIDATION = ['multipleOf' => 2]; };
     $items->exchangeArray([3]);
     try { \Dmorenof\SdkRuntime\DTO::validateNestedValue($items, 'request'); throw new RuntimeException('Inherited collection mutation bypassed item rules.'); } catch (UnexpectedValueException) {}
+    // A call only serializes: a value that breaks a rule after the model was built is sent as it is.
     $body->tag = 8;
-    try { $client->submit($body); throw new RuntimeException('Invalid request mutation reached HTTP.'); } catch (UnexpectedValueException) {}
+    $client->submit($body);
 } finally { foreach ($pipes as $pipe) { fclose($pipe); } proc_terminate($process); proc_close($process); }
 echo 'SCHEMA_RULES_RUNTIME_HTTP_OK', PHP_EOL;

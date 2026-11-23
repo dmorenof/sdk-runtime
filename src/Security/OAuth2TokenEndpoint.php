@@ -22,7 +22,7 @@ final class OAuth2TokenEndpoint
         private readonly OAuth2Client $client,
         private readonly OAuth2Options $options,
     ) {
-        $this->http = $options->http ?? new \GuzzleHttp\Client(['http_errors' => false]);
+        $this->http = $options->http ?? new \GuzzleHttp\Client(['http_errors' => false, 'timeout' => 15, 'connect_timeout' => 5]);
     }
 
     public function now(): int

@@ -7,8 +7,8 @@ Messages you may meet, what they mean and what to do. Each message is quoted as 
 | Message | Cause | Fix |
 | --- | --- | --- |
 | `No configured credentials satisfy this operation security requirement.` | The operation needs credentials and none of its alternatives can be built from `securityCredentials`. | Add the credential under the scheme name the API uses. See [Authentication](authentication.md). |
-| `Required JSON property …::name is absent.` | A required field of the body was never set. | Set it before calling. |
-| `Validation <rule> failed at … (limit …).` | A value breaks a rule of the schema (`minLength`, `pattern`, `enum`, a format…). | Fix the value. See [Validation](validation.md). |
+| `Required JSON property …::name is absent.` | You built a model with `new Model($json)` or called `validate()`, and a required field is not there. (An answer is not checked: its missing field is simply not set.) | Set it. |
+| `Validation <rule> failed at … (limit …).` | A value you assigned breaks a rule of the schema (`minLength`, `pattern`, `enum`, a format…). Answers and requests are not checked. | Fix the value. See [Validation](validation.md). |
 | `Unknown JSON property …::field.` | A model was given a field its schema does not declare. | Remove it, or regenerate the SDK if the API added it. |
 | `Missing path parameter for …` / `Path parameter … cannot be null.` | A path value is missing. | Pass it. |
 | `Query array … requires declared serialization metadata.` | A list or object was passed where the API declares no way to write it. | Pass a scalar, or fix the API's specification. |

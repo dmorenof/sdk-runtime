@@ -77,13 +77,6 @@ final class MultipartFileListTest extends TestCase
         } catch (\UnexpectedValueException) {
             self::assertSame([], $transport->sent);
         }
-        $body->files = ['a', 'b', 'c'];
-        try {
-            $client->submit($body);
-            self::fail('Invalid file count mutation accepted.');
-        } catch (\UnexpectedValueException) {
-            self::assertSame([], $transport->sent);
-        }
     }
 
     public function testEachFileChecksMimeUploadStatusAndIndependentCursorBeforeTransport(): void

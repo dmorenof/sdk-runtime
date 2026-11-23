@@ -1,0 +1,168 @@
+name: Audit Casafari (memory, CPU, disk)
+
+# Manual: our SDK of the real Casafari contract against the one OpenAPI Generator makes from the same file, on the same
+# runner, each call in a clean PHP 8.4 process with the same mocked answer. See docs/AUDIT.md.
+on:
+  workflow_dispatch:
+    inputs:
+      calls:
+        description: 'Calls per run'
+        default: '5000'
+      runs:
+        description: 'Runs per tool and scenario (the median is reported)'
+        default: '7'
+      casafari_ref:
+        description: 'Ref of dmorenof/casafari-sdk to build ours from'
+        default: 'master'
+      runtime_ref:
+        description: 'Branch of sdk-runtime to run ours on (default: the published runtime)'
+        default: ''
+      generator_ref:
+        description: 'Branch of sdk-generator to regenerate ours with (default: the SDK as committed in casafari-sdk)'
+        default: ''
+
+permissions:
+  contents: read
+
+env:
+  # Set runtime_ref to measure a branch of sdk-runtime before it is published.
+  # Set the refs to measure branches of sdk-runtime and sdk-generator before they are published.
+  SDK_RUNTIME_REF: ${{ inputs.runtime_ref }}
+  SDK_GENERATOR_REF: ${{ inputs.generator_ref }}
+
+jobs:
+  casafari:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7
+        with:
+          repository: dmorenof/casafari-sdk
+          ref: ${{ inputs.casafari_ref || 'master' }}
+          path: casafari
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          tools: composer:v2
+          coverage: none
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: The generator of a branch, when asked
+        if: env.SDK_GENERATOR_REF != ''
+        uses: actions/checkout@v7
+        with:
+          repository: dmorenof/sdk-generator
+          ref: ${{ env.SDK_GENERATOR_REF }}
+          path: generator
+      - name: Ours, installed the way a user installs it (production dependencies only)
+        run: |
+          mkdir -p /tmp/ours
+          cp casafari/composer.json /tmp/ours/
+          cp -r casafari/src casafari/lib /tmp/ours/
+          if [[ -n "$SDK_GENERATOR_REF" ]]; then
+            composer install --working-dir=generator --no-interaction --prefer-dist --no-progress --quiet
+            rm -rf /tmp/ours/src /tmp/gen
+            php generator/bin/generate-sdk.php casafari/contract/openapi.json /tmp/gen CasafariSDK dmorenof/casafari-sdk
+            cp -r /tmp/gen/src /tmp/ours/src
+          fi
+          if [[ -n "$SDK_RUNTIME_REF" ]]; then
+            composer config --working-dir=/tmp/ours repositories.runtime vcs https://github.com/dmorenof/sdk-runtime
+            composer config --working-dir=/tmp/ours minimum-stability dev
+            composer require --working-dir=/tmp/ours "dmorenof/sdk-runtime:dev-$SDK_RUNTIME_REF as 1.99.0" --no-update --no-interaction --quiet
+          fi
+          composer install --working-dir=/tmp/ours --no-dev --no-interaction --prefer-dist --no-progress --quiet
+          composer show dmorenof/sdk-runtime --working-dir=/tmp/ours | grep -E '^(name|versions|source)' | cut -c1-120
+      - name: OpenAPI Generator 7.26.0 from the same contract
+        run: |
+          curl -fLsS --retry 3 -o /tmp/og.jar https://repo.maven.apache.org/maven2/org/openapitools/openapi-generator-cli/7.26.0/openapi-generator-cli-7.26.0.jar
+          # Its validator refuses the contract (repeated tags); ours accepts it.
+          java -Xms64m -Xmx1g -jar /tmp/og.jar generate --skip-validate-spec -g php -i casafari/contract/openapi.json -o /tmp/oag \
+            --additional-properties='invokerPackage=OpenAPI\Client,composerPackageName=bench/casafari,library=guzzle,modern=true' \
+            --global-property='modelDocs=false,apiDocs=false,modelTests=false,apiTests=false' > /tmp/og.log 2>&1
+          composer install --working-dir=/tmp/oag --no-dev --no-interaction --prefer-dist --no-progress --quiet
+      - name: Disk
+        run: |
+          bytes() { find "$@" -type f -printf '%s\n' | paste -sd+ | bc; }
+          {
+            echo '### Disk (real bytes, not disk blocks)'
+            echo
+            echo '| | ours | OpenAPI Generator |'
+            echo '|---|---:|---:|'
+            echo "| generated code | $(bytes /tmp/ours/src) B in $(find /tmp/ours/src -type f | wc -l) files | $(bytes /tmp/oag/lib) B in $(find /tmp/oag/lib -type f | wc -l) files |"
+            echo "| production dependencies | $(bytes /tmp/ours/vendor) B | $(bytes /tmp/oag/vendor) B |"
+            echo "| everything installed | $(bytes /tmp/ours) B | $(bytes /tmp/oag) B |"
+            echo
+          } | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: Run
+        run: |
+          rm -f results-*.jsonl
+          for run in $(seq 1 "${{ inputs.runs || 7 }}"); do
+            for scenario in types location; do
+              if (( run % 2 )); then order='ours oag'; else order='oag ours'; fi
+              for tool in $order; do
+                if [[ $tool == ours ]]; then autoload=/tmp/ours/vendor/autoload.php; else autoload=/tmp/oag/vendor/autoload.php; fi
+                AUTOLOAD=$autoload php audit/bench-casafari.php "$tool" "$scenario" "${{ inputs.calls || 5000 }}" >> "results-$scenario.jsonl"
+              done
+            done
+          done
+          php -v | head -1
+          php audit/bench-summary.php results-types.jsonl results-location.jsonl | tee -a "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: casafari-audit
+          path: results-*.jsonl
+
+  profile:
+    name: Where the time of one call goes (ours, Xdebug)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7
+        with:
+          repository: dmorenof/casafari-sdk
+          ref: ${{ inputs.casafari_ref || 'master' }}
+          path: casafari
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          tools: composer:v2
+          coverage: xdebug
+      - name: The generator of a branch, when asked
+        if: env.SDK_GENERATOR_REF != ''
+        uses: actions/checkout@v7
+        with:
+          repository: dmorenof/sdk-generator
+          ref: ${{ env.SDK_GENERATOR_REF }}
+          path: generator
+      - name: Ours, installed the way a user installs it
+        run: |
+          mkdir -p /tmp/ours
+          cp casafari/composer.json /tmp/ours/
+          cp -r casafari/src casafari/lib /tmp/ours/
+          if [[ -n "$SDK_GENERATOR_REF" ]]; then
+            composer install --working-dir=generator --no-interaction --prefer-dist --no-progress --quiet
+            rm -rf /tmp/ours/src /tmp/gen
+            php generator/bin/generate-sdk.php casafari/contract/openapi.json /tmp/gen CasafariSDK dmorenof/casafari-sdk
+            cp -r /tmp/gen/src /tmp/ours/src
+          fi
+          if [[ -n "$SDK_RUNTIME_REF" ]]; then
+            composer config --working-dir=/tmp/ours repositories.runtime vcs https://github.com/dmorenof/sdk-runtime
+            composer config --working-dir=/tmp/ours minimum-stability dev
+            composer require --working-dir=/tmp/ours "dmorenof/sdk-runtime:dev-$SDK_RUNTIME_REF as 1.99.0" --no-update --no-interaction --quiet
+          fi
+          composer install --working-dir=/tmp/ours --no-dev --no-interaction --prefer-dist --no-progress --quiet
+          composer show dmorenof/sdk-runtime --working-dir=/tmp/ours | grep -E '^(name|versions|source)' | cut -c1-120
+      - name: Profile
+        run: |
+          php -m | grep -i xdebug || { echo 'Xdebug is not loaded'; exit 1; }
+          for scenario in location types; do
+            mkdir -p "/tmp/prof-$scenario"
+            AUTOLOAD=/tmp/ours/vendor/autoload.php XDEBUG_MODE=profile php -d xdebug.start_with_request=yes -d xdebug.use_compression=false \
+              -d xdebug.output_dir="/tmp/prof-$scenario" -d xdebug.profiler_output_name=cachegrind.out audit/bench-casafari.php ours "$scenario" 2000 > /dev/null
+            { echo; echo "### Profile, scenario \`$scenario\` (share of the self time; inclusive for the functions below)"; echo; echo '```'; python3 audit/profile-top.py "/tmp/prof-$scenario/cachegrind.out" 40; echo '```'; } | tee -a "$GITHUB_STEP_SUMMARY"
+          done

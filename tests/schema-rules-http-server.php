@@ -4,7 +4,8 @@ $socket = stream_socket_server('tcp://127.0.0.1:0', $errno, $error);
 if ($socket === false) { throw new RuntimeException($error); }
 $address = (string) stream_socket_get_name($socket, false);
 echo substr($address, strrpos($address, ':') + 1), PHP_EOL; flush();
-foreach (['/rules?amount=0.3', '/scalar', '/scalar-bad', '/collection'] as $target) {
+// The last request is the same body with its tag changed after it was built: a call only serializes, so it is sent.
+foreach (['/rules?amount=0.3', '/scalar', '/scalar-bad', '/collection', '/rules?amount=0.3'] as $index => $target) {
     $connection = stream_socket_accept($socket, 15);
     if ($connection === false) { throw new RuntimeException('Missing request.'); }
     stream_set_timeout($connection, 15); $line = trim((string) fgets($connection)); $headers = [];
@@ -16,7 +17,7 @@ foreach (['/rules?amount=0.3', '/scalar', '/scalar-bad', '/collection'] as $targ
     if ($post) {
         $data = json_decode($body, true, 512, JSON_THROW_ON_ERROR);
         $valid = $valid && count($data) === 5 && !isset($data['id']) && ($data['amount'] ?? 0) === 0.3
-            && ($data['rows'] ?? []) === [1, 2] && ($data['tag'] ?? null) === 7 && ($data['profile'] ?? null) === ['only' => 1] && ($data['label'] ?? '') === 'ñ';
+            && ($data['rows'] ?? []) === [1, 2] && ($data['tag'] ?? null) === ($index === 4 ? 8 : 7) && ($data['profile'] ?? null) === ['only' => 1] && ($data['label'] ?? '') === 'ñ';
         $result = $body;
     } else { $valid = $valid && $body === ''; $result = match ($target) { '/scalar' => '0.3', '/scalar-bad' => '0.31', default => '[1,2]' }; }
     fwrite($connection, ($valid ? 'HTTP/1.1 200 OK' : 'HTTP/1.1 400 Bad Request') . "\r\nContent-Type: application/json\r\nContent-Length: " . strlen($result) . "\r\nConnection: close\r\n\r\n" . $result);

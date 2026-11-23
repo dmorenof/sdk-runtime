@@ -47,12 +47,8 @@ final class SharedExecutionTest extends TestCase
         self::assertSame('trace', $transport->sent[0]['headers']['X-Trace']);
         self::assertSame('application/x-www-form-urlencoded', $transport->sent[0]['headers']['Content-Type']);
         $params->body->name = '';
-        try {
-            SharedProbe::connect(\Dmorenof\SdkRuntime\Tests\Support\Cfg::make('https://api.example.test/v1', transport: $transport))->submit($params);
-            self::fail('Invalid inherited body mutation reached HTTP.');
-        } catch (\UnexpectedValueException) {
-            self::assertCount(1, $transport->sent);
-        }
+        SharedProbe::connect(\Dmorenof\SdkRuntime\Tests\Support\Cfg::make('https://api.example.test/v1', transport: $transport))->submit($params);
+        self::assertCount(2, $transport->sent, 'A call only serializes: the body is sent as it is.');
     }
 
     public function testDerivedConfigurationKeepsDefaultsAndInstancesIndependent(): void

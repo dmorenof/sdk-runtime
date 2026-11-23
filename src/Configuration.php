@@ -17,6 +17,13 @@ class Configuration
     /** Any PSR-18 client. Default: Guzzle. Timeouts, proxies and TLS belong to it. */
     public ?\Psr\Http\Client\ClientInterface $httpClient = null;
 
+    /**
+     * Seconds a request may take in all, and seconds the connection may take to open, for the default HTTP client. Zero waits
+     * without limit. They do not apply to a `$httpClient` you pass: its own timeouts are the ones that count.
+     */
+    public float $timeout = 30.0;
+    public float $connectTimeout = 10.0;
+
     /** @var array<string, string> Sent on every request. */
     public array $headers = [];
 

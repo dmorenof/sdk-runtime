@@ -81,6 +81,40 @@ final class AssignmentValidationTest extends TestCase
         $user->name = 'Al';
     }
 
+    public function testAnAnswerIsReadWithoutCheckingItsRulesOrItsRequiredFields(): void
+    {
+        $class = self::realHookedClass();
+        $class::$checks = 0;
+        // Too short a name, too young an age, and no name at all: the API said so, and the API has the last word.
+        $short = DTO::readingResponse(static fn () => new $class((object) ['name' => 'Al', 'age' => 3]));
+        $none = DTO::readingResponse(static fn () => new $class((object) ['age' => 40]));
+        self::assertSame('Al', $short->name);
+        self::assertSame(3, $short->age);
+        self::assertFalse(isset($none->name));
+        self::assertFalse(DTO::isReadingResponse(), 'Reading an answer ends with the call that reads it.');
+
+        // Assigning, by you, is checked again.
+        $this->expectException(\UnexpectedValueException::class);
+        $short->name = 'Al';
+    }
+
+    public function testACollectionYouBuildChecksItsItemsAndOneBuiltFromAnAnswerTrustsTheHydrator(): void
+    {
+        $collection = new class([1, 2]) extends \Dmorenof\SdkRuntime\TypedArray {
+            protected string $expected_type = 'integer';
+        };
+        $class = $collection::class;
+        try {
+            new $class([1, 'x']);
+            self::fail('A collection you build must check its items.');
+        } catch (\TypeError) {
+            self::addToAssertionCount(1);
+        }
+        // From an answer, the hydrator has typed each item already: the library does not check them a second time.
+        $built = DTO::readingResponse(static fn () => new $class([1, 2, 3]));
+        self::assertSame([1, 2, 3], $built->getArrayCopy());
+    }
+
     public function testAPropertyWithoutAHookIsStillCheckedWhenBuilt(): void
     {
         $class = self::realHookedClass();

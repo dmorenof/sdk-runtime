@@ -45,7 +45,7 @@ final class ErrorPayloadsTest extends TestCase {
         }
     }
     public function testInvalidPayloadNeverHidesTheHttpFailure(): void {
-        foreach ([['bad JSON', ['type' => 'int', 'schemaNullable' => false], \JsonException::class], ['[1,"bad"]', ['type' => 'array', 'schemaNullable' => false, 'rules' => ['schema' => ['type' => 'array', 'items' => ['type' => 'integer']]]], \UnexpectedValueException::class], ['x', ['type' => 'string', 'schemaNullable' => false, 'mediaType' => 'text/plain', 'rules' => ['minLength' => 2]], \UnexpectedValueException::class]] as [$body, $descriptor, $cause]) {
+        foreach ([['bad JSON', ['type' => 'int', 'schemaNullable' => false], \JsonException::class], ['{"a":1}', ['type' => 'int', 'schemaNullable' => false], \UnexpectedValueException::class]] as [$body, $descriptor, $cause]) {
             $response = new HttpResponse(400, $body); $error = self::failure($response, 'GET /bad', null, $descriptor);
             self::assertSame($response, $error->response); self::assertNull($error->payload); self::assertNull($error->error); self::assertInstanceOf($cause, $error->getPrevious());
         }

@@ -159,6 +159,7 @@ abstract class ApiClient
     {
         return new Psr18Transport(
             $configuration->httpClient ?? new \GuzzleHttp\Client(['http_errors' => false,
+                'timeout' => $configuration->timeout, 'connect_timeout' => $configuration->connectTimeout,
                 'curl' => defined('CURLOPT_PATH_AS_IS') ? [CURLOPT_PATH_AS_IS => true] : []]),
             new Psr18Options($configuration->headers, $configuration->middleware, $configuration->retryPolicy, $configuration->redirectPolicy),
         );

@@ -1,6 +1,6 @@
 # Contributing
 
-Complete each validated change through integration and stable publication in the same task. Prefer direct integration into `main` when protections allow it; use a PR only if GitHub requires that technical step, and finish it rather than leaving a draft. See [AGENTS.md](AGENTS.md) and [RELEASING.md](RELEASING.md).
+Develop on a branch and open a PR. A version is published only when its work is finished and proven and the owner confirms; versions are not published piecemeal, and a branch is not deleted unless the owner asks. See [AGENTS.md](AGENTS.md) and [RELEASING.md](RELEASING.md).
 
 Keep responsibilities separate and reuse abstractions. Public API changes need concrete use cases and meaningful regression coverage. Validate PHP 8.3/8.4/8.5, minimum dependencies and advisories through GitHub Actions.
 

@@ -18,6 +18,12 @@ class TypedArray extends \TypedArray\TypedArray implements \Stringable
     /** @param array<mixed> $items */
     public function __construct(array $items = [])
     {
+        if (DTO::isReadingResponse()) {
+            // An answer is trusted, and the hydrator typed every item as it built it (the generated code checked the lists
+            // of scalars it hands over), so the library's own check of each item would only be the second.
+            \ArrayObject::__construct($items);
+            return;
+        }
         foreach ($items as $item) {
             Constraints::validate($item, static::ITEM_VALIDATION, static::class . ' item');
         }

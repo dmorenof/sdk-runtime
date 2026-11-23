@@ -37,7 +37,7 @@ Everything is percent-encoded for you. Lists and objects in the query, path or h
 | `multipart/form-data` | A model; files as `UploadedFileInterface` | Multipart |
 | `text/plain`, `application/octet-stream`, other raw media | A `string`, or any readable PSR-7 `StreamInterface` | The bytes as they are |
 
-A body is validated before anything is sent. When the API makes the body optional, simply call the method without it.
+A call only serializes the body, as it is: build it with care, because it is checked when you set a value (see [Validation](validation.md)) and not again when it is sent. When the API makes the body optional, simply call the method without it.
 
 ### Uploading a file
 

@@ -45,16 +45,20 @@ class DTO implements \JsonSerializable, \Stringable
             return;
         }
 
-        if (array_key_exists('jsonSchema', static::MODEL_VALIDATION)) {
+        $reading = self::$tolerant > 0;
+        if (!$reading && array_key_exists('jsonSchema', static::MODEL_VALIDATION)) {
             Constraints::validate(SchemaValidator::snapshot($json), ['jsonSchema' => static::MODEL_VALIDATION['jsonSchema']], static::class);
         }
         foreach (get_object_vars($json) as $key => $value) {
             $this->assignMember((string) $key, $value);
         }
 
-        // The model checks itself, one level: what it requires, its own rules and the rules of the model as a whole.
-        // Models and collections inside it were checked as they were built, so nothing is walked twice.
-        $this->validateLevel('neutral');
+        // Built by you, the model checks itself, one level: what it requires, its own rules and the rules of the model as
+        // a whole (what is inside it was checked as it was built, so nothing is walked twice). Built from an API's
+        // answer it checks nothing: the answer is the truth, and only PHP's own type errors can refuse it.
+        if (!$reading) {
+            $this->validateLevel('neutral');
+        }
     }
 
     /**
@@ -76,8 +80,9 @@ class DTO implements \JsonSerializable, \Stringable
     }
 
     /**
-     * Runs $work reading an API's answer: a property the model does not declare is ignored, so an API that adds a
-     * field does not break clients generated before it.
+     * Runs $work reading an API's answer: the answer is trusted, so no rule, required field or model check runs
+     * (PHP's own type errors and enum `from()` still refuse a value that does not fit), and a property the model does
+     * not declare is ignored, so an API that adds a field does not break clients generated before it.
      *
      * @internal Used by the runtime itself; not covered by the backward-compatibility promise.
      * @template T
@@ -92,6 +97,16 @@ class DTO implements \JsonSerializable, \Stringable
         } finally {
             self::$tolerant--;
         }
+    }
+
+    /**
+     * Whether an API's answer is being read (see readingResponse()): collections and maps skip their rules then too.
+     *
+     * @internal Used by the runtime itself; not covered by the backward-compatibility promise.
+     */
+    public static function isReadingResponse(): bool
+    {
+        return self::$tolerant > 0;
     }
 
     /** Construct through the shared hydrator so a base model can dispatch to a subtype. */
@@ -326,7 +341,7 @@ class DTO implements \JsonSerializable, \Stringable
     final protected function assigning(string $field, mixed $value): void
     {
         $rules = static::VALIDATION[$field] ?? null;
-        if ($rules === null || ($value === null && !$this->rulesApplyToNull($field, $rules))) {
+        if ($rules === null || self::$tolerant > 0 || ($value === null && !$this->rulesApplyToNull($field, $rules))) {
             return;
         }
         Constraints::validate($value, $rules, static::class . "::$field", 'neutral');

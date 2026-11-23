@@ -20,22 +20,27 @@ About a fifth of the generated code and 37 % less to install, because the engine
 
 Two things the table does not hide: the dependencies alone weigh more here (2.6 MB against 1.3 MB, because the runtime is a full engine and not just Guzzle), and the call is faster only on the flat model (a quarter less time); on nested models it is level. What you gain is memory, disk and start-up, and above all less to write. This is one run on a shared runner: an earlier run of the same code gave 0.96× and 1.07×, so read the calls as "between a quarter faster and level", not as a precise figure.
 
-## A second API, measured the same way: PokeAPI
+## More APIs, measured the same way
 
-Casafari is one contract. PokeAPI is another, public and free to repeat: OpenAPI 3.1, 102 operations, 284 schemas, and an answer for one Pokémon of 350 KB of deeply nested JSON. Same method (OpenAPI Generator 7.26, PHP 8.4, clean process, median of 7, a real answer captured once and served from a mock to both, and a check that the model comes back with the name that was sent):
+Casafari is one contract. Three public, free ones repeat the measurement (workflow *Audit public APIs*, `audit-apis.yml`): same method (OpenAPI Generator 7.26, PHP 8.4, clean process, median of 7, a **real answer captured once** and served from a mock to both, and a check that the model comes back with what was sent). Each generated SDK is made from the contract as published; none of the 149 operations of the three was left out.
 
 | | This runtime + generator | OpenAPI Generator |
 | --- | ---: | ---: |
-| Generated code | **0.88 MB** in 788 files | 5.15 MB in 301 files |
-| Everything installed | **3.56 MB** | 6.66 MB |
-| One Pokémon (350 KB of JSON): time per call | **5.2 ms (0.46×)** | 11.3 ms |
-| One Pokémon: PHP peak memory | **7.4 MB (0.62×)** | 12.1 MB |
-| A list of 20: time per call | **62 µs (0.81×)** | 76 µs |
-| A list of 20: PHP peak memory | **2.4 MB (0.53×)** | 4.5 MB |
-| Memory growth over 2,000 list calls | **4 KiB** | 1,575 KiB |
-| Starting the client | **0.21× and 0.30×** the time | 1× |
+| **PokeAPI** (OpenAPI 3.1, 102 operations): generated code | **0.88 MB** in 788 files | 5.15 MB in 301 files |
+| PokeAPI: everything installed | **3.56 MB** | 6.66 MB |
+| PokeAPI: one Pokémon (350 KB of JSON), time / peak memory | **4.2 ms (0.47×) / 9.8 MB (0.68×)** | 8.8 ms / 14.4 MB |
+| PokeAPI: a list of 20, time / peak memory | **48 µs (0.76×) / 2.4 MB (0.53×)** | 63 µs / 4.6 MB |
+| **Wikimedia** (Swagger 2.0, 35 operations): generated code / everything installed | **0.25 MB / 2.94 MB** | 1.82 MB / 3.31 MB |
+| Wikimedia: a short list / a top of 1,000, time | **0.52× / 0.53×** | 1× |
+| **met.no** (Swagger 2.0 without a host, 12 operations): generated code / everything installed | **58 KB / 2.74 MB** | 386 KB / **1.85 MB** |
+| met.no: a 39 KB / 61 KB forecast, time / peak memory | **0.34× / 0.48×** and **0.37× / 0.49×** | 1× |
+| Memory growth over thousands of calls | **4 KiB** | 1,575 and 3,130 KiB (PokeAPI list, met.no) |
 
-Here the call *is* faster, and by a lot where the answer is big: hydrating a large nested answer is where a generated client that builds every model through setters pays most. The limits repeat: the first call in a fresh process takes about 1.4× as long on the small answer, and the dependencies weigh more. To repeat it: Actions → *Audit public APIs* (`audit-apis.yml`); all 102 operations generate (none is skipped).
+What this says, and does not:
+
+- **Time and memory per call favour this runtime in all three**, most where the answer is big: building a large nested answer is where a client that goes through setters pays most. Two runs of PokeAPI agree (0.46× and 0.47×).
+- **Disk is a function of the size of the API.** The generated code is 7× to 6× smaller everywhere, but the runtime and its dependencies weigh 2.6 MB against Guzzle's 1.3 MB. Counting everything installed, ours is smaller from about 30 operations up (PokeAPI −47 %, Casafari −37 %, Wikimedia −11 %) and **larger on a very small API** (met.no: +48 %).
+- **Starting is slower on the smallest APIs** (Wikimedia 1.24–1.29×) and the first call in a fresh process about 1.4×, because more files are loaded (55–100 against 29–57).
 
 ## What you write
 

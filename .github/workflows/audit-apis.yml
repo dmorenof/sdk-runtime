@@ -3,9 +3,6 @@ name: Audit public APIs (disk, memory, CPU)
 # Manual: our SDK of a real public API against the one OpenAPI Generator makes from the same contract, on the same
 # runner, each call in a clean PHP 8.4 process with the same mocked (real, captured) answer. See docs/AUDIT.md.
 on:
-  push:
-    branches: [claude/busy-franklin-9x9zpa]
-    paths: ['.github/workflows/audit-apis.yml'] # TEMPORARY: so it can run before it exists on the default branch
   workflow_dispatch:
     inputs:
       calls:
@@ -59,7 +56,7 @@ jobs:
       - uses: actions/checkout@v7
         with:
           repository: dmorenof/sdk-generator
-          ref: ${{ inputs.generator_ref || 'claude/busy-franklin-9x9zpa' }}
+          ref: ${{ inputs.generator_ref }}
           path: generator
       - uses: shivammathur/setup-php@v2
         with:
@@ -88,7 +85,7 @@ jobs:
           php generator/bin/generate-sdk.php --skip-unsupported ${{ matrix.generate }} /tmp/api/${{ matrix.file }} /tmp/ours ${{ matrix.namespace }} dmorenof/audit-sdk 2>&1 | tee /tmp/ours.log | grep -v '^Compatibility warning' || true
           composer config --working-dir=/tmp/ours repositories.runtime vcs https://github.com/dmorenof/sdk-runtime
           composer config --working-dir=/tmp/ours minimum-stability dev
-          composer require --working-dir=/tmp/ours "dmorenof/sdk-runtime:dev-${{ inputs.runtime_ref || 'claude/busy-franklin-9x9zpa' }} as 1.99.0" --no-update --no-interaction --quiet
+          composer require --working-dir=/tmp/ours "dmorenof/sdk-runtime:dev-${{ inputs.runtime_ref }} as 1.99.0" --no-update --no-interaction --quiet
           composer install --working-dir=/tmp/ours --no-dev --no-interaction --prefer-dist --no-progress --quiet
           { echo '### Operations left out of ours (not executable by the generator)'; echo; grep '^Skipped' /tmp/ours.log || echo 'none'; echo; } | tee -a "$GITHUB_STEP_SUMMARY"
       - name: OpenAPI Generator 7.26.0 from the same contract

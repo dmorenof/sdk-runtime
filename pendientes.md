@@ -23,7 +23,6 @@ Una versión se publica cuando el trabajo está **terminado y probado**, y solo 
 - [ ] OAuth2: `refreshUrl` distinto del `tokenUrl`.
 
 **Transporte**
-- [ ] Opciones de timeout configurables por cliente (hoy: el cliente PSR-18 que se inyecte; solo el descubrimiento OIDC fija sus propios límites).
 - [ ] Persistencia general de cookies (no hay *cookie jar*) y cookies estructuradas, JSON, arrays y objetos.
 - [ ] Método HTTP `QUERY`.
 - [ ] Políticas completas para respuestas sin contenido (HEAD/205 y combinaciones restantes).
@@ -45,7 +44,9 @@ Una versión se publica cuando el trabajo está **terminado y probado**, y solo 
 - La llamada solo serializa y la respuesta se da por buena (D25); `DTO::isReadingResponse()` interno.
 - Una colección construida desde una respuesta no se comprueba dos veces.
 - `.gitattributes` con `export-ignore`: el paquete instalado pierde tests, docs de desarrollo, `audit/` y `ci/` (de 2,1 MB a 0,6 MB). Se conservan los servidores de prueba que usan los *smoke* del generador.
-- Workflow `audit-casafari` (memoria, CPU y disco frente a OpenAPI Generator sobre el contrato real de Casafari).
+- Timeouts por defecto (`Configuration::$timeout` 30 s, `$connectTimeout` 10 s) en el cliente HTTP por defecto.
+- Guía para escribir un cliente a mano (`docs/writing-an-sdk-by-hand.md`).
+- Workflows `audit-casafari` y `audit-apis` (PokeAPI, Wikimedia, met.no) (memoria, CPU y disco frente a OpenAPI Generator sobre el contrato real de Casafari).
 
 ## Historial de seguimiento
 

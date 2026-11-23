@@ -16,7 +16,7 @@ Measured against OpenAPI Generator 7.26 on PHP 8.4, with the SDK each generator 
 | **PokeAPI** (102 operations): code + dependencies on disk | **3.6 MB** | 6.7 MB |
 | PokeAPI: one Pokémon (350 KB of JSON), time per call | **0.47×** (4.2 ms) | 8.8 ms |
 | PokeAPI: peak memory of that call | **0.68×** (9.8 MB) | 14.4 MB |
-| **met.no** (Swagger, 6 operations): time per call | **0.34×–0.37×** | |
+| **met.no** (Swagger, 12 operations): time per call | **0.34×–0.37×** | |
 | **Casafari** (46 operations): code + dependencies on disk | **4.0 MB** | 6.2 MB |
 | Casafari: peak memory, nested models | **2.5 MB** | 10 MB |
 | Memory growth over thousands of calls | **4 KiB** | 163–3,130 KiB |

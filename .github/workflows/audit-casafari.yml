@@ -1,0 +1,86 @@
+name: Audit Casafari (memory, CPU, disk)
+
+# Manual: our SDK of the real Casafari contract against the one OpenAPI Generator makes from the same file, on the same
+# runner, each call in a clean PHP 8.4 process with the same mocked answer. See docs/AUDIT.md.
+on:
+  workflow_dispatch:
+    inputs:
+      calls:
+        description: 'Calls per run'
+        default: '5000'
+      runs:
+        description: 'Runs per tool and scenario (the median is reported)'
+        default: '7'
+      casafari_ref:
+        description: 'Ref of dmorenof/casafari-sdk to build ours from'
+        default: 'master'
+
+permissions:
+  contents: read
+
+jobs:
+  casafari:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7
+        with:
+          repository: dmorenof/casafari-sdk
+          ref: ${{ inputs.casafari_ref }}
+          path: casafari
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          tools: composer:v2
+          coverage: none
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Ours, installed the way a user installs it (production dependencies only)
+        run: |
+          mkdir -p /tmp/ours
+          cp casafari/composer.json /tmp/ours/
+          cp -r casafari/src casafari/lib /tmp/ours/
+          composer install --working-dir=/tmp/ours --no-dev --no-interaction --prefer-dist --no-progress --quiet
+      - name: OpenAPI Generator 7.26.0 from the same contract
+        run: |
+          curl -fLsS --retry 3 -o /tmp/og.jar https://repo.maven.apache.org/maven2/org/openapitools/openapi-generator-cli/7.26.0/openapi-generator-cli-7.26.0.jar
+          # Its validator refuses the contract (repeated tags); ours accepts it.
+          java -Xms64m -Xmx1g -jar /tmp/og.jar generate --skip-validate-spec -g php -i casafari/contract/openapi.json -o /tmp/oag \
+            --additional-properties='invokerPackage=OpenAPI\Client,composerPackageName=bench/casafari,library=guzzle,modern=true' \
+            --global-property='modelDocs=false,apiDocs=false,modelTests=false,apiTests=false' > /tmp/og.log 2>&1
+          composer install --working-dir=/tmp/oag --no-dev --no-interaction --prefer-dist --no-progress --quiet
+      - name: Disk
+        run: |
+          bytes() { find "$@" -type f -printf '%s\n' | paste -sd+ | bc; }
+          {
+            echo '### Disk (real bytes, not disk blocks)'
+            echo
+            echo '| | ours | OpenAPI Generator |'
+            echo '|---|---:|---:|'
+            echo "| generated code | $(bytes /tmp/ours/src) B in $(find /tmp/ours/src -type f | wc -l) files | $(bytes /tmp/oag/lib) B in $(find /tmp/oag/lib -type f | wc -l) files |"
+            echo "| production dependencies | $(bytes /tmp/ours/vendor) B | $(bytes /tmp/oag/vendor) B |"
+            echo "| everything installed | $(bytes /tmp/ours) B | $(bytes /tmp/oag) B |"
+            echo
+          } | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: Run
+        run: |
+          rm -f results-*.jsonl
+          for run in $(seq 1 "${{ inputs.runs }}"); do
+            for scenario in types location; do
+              if (( run % 2 )); then order='ours oag'; else order='oag ours'; fi
+              for tool in $order; do
+                if [[ $tool == ours ]]; then autoload=/tmp/ours/vendor/autoload.php; else autoload=/tmp/oag/vendor/autoload.php; fi
+                AUTOLOAD=$autoload php audit/bench-casafari.php "$tool" "$scenario" "${{ inputs.calls }}" >> "results-$scenario.jsonl"
+              done
+            done
+          done
+          php -v | head -1
+          php audit/bench-summary.php results-types.jsonl results-location.jsonl | tee -a "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: casafari-audit
+          path: results-*.jsonl

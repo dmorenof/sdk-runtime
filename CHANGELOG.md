@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.12.1] — 2026-11-24
+
+Documentation only. Sizes are now measured in bytes of PHP (code + dependencies), not with `du`, which counts file-system blocks and punishes many small files. The runtime is paid once: with several APIs on it the total is about half of OpenAPI Generator's (three public APIs: 4.4 MB against 9.1 MB); a single very small API is still larger.
+
 ## [1.12.0] — 2026-11-23
 
 **A call only serializes, and an answer is trusted.** Measured against the real Casafari contract, validating answers and requests was most of what made a call slower than OpenAPI Generator's. See D25.

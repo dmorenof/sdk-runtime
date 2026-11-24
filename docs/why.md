@@ -9,16 +9,16 @@ Everything below was measured on a real contract, not a toy: Casafari's publishe
 | | This runtime + generator | OpenAPI Generator |
 | --- | ---: | ---: |
 | Generated code | **1.10 MB** in 928 small files | 4.74 MB in 218 files |
-| Everything installed (code + dependencies) | **3.96 MB** | 6.2 MB |
+| PHP code + dependencies | **4.3 MB** | 6.9 MB |
 | PHP memory at the peak of a call that builds nested models | **2.5 MB** | 10 MB |
 | Memory growth over 5,000 such calls | **4 KiB** | 163 KiB |
 | Process peak (RSS) for that call | **60.8 MB** | 68.5 MB |
 | Starting the client | **0.57–0.96×** the time | 1× |
 | Time of a call (a flat model; nested models) | **0.74×** and 1.01× | 1× |
 
-About a fifth of the generated code and 37 % less to install, because the engine (transport, authentication, hydration, errors, retries) is written once in this runtime and the SDK only declares its models and operations. A generic generator repeats that engine in every SDK it makes, and writes several variants of every call (OpenAPI Generator's PHP client has a plain, a `WithHttpInfo`, an `Async` and an `AsyncWithHttpInfo` method per operation).
+About a fifth of the generated code and 37 % less PHP to install, because the engine (transport, authentication, hydration, errors, retries) is written once in this runtime and the SDK only declares its models and operations. A generic generator repeats that engine in every SDK it makes, and writes several variants of every call (OpenAPI Generator's PHP client has a plain, a `WithHttpInfo`, an `Async` and an `AsyncWithHttpInfo` method per operation).
 
-Two things the table does not hide: the dependencies alone weigh more here (2.6 MB against 1.3 MB, because the runtime is a full engine and not just Guzzle), and the call is faster only on the flat model (a quarter less time); on nested models it is level. What you gain is memory, disk and start-up, and above all less to write. This is one run on a shared runner: an earlier run of the same code gave 0.96× and 1.07×, so read the calls as "between a quarter faster and level", not as a precise figure.
+Two things the table does not hide: the dependencies alone weigh more here (3.2 MB of PHP against 2.1 MB, because the runtime is a full engine and not just Guzzle), and the call is faster only on the flat model (a quarter less time); on nested models it is level. What you gain is memory, disk and start-up, and above all less to write. This is one run on a shared runner: an earlier run of the same code gave 0.96× and 1.07×, so read the calls as "between a quarter faster and level", not as a precise figure.
 
 ## More APIs, measured the same way
 
@@ -27,19 +27,19 @@ Casafari is one contract. Three public, free ones repeat the measurement (workfl
 | | This runtime + generator | OpenAPI Generator |
 | --- | ---: | ---: |
 | **PokeAPI** (OpenAPI 3.1, 102 operations): generated code | **0.88 MB** in 788 files | 5.15 MB in 301 files |
-| PokeAPI: everything installed | **3.56 MB** | 6.66 MB |
+| PokeAPI: PHP code + dependencies | **4.1 MB** | 7.0 MB |
 | PokeAPI: one Pokémon (350 KB of JSON), time / peak memory | **4.2 ms (0.47×) / 9.8 MB (0.68×)** | 8.8 ms / 14.4 MB |
 | PokeAPI: a list of 20, time / peak memory | **48 µs (0.76×) / 2.4 MB (0.53×)** | 63 µs / 4.6 MB |
-| **Wikimedia** (Swagger 2.0, 35 operations): generated code / everything installed | **0.25 MB / 2.94 MB** | 1.82 MB / 3.31 MB |
+| **Wikimedia** (Swagger 2.0, 35 operations): generated code / PHP code + dependencies | **0.25 MB / 3.5 MB** | 1.8 MB / 3.8 MB |
 | Wikimedia: a short list / a top of 1,000, time | **0.52× / 0.53×** | 1× |
-| **met.no** (Swagger 2.0 without a host, 12 operations): generated code / everything installed | **58 KB / 2.74 MB** | 386 KB / **1.85 MB** |
+| **met.no** (Swagger 2.0 without a host, 12 operations): generated code / PHP code + dependencies | **55 KB / 3.3 MB** | 377 KB / **2.5 MB** |
 | met.no: a 39 KB / 61 KB forecast, time / peak memory | **0.34× / 0.48×** and **0.37× / 0.49×** | 1× |
 | Memory growth over thousands of calls | **4 KiB** | 1,575 and 3,130 KiB (PokeAPI list, met.no) |
 
 What this says, and does not:
 
 - **Time and memory per call favour this runtime in all three**, most where the answer is big: building a large nested answer is where a client that goes through setters pays most. Two runs of PokeAPI agree (0.46× and 0.47×).
-- **Disk is a function of the size of the API.** The generated code is 7× to 6× smaller everywhere, but the runtime and its dependencies weigh 2.6 MB against Guzzle's 1.3 MB. Counting everything installed, ours is smaller from about 30 operations up (PokeAPI −47 %, Casafari −37 %, Wikimedia −11 %) and **larger on a very small API** (met.no: +48 %).
+- **Size is measured in bytes of PHP, never with `du`.** `du` counts the blocks the file system reserves, which depends on the disk and punishes many small files; what a user installs or downloads is the bytes. The generated code is 6× to 7× smaller everywhere. The runtime and its dependencies are 3.2 MB of PHP against Guzzle's 2.1 MB, **but the runtime is paid once**: for one API, ours is smaller from about 30 operations up (PokeAPI −42 %, Casafari −37 %, Wikimedia −10 %) and larger on a very small one (met.no alone: +32 %); with the three public APIs in one project it is 4.4 MB against 9.1 MB (**−52 %**), and each further API adds only its own code. Compressed (what Composer downloads), the three together are level: 687 KB against 705 KB, because the dependencies dominate.
 - **Starting is slower on the smallest APIs** (Wikimedia 1.24–1.29×) and the first call in a fresh process about 1.4×, because more files are loaded (55–100 against 29–57).
 
 ## What you write

@@ -24,8 +24,10 @@ class TypedArray extends \TypedArray\TypedArray implements \Stringable
             \ArrayObject::__construct($items);
             return;
         }
-        foreach ($items as $item) {
-            Constraints::validate($item, static::ITEM_VALIDATION, static::class . ' item');
+        if (static::ITEM_VALIDATION !== []) {
+            foreach ($items as $item) {
+                Constraints::validate($item, static::ITEM_VALIDATION, static::class . ' item');
+            }
         }
         parent::__construct($items);
         Constraints::validate($this, static::COLLECTION_VALIDATION, static::class);
@@ -38,13 +40,17 @@ class TypedArray extends \TypedArray\TypedArray implements \Stringable
 
     public function append(mixed $value): void
     {
-        Constraints::validate($value, static::ITEM_VALIDATION, static::class . ' item');
+        if (static::ITEM_VALIDATION !== []) {
+            Constraints::validate($value, static::ITEM_VALIDATION, static::class . ' item');
+        }
         parent::append($value);
     }
 
     public function offsetSet(mixed $key, mixed $value): void
     {
-        Constraints::validate($value, static::ITEM_VALIDATION, static::class . ' item');
+        if (static::ITEM_VALIDATION !== []) {
+            Constraints::validate($value, static::ITEM_VALIDATION, static::class . ' item');
+        }
         parent::offsetSet($key, $value);
     }
 

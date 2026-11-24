@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.12.2] — 2026-11-24
+
+- Requires `typedarray/typedarray` `^1.3.1` (before `^1.1`): 1.3 checks whole lists in one loop and validates once per `append()`, and 1.3.1 fixes unserializing collections whose type is set in the constructor.
+- A collection with no item rules (almost all of them) no longer calls the rules once per item when it is built, appended to or assigned to: the library's own check is the only pass.
+
 ## [1.12.1] — 2026-11-24
 
 Documentation only. Sizes are now measured in bytes of PHP (code + dependencies), not with `du`, which counts file-system blocks and punishes many small files. The runtime is paid once: with several APIs on it the total is about half of OpenAPI Generator's (three public APIs: 4.4 MB against 9.1 MB); a single very small API is still larger.

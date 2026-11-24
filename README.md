@@ -13,17 +13,18 @@ Measured against OpenAPI Generator 7.26 on PHP 8.4, with the SDK each generator 
 
 | | This runtime + generator | OpenAPI Generator |
 | --- | ---: | ---: |
-| **PokeAPI** (102 operations): code + dependencies on disk | **3.6 MB** | 6.7 MB |
+| **PokeAPI** (102 operations): PHP code + dependencies | **4.1 MB** | 7.0 MB |
 | PokeAPI: one Pokémon (350 KB of JSON), time per call | **0.47×** (4.2 ms) | 8.8 ms |
 | PokeAPI: peak memory of that call | **0.68×** (9.8 MB) | 14.4 MB |
 | **met.no** (Swagger, 12 operations): time per call | **0.34×–0.37×** | |
-| **Casafari** (46 operations): code + dependencies on disk | **4.0 MB** | 6.2 MB |
+| **Casafari** (46 operations): PHP code + dependencies | **4.3 MB** | 6.9 MB |
+| **PokeAPI + Wikimedia + met.no in one project**: PHP code + dependencies | **4.4 MB** | 9.1 MB |
 | Casafari: peak memory, nested models | **2.5 MB** | 10 MB |
 | Memory growth over thousands of calls | **4 KiB** | 163–3,130 KiB |
 
 And less to write: OAuth2 tokens are fetched and renewed for you, models are plain typed properties (no getters and setters), and retries, redirects, timeouts and proxies are one `Configuration`.
 
-Where it is **not** better, said plainly: on a very small API the runtime's own weight dominates (met.no installs 2.7 MB against 1.9 MB), the first call in a fresh process is about 1.4× slower, and it needs PHP 8.4. The method, every table and how to repeat the measurements are in [Why this runtime](docs/why.md).
+Where it is **not** better, said plainly: the runtime is paid once, so a single very small API installs more (met.no alone: 3.3 MB against 2.5 MB) and every further API on the same runtime only adds its own, smaller code (the three above together are half of OpenAPI Generator's), the first call in a fresh process is about 1.4× slower, and it needs PHP 8.4. The method, every table and how to repeat the measurements are in [Why this runtime](docs/why.md).
 
 ## In thirty seconds
 

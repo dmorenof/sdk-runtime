@@ -126,7 +126,7 @@ if ($listStatus !== 0) {
 echo "PUBLISHED_FILE_LIST_RUNTIME_OK", PHP_EOL;
 
 $downloadCommand = implode(' ', array_map('escapeshellarg', [PHP_BINARY, '-d', 'memory_limit=16M',
-    $directory . '/vendor/dmorenof/sdk-runtime/tests/download-smoke.php', $directory . '/vendor/autoload.php']));
+    dirname(__DIR__) . '/tests/download-smoke.php', $directory . '/vendor/autoload.php']));
 passthru($downloadCommand, $downloadStatus);
 if ($downloadStatus !== 0) {
     throw new RuntimeException('Installed runtime binary download smoke failed.');
@@ -134,7 +134,7 @@ if ($downloadStatus !== 0) {
 echo "PUBLISHED_DOWNLOAD_RUNTIME_OK", PHP_EOL;
 
 $statusCommand = implode(' ', array_map('escapeshellarg', [PHP_BINARY,
-    $directory . '/vendor/dmorenof/sdk-runtime/tests/status-response-smoke.php', $directory . '/vendor/autoload.php']));
+    dirname(__DIR__) . '/tests/status-response-smoke.php', $directory . '/vendor/autoload.php']));
 passthru($statusCommand, $statusResult);
 if ($statusResult !== 0) {
     throw new RuntimeException('Installed runtime status response smoke failed.');
@@ -142,7 +142,7 @@ if ($statusResult !== 0) {
 echo "PUBLISHED_STATUS_RESPONSE_RUNTIME_OK", PHP_EOL;
 
 $simpleCommand = implode(' ', array_map('escapeshellarg', [PHP_BINARY,
-    $directory . '/vendor/dmorenof/sdk-runtime/tests/simple-parameters-smoke.php', $directory . '/vendor/autoload.php']));
+    dirname(__DIR__) . '/tests/simple-parameters-smoke.php', $directory . '/vendor/autoload.php']));
 passthru($simpleCommand, $simpleStatus);
 if ($simpleStatus !== 0) {
     throw new RuntimeException('Installed runtime simple path/header smoke failed.');
@@ -150,7 +150,7 @@ if ($simpleStatus !== 0) {
 echo "PUBLISHED_SIMPLE_PARAMETER_RUNTIME_OK", PHP_EOL;
 
 $objectCommand = implode(' ', array_map('escapeshellarg', [PHP_BINARY,
-    $directory . '/vendor/dmorenof/sdk-runtime/tests/object-parameters-smoke.php', $directory . '/vendor/autoload.php']));
+    dirname(__DIR__) . '/tests/object-parameters-smoke.php', $directory . '/vendor/autoload.php']));
 passthru($objectCommand, $objectStatus);
 if ($objectStatus !== 0) {
     throw new RuntimeException('Installed runtime object parameter smoke failed.');
@@ -158,79 +158,79 @@ if ($objectStatus !== 0) {
 echo "PUBLISHED_OBJECT_PARAMETER_RUNTIME_OK", PHP_EOL;
 
 $pathCommand = implode(' ', array_map('escapeshellarg', [PHP_BINARY,
-    $directory . '/vendor/dmorenof/sdk-runtime/tests/path-styles-smoke.php', $directory . '/vendor/autoload.php']));
+    dirname(__DIR__) . '/tests/path-styles-smoke.php', $directory . '/vendor/autoload.php']));
 passthru($pathCommand, $pathStatus);
 if ($pathStatus !== 0) { throw new RuntimeException('Installed runtime label/matrix HTTP smoke failed.'); }
 echo "PUBLISHED_PATH_STYLE_RUNTIME_OK", PHP_EOL;
 
 $cookieCommand = implode(' ', array_map('escapeshellarg', [PHP_BINARY,
-    $directory . '/vendor/dmorenof/sdk-runtime/tests/cookies-smoke.php', $directory . '/vendor/autoload.php']));
+    dirname(__DIR__) . '/tests/cookies-smoke.php', $directory . '/vendor/autoload.php']));
 passthru($cookieCommand, $cookieStatus);
 if ($cookieStatus !== 0) { throw new RuntimeException('Installed runtime cookie HTTP smoke failed.'); }
 echo "PUBLISHED_COOKIE_RUNTIME_OK", PHP_EOL;
 
 $reservedCommand = implode(' ', array_map('escapeshellarg', [PHP_BINARY,
-    $directory . '/vendor/dmorenof/sdk-runtime/tests/reserved-query-smoke.php', $directory . '/vendor/autoload.php']));
+    dirname(__DIR__) . '/tests/reserved-query-smoke.php', $directory . '/vendor/autoload.php']));
 passthru($reservedCommand, $reservedStatus);
 if ($reservedStatus !== 0) { throw new RuntimeException('Installed runtime reserved query HTTP smoke failed.'); }
 echo "PUBLISHED_RESERVED_QUERY_RUNTIME_OK", PHP_EOL;
 
 $contentCommand = implode(' ', array_map('escapeshellarg', [PHP_BINARY,
-    $directory . '/vendor/dmorenof/sdk-runtime/tests/parameter-content-smoke.php', $directory . '/vendor/autoload.php']));
+    dirname(__DIR__) . '/tests/parameter-content-smoke.php', $directory . '/vendor/autoload.php']));
 passthru($contentCommand, $contentStatus);
 if ($contentStatus !== 0) { throw new RuntimeException('Installed runtime parameter content HTTP smoke failed.'); }
 echo "PUBLISHED_PARAMETER_CONTENT_RUNTIME_OK", PHP_EOL;
 
 $delimitedCommand = implode(' ', array_map('escapeshellarg', [PHP_BINARY,
-    $directory . '/vendor/dmorenof/sdk-runtime/tests/delimited-parameters-smoke.php', $directory . '/vendor/autoload.php']));
+    dirname(__DIR__) . '/tests/delimited-parameters-smoke.php', $directory . '/vendor/autoload.php']));
 passthru($delimitedCommand, $delimitedStatus);
 if ($delimitedStatus !== 0) { throw new RuntimeException('Installed runtime delimited parameter HTTP smoke failed.'); }
 echo "PUBLISHED_DELIMITED_PARAMETER_RUNTIME_OK", PHP_EOL;
 
 $selectionCommand = implode(' ', array_map('escapeshellarg', [PHP_BINARY,
-    $directory . '/vendor/dmorenof/sdk-runtime/tests/response-selection-smoke.php', $directory . '/vendor/autoload.php']));
+    dirname(__DIR__) . '/tests/response-selection-smoke.php', $directory . '/vendor/autoload.php']));
 passthru($selectionCommand, $selectionStatus);
 if ($selectionStatus !== 0) { throw new RuntimeException('Installed runtime response selection HTTP smoke failed.'); }
 echo "PUBLISHED_RESPONSE_SELECTION_RUNTIME_OK", PHP_EOL;
 
 $formBlockCommand = implode(' ', array_map('escapeshellarg', [PHP_BINARY,
-    $directory . '/vendor/dmorenof/sdk-runtime/tests/form-block-smoke.php', $directory . '/vendor/autoload.php']));
+    dirname(__DIR__) . '/tests/form-block-smoke.php', $directory . '/vendor/autoload.php']));
 passthru($formBlockCommand, $formBlockStatus);
 if ($formBlockStatus !== 0) { throw new RuntimeException('Installed runtime form block HTTP smoke failed.'); }
 echo "PUBLISHED_FORM_BLOCK_RUNTIME_OK", PHP_EOL;
 
 $schemaCommand = implode(' ', array_map('escapeshellarg', [PHP_BINARY,
-    $directory . '/vendor/dmorenof/sdk-runtime/tests/schema-rules-smoke.php', $directory . '/vendor/autoload.php']));
+    dirname(__DIR__) . '/tests/schema-rules-smoke.php', $directory . '/vendor/autoload.php']));
 passthru($schemaCommand, $schemaStatus);
 if ($schemaStatus !== 0) { throw new RuntimeException('Installed runtime schema rules HTTP smoke failed.'); }
 echo "PUBLISHED_SCHEMA_RULES_RUNTIME_OK", PHP_EOL;
 
 $nativeCommand = implode(' ', array_map('escapeshellarg', [PHP_BINARY,
-    $directory . '/vendor/dmorenof/sdk-runtime/tests/native-schemas-smoke.php', $directory . '/vendor/autoload.php']));
+    dirname(__DIR__) . '/tests/native-schemas-smoke.php', $directory . '/vendor/autoload.php']));
 passthru($nativeCommand, $nativeStatus);
 if ($nativeStatus !== 0) { throw new RuntimeException('Installed runtime native schemas HTTP smoke failed.'); }
 echo "PUBLISHED_NATIVE_SCHEMAS_RUNTIME_OK", PHP_EOL;
 
 $bodyCommand = implode(' ', array_map('escapeshellarg', [PHP_BINARY,
-    $directory . '/vendor/dmorenof/sdk-runtime/tests/request-bodies-smoke.php', $directory . '/vendor/autoload.php']));
+    dirname(__DIR__) . '/tests/request-bodies-smoke.php', $directory . '/vendor/autoload.php']));
 passthru($bodyCommand, $bodyStatus);
 if ($bodyStatus !== 0) { throw new RuntimeException('Installed runtime request bodies HTTP smoke failed.'); }
 echo "PUBLISHED_REQUEST_BODIES_RUNTIME_OK", PHP_EOL;
 
 $rawCommand = implode(' ', array_map('escapeshellarg', [PHP_BINARY, '-d', 'memory_limit=16M',
-    $directory . '/vendor/dmorenof/sdk-runtime/tests/raw-media-smoke.php', $directory . '/vendor/autoload.php']));
+    dirname(__DIR__) . '/tests/raw-media-smoke.php', $directory . '/vendor/autoload.php']));
 passthru($rawCommand, $rawStatus);
 if ($rawStatus !== 0) { throw new RuntimeException('Installed runtime raw media HTTP smoke failed.'); }
 echo "PUBLISHED_RAW_MEDIA_RUNTIME_OK", PHP_EOL;
 
 $errorCommand = implode(' ', array_map('escapeshellarg', [PHP_BINARY,
-    $directory . '/vendor/dmorenof/sdk-runtime/tests/error-payloads-smoke.php', $directory . '/vendor/autoload.php']));
+    dirname(__DIR__) . '/tests/error-payloads-smoke.php', $directory . '/vendor/autoload.php']));
 passthru($errorCommand, $errorStatus);
 if ($errorStatus !== 0) { throw new RuntimeException('Installed runtime error payloads HTTP smoke failed.'); }
 echo "PUBLISHED_ERROR_PAYLOADS_RUNTIME_OK", PHP_EOL;
 
 $mimeCommand = implode(' ', array_map('escapeshellarg', [PHP_BINARY, '-d', 'memory_limit=16M',
-    $directory . '/vendor/dmorenof/sdk-runtime/tests/mime-media-smoke.php', $directory . '/vendor/autoload.php']));
+    dirname(__DIR__) . '/tests/mime-media-smoke.php', $directory . '/vendor/autoload.php']));
 passthru($mimeCommand, $mimeStatus);
 if ($mimeStatus !== 0) { throw new RuntimeException('Installed runtime MIME media HTTP smoke failed.'); }
 echo "PUBLISHED_MIME_MEDIA_RUNTIME_OK", PHP_EOL;

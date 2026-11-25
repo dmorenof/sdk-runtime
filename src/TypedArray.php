@@ -6,7 +6,11 @@ namespace Dmorenof\SdkRuntime;
 /**
  * Shared typed-collection behavior without duplicating TypedArray validation.
  *
- * @extends \TypedArray\TypedArray<mixed>
+ * A generated collection says what it holds, so that static analysis knows the type of every item it gives:
+ * `@extends \Dmorenof\SdkRuntime\TypedArray<\Ns\DTOs\Item>`. Without it the item is `mixed`.
+ *
+ * @template TValue = mixed
+ * @extends \TypedArray\TypedArray<TValue>
  */
 class TypedArray extends \TypedArray\TypedArray implements \Stringable
 {

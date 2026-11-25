@@ -170,7 +170,7 @@ abstract class ApiClient
      * declares them), an optional parameter object for query, headers and cookies, and an optional body.
      *
      * @param OperationSpec|Operation $operation
-     * @param array<string, scalar|list<scalar>|DTO|Map|TypedArray|\stdClass|null>|DTO $path
+     * @param array<string, scalar|\BackedEnum|list<scalar>|DTO|Map|TypedArray|\stdClass|null>|DTO $path
      */
     protected function executeArguments(array|Operation $operation, array|DTO $path = [], ?DTO $parameters = null, ?DTO $body = null): mixed
     {
@@ -183,7 +183,7 @@ abstract class ApiClient
      * to leave an optional body out, call executeArguments() instead.
      *
      * @param OperationSpec|Operation $operation
-     * @param array<string, scalar|list<scalar>|DTO|Map|TypedArray|\stdClass|null>|DTO $path
+     * @param array<string, scalar|\BackedEnum|list<scalar>|DTO|Map|TypedArray|\stdClass|null>|DTO $path
      */
     protected function executeBody(array|Operation $operation, mixed $body, array|DTO $path = [], ?DTO $parameters = null): mixed
     {

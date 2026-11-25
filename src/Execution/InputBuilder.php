@@ -18,7 +18,7 @@ use Dmorenof\SdkRuntime\TypedArray;
 final class InputBuilder
 {
     /**
-     * @param array<string, scalar|list<scalar>|DTO|Map|TypedArray|\stdClass|null>|DTO $path Path values by name, or a parameter object that declares them.
+     * @param array<string, scalar|\BackedEnum|list<scalar>|DTO|Map|TypedArray|\stdClass|null>|DTO $path Path values by name (an enum case stands for its value), or a parameter object that declares them.
      * @param ?DTO $parameters Object holding the query, header, cookie and (optionally) body values.
      */
     public static function build(Operation $spec, array|DTO $path, ?DTO $parameters, mixed $body, bool $bodyPresent): RequestInput

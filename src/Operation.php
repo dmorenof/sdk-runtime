@@ -34,11 +34,11 @@ namespace Dmorenof\SdkRuntime;
  *     validation?: array<array-key, array<string, mixed>>,
  *     serverUrl?: string|null,
  *     requestMediaType?: string,
- *     bodySerialization?: array<string,'multi'|'csv'|'ssv'|'tsv'|'pipes'|'form-object'|'form-object-explode'|'deepObject'>,
- *     bodyParts?: array<string,array{contentType:?string,filename?:string,json?:bool}>,
+ *     bodySerialization?: array<string,'multi'|'csv'|'ssv'|'tsv'|'pipes'|'form-object'|'form-object-explode'|'deepObject'|'nested'>,
+ *     bodyParts?: array<string,array{contentType:?string,filename?:string,json?:bool,nested?:bool}>,
  *     parameterContent?: array<string,array<array-key,'application/json'|'text/plain'>>,
  *     queryAllowReserved?: list<string>,
- *     querySerialization?: array<array-key, 'multi'|'csv'|'ssv'|'tsv'|'pipes'|'deepObject'|'form-object'|'form-object-explode'>,
+ *     querySerialization?: array<array-key, 'multi'|'csv'|'ssv'|'tsv'|'pipes'|'deepObject'|'nested'|'form-object'|'form-object-explode'>,
  *     servers?: list<array{url:string,name?:string,variables?:array<string,array{default:string,enum?:list<string>}>}>,
  *     responseHeaders?: array<int|string,array<string,array{type:'string'|'integer'|'number'|'boolean'|'array',items?:'string'|'integer'|'number'|'boolean',required?:bool,rules?:array<string,mixed>}>>,
  * }
@@ -89,12 +89,12 @@ final readonly class Operation
      * @param list<int|string> $success Statuses that are not errors.
      * @param array<int|string, ?string> $errors Status (or 'default') => error model class.
      * @param array<array-key, array<string, mixed>> $validation Parameter name => rules.
-     * @param array<string,'multi'|'csv'|'ssv'|'tsv'|'pipes'|'form-object'|'form-object-explode'|'deepObject'> $bodySerialization Form array field name => wire format.
-     * @param array<string,array{contentType:?string,filename?:string,json?:bool}> $bodyParts Multipart metadata; null MIME accepts the uploaded file's type or octet-stream.
+     * @param array<string,'multi'|'csv'|'ssv'|'tsv'|'pipes'|'form-object'|'form-object-explode'|'deepObject'|'nested'> $bodySerialization Form array field name => wire format.
+     * @param array<string,array{contentType:?string,filename?:string,json?:bool,nested?:bool}> $bodyParts Multipart metadata; null MIME accepts the uploaded file's type or octet-stream.
      * @param array<array-key,'csv'|'ssv'|'tsv'|'pipes'|'object'|'object-explode'|'label'|'label-list'|'label-list-explode'|'label-object'|'label-object-explode'|'matrix'|'matrix-list'|'matrix-list-explode'|'matrix-object'|'matrix-object-explode'> $pathSerialization Path list name => simple CSV expansion.
      * @param array<array-key,'csv'|'ssv'|'tsv'|'pipes'|'object'|'object-explode'> $headerSerialization Header list name => raw simple CSV expansion.
      * @param array<int|string,ResponseEntry> $responseTypes Explicit status-specific JSON types; null type means no body.
-     * @param array<array-key, 'multi'|'csv'|'ssv'|'tsv'|'pipes'|'deepObject'|'form-object'|'form-object-explode'> $querySerialization Query list name => normalized wire format.
+     * @param array<array-key, 'multi'|'csv'|'ssv'|'tsv'|'pipes'|'deepObject'|'nested'|'form-object'|'form-object-explode'> $querySerialization Query list name => normalized wire format.
      * @param array<int|string,array<string,array{type:'string'|'integer'|'number'|'boolean'|'array',items?:'string'|'integer'|'number'|'boolean',required?:bool,rules?:array<string,mixed>}>> $responseHeaders Declared response headers by status, range or default.
      * @param list<array{url:string,name?:string,variables?:array<string,array{default:string,enum?:list<string>}>}> $servers Selectable servers for this operation (first is the default); URLs may be relative to the client base URL or templates. Mutually exclusive with $serverUrl.
      */

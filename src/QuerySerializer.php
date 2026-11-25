@@ -14,7 +14,7 @@ final class QuerySerializer
 {
     /**
      * @param array<array-key, scalar|list<scalar>|DTO|Map|TypedArray|\stdClass|null> $parameters
-     * @param array<array-key, 'multi'|'csv'|'ssv'|'tsv'|'pipes'|'deepObject'|'form-object'|'form-object-explode'> $formats
+     * @param array<array-key, 'multi'|'csv'|'ssv'|'tsv'|'pipes'|'deepObject'|'nested'|'form-object'|'form-object-explode'> $formats
      * @param array<string, true> $reserved Names whose data uses reserved expansion.
      * @param \Closure(string): string $encode
      */
@@ -27,7 +27,7 @@ final class QuerySerializer
 
     /**
      * @param array<array-key, scalar|list<scalar>|DTO|Map|TypedArray|\stdClass|null> $parameters
-     * @param array<array-key, 'multi'|'csv'|'ssv'|'tsv'|'pipes'|'deepObject'|'form-object'|'form-object-explode'> $formats Query name => normalized wire format.
+     * @param array<array-key, 'multi'|'csv'|'ssv'|'tsv'|'pipes'|'deepObject'|'nested'|'form-object'|'form-object-explode'> $formats Query name => normalized wire format.
      * @param list<string> $allowReserved Query names whose data uses reserved expansion.
      */
     public static function encode(array $parameters, array $formats = [], int $encoding = PHP_QUERY_RFC3986, array $allowReserved = []): string
@@ -74,6 +74,7 @@ final class QuerySerializer
         return match ($format) {
             'form-object', 'form-object-explode' => $this->addObject($pairs, $name, $value, $format, $encodeValue),
             'deepObject' => $this->addDeepObject($pairs, $name, $value, $encodeValue),
+            'nested' => $this->addNested($pairs, $name, $value, $encodeValue),
             default => $this->addList($pairs, $name, $value, $format, $encodeValue),
         };
     }
@@ -142,6 +143,22 @@ final class QuerySerializer
      * @param \Closure(string): string $encodeValue
      * @return array<string, string|list<string>>
      */
+    private function addNested(array $pairs, int|string $name, mixed $value, \Closure $encodeValue): array
+    {
+        foreach (ParameterValues::nestedPairs($value, (string) $name) as $member => $text) {
+            if ($member !== (string) $name && array_key_exists($member, $this->parameters)) {
+                throw new \UnexpectedValueException("Nested query parameter $member collides with another query parameter.");
+            }
+            $pairs[($this->encode)($member)] = $encodeValue($text);
+        }
+        return $pairs;
+    }
+
+    /**
+     * @param array<string, string|list<string>> $pairs
+     * @param \Closure(string): string $encodeValue
+     * @return array<string, string|list<string>>
+     */
     private function addList(array $pairs, int|string $name, mixed $value, string $format, \Closure $encodeValue): array
     {
         $delimiter = match ($format) { 'ssv' => ' ', 'tsv' => "\t", 'pipes' => '|', default => null };
@@ -188,7 +205,7 @@ final class QuerySerializer
 
     private static function assertFormat(mixed $format, string $name): void
     {
-        if (!in_array($format, ['multi', 'csv', 'ssv', 'tsv', 'pipes', 'deepObject', 'form-object', 'form-object-explode'], true)) {
+        if (!in_array($format, ['multi', 'csv', 'ssv', 'tsv', 'pipes', 'deepObject', 'nested', 'form-object', 'form-object-explode'], true)) {
             throw new \InvalidArgumentException("Unsupported query array format for $name.");
         }
     }

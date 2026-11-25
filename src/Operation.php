@@ -38,6 +38,7 @@ namespace Dmorenof\SdkRuntime;
  *     bodyParts?: array<string,array{contentType:?string,filename?:string,json?:bool,nested?:bool}>,
  *     parameterContent?: array<string,array<array-key,'application/json'|'text/plain'>>,
  *     queryAllowReserved?: list<string>,
+ *     pathAllowReserved?: list<string>,
  *     querySerialization?: array<array-key, 'multi'|'csv'|'ssv'|'tsv'|'pipes'|'deepObject'|'nested'|'form-object'|'form-object-explode'>,
  *     servers?: list<array{url:string,name?:string,variables?:array<string,array{default:string,enum?:list<string>}>}>,
  *     responseHeaders?: array<int|string,array<string,array{type:'string'|'integer'|'number'|'boolean'|'array',items?:'string'|'integer'|'number'|'boolean',required?:bool,rules?:array<string,mixed>}>>,
@@ -63,6 +64,7 @@ final readonly class Operation
         'pathSerialization' => [],
         'headerSerialization' => [],
         'queryAllowReserved' => [],
+        'pathAllowReserved' => [],
         'parameterContent' => [],
         'responseValidation' => [],
         'requestBody' => null,
@@ -85,6 +87,7 @@ final readonly class Operation
      * @param array<string,mixed> $responseValidation Rules for a legacy/single JSON response.
      * @param array{type:string,nullable:bool,required:bool,rules?:array<string,mixed>,encoding?:'json'|'text'|'binary'}|null $requestBody Native JSON body contract.
      * @param list<string> $queryAllowReserved Query names whose data uses reserved expansion.
+     * @param list<string> $pathAllowReserved Path parameters that take the rest of the path: their `/` is kept (a catch-all such as `{url_path}`).
      * @param array<int|string,ResponseEntry> $errorResponses Declared general error payloads.
      * @param list<int|string> $success Statuses that are not errors.
      * @param array<int|string, ?string> $errors Status (or 'default') => error model class.
@@ -126,6 +129,7 @@ final readonly class Operation
         public string $responseEncoding = self::DEFAULTS['responseEncoding'],
         public array $responseHeaders = self::DEFAULTS['responseHeaders'],
         public array $servers = self::DEFAULTS['servers'],
+        public array $pathAllowReserved = self::DEFAULTS['pathAllowReserved'],
         /**
          * @internal Which keys the generated array gave; read it through declares().
          * @var list<string>

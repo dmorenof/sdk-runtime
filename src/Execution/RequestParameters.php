@@ -54,6 +54,9 @@ final class RequestParameters
                 $encoded = ParameterStyles::path($value, (string) $name, $spec->pathSerialization[$name]);
             } elseif (is_array($value) || is_object($value)) {
                 throw new \UnexpectedValueException("Structured path parameter $name requires serialization metadata.");
+            } elseif (in_array((string) $name, $spec->pathAllowReserved, true)) {
+                // A catch-all keeps its slashes: each segment is encoded, the separators are not.
+                $encoded = implode('/', array_map(rawurlencode(...), explode('/', self::stringify($value))));
             } else {
                 $encoded = rawurlencode(self::stringify($value));
             }

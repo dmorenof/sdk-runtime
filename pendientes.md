@@ -26,6 +26,7 @@ Una versión se publica cuando el trabajo está **terminado y probado**, y solo 
 - [ ] Persistencia general de cookies (no hay *cookie jar*) y cookies estructuradas, JSON, arrays y objetos.
 - [ ] Método HTTP `QUERY`.
 - [ ] Políticas completas para respuestas sin contenido (HEAD/205 y combinaciones restantes).
+- [ ] Compresión: el cliente Guzzle por defecto no envía `Accept-Encoding` (no se fija `decode_content`), así que un servidor que comprime solo a petición nunca comprime para un SDK; una respuesta gzip que llegue sí se descomprime. Decidir si el cliente por defecto lo pide (`RealTransportTest::testADeflatedAnswerArrivesDecoded` fija hoy el comportamiento).
 
 **Formatos**
 - [ ] Códecs para modelos XML y CSV estructurados (hoy son cadenas opacas).
@@ -35,6 +36,10 @@ Una versión se publica cuando el trabajo está **terminado y probado**, y solo 
 **Modelos**
 - [ ] Política configurable para propiedades JSON desconocidas (hoy: una respuesta las ignora y un modelo que construyes las rechaza; no se puede cambiar).
 - [ ] Diferencias de `pattern` entre JSON Schema (ECMA-262) y PCRE.
+
+**Pruebas con servidor real (local)**
+- [x] `RealTransportTest` y `RealSecurityTest` (servidor guionizado en `127.0.0.1`, cliente Guzzle por defecto): reintentos y `Retry-After`, redirecciones y credenciales entre orígenes, tiempo de espera, conexión rechazada, gzip, middleware, Bearer, Basic, claves de API y OAuth2 (credenciales de cliente, renovación, password, código con PKCE).
+- [ ] Sin cubrir con servidor real: mTLS (necesita certificados), SSE (reconexión), OIDC (descubrimiento y validación de ID token con JWK), subida y descarga grandes en modo real dentro de `ci/run-tests.sh`.
 
 **Limitaciones conocidas de PHP 8.4 (no se pueden arreglar aquí)**
 - Una propiedad con *hook* no se puede `unset` ni editar en sitio, así que las listas nativas no tienen *hook* y sus reglas no se comprueban al asignar (use colecciones tipadas).

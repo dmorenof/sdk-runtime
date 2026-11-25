@@ -10,7 +10,7 @@ namespace Dmorenof\SdkRuntime;
  */
 final class FormSerializer
 {
-    /** @param array<string,'multi'|'csv'|'ssv'|'tsv'|'pipes'|'form-object'|'form-object-explode'|'deepObject'> $formats */
+    /** @param array<string,'multi'|'csv'|'ssv'|'tsv'|'pipes'|'form-object'|'form-object-explode'|'deepObject'|'nested'> $formats */
     public static function encode(DTO $body, array $formats = []): string
     {
         foreach ($formats as $format) {
@@ -18,15 +18,18 @@ final class FormSerializer
         }
         $fields = [];
         foreach (get_object_vars($body->jsonSerializeForRequest()) as $name => $value) {
-            $fields[$name] = $value instanceof \stdClass && in_array($formats[$name] ?? null, ['form-object', 'form-object-explode', 'deepObject'], true)
-                ? $value : self::field($value);
+            $fields[$name] = ($formats[$name] ?? null) === 'nested'
+                ? $value
+                : ($value instanceof \stdClass && in_array($formats[$name] ?? null, ['form-object', 'form-object-explode', 'deepObject'], true)
+                    ? $value : self::field($value));
         }
+        /** @var array<string, scalar|list<scalar>|DTO|Map|TypedArray|\stdClass|null> $fields A `nested` field is any JSON value, which the query serializer reads as such. */
         return QuerySerializer::encode($fields, $formats, PHP_QUERY_RFC1738);
     }
 
     private static function assertFormat(mixed $format): void
     {
-        if (!in_array($format, ['multi', 'csv', 'ssv', 'tsv', 'pipes', 'form-object', 'form-object-explode', 'deepObject'], true)) {
+        if (!in_array($format, ['multi', 'csv', 'ssv', 'tsv', 'pipes', 'form-object', 'form-object-explode', 'deepObject', 'nested'], true)) {
             throw new \InvalidArgumentException('Unsupported form serialization metadata.');
         }
     }

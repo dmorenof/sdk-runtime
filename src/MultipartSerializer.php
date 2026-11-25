@@ -14,7 +14,7 @@ use Psr\Http\Message\UploadedFileInterface;
 final class MultipartSerializer
 {
     /**
-     * @param array<string,array{contentType:?string,filename?:string,json?:bool}> $parts Wire field metadata.
+     * @param array<string,array{contentType:?string,filename?:string,json?:bool,nested?:bool}> $parts Wire field metadata.
      */
     public static function encode(DTO $body, array $parts): MultipartStream
     {
@@ -28,6 +28,13 @@ final class MultipartSerializer
                 throw new \InvalidArgumentException("Missing multipart metadata for $name.");
             }
             if ($value === null) {
+                continue;
+            }
+            if ($parts[$name]['nested'] ?? false) {
+                // Objects and lists as text fields `name[key][0]`, the way a `deepObject` form field is written.
+                foreach (ParameterValues::nestedPairs($value, (string) $name) as $member => $text) {
+                    $elements[] = ['name' => $member, 'contents' => $text, 'headers' => ['Content-Type' => $parts[$name]['contentType'] ?? 'text/plain']];
+                }
                 continue;
             }
             $values = is_array($value) ? $value : [$value];
@@ -44,7 +51,7 @@ final class MultipartSerializer
     /**
      * One multipart element for a value: a JSON part, an uploaded file, or a scalar field.
      *
-     * @param array{contentType:?string,filename?:string,json?:bool} $part
+     * @param array{contentType:?string,filename?:string,json?:bool,nested?:bool} $part
      * @param array<int, true> $usedStreams Stream ids already in use, so no two file parts share a cursor.
      * @return array{name: string, contents: string|\Psr\Http\Message\StreamInterface, headers: array<string, string>, filename?: string}
      */
@@ -78,9 +85,9 @@ final class MultipartSerializer
     /**
      * Checks an uploaded file against its declared part and completes the part from the file's own name and type.
      *
-     * @param array{contentType:?string,filename?:string,json?:bool} $part
+     * @param array{contentType:?string,filename?:string,json?:bool,nested?:bool} $part
      * @param array<int, true> $usedStreams
-     * @return array{\Psr\Http\Message\StreamInterface, array{contentType:?string,filename?:string,json?:bool}}
+     * @return array{\Psr\Http\Message\StreamInterface, array{contentType:?string,filename?:string,json?:bool,nested?:bool}}
      */
     private static function uploadedFile(string $name, UploadedFileInterface $file, array $part, array &$usedStreams): array
     {
@@ -106,9 +113,12 @@ final class MultipartSerializer
         return [$stream, $part];
     }
 
-    /** @param array{contentType:?string,filename?:string,json?:mixed} $part */
+    /** @param array{contentType:?string,filename?:string,json?:mixed,nested?:mixed} $part */
     private static function assertPart(string $name, array $part): void
     {
+        if (isset($part['nested']) && ($part['nested'] !== true || isset($part['filename']) || ($part['json'] ?? false) !== false)) {
+            throw new \InvalidArgumentException('Unsupported multipart name or content type.');
+        }
         if ((isset($part['json']) && (!is_bool($part['json']) || ($part['json'] && (isset($part['filename'])
                 || preg_match('~^application/(?:[a-zA-Z0-9!#$&^_.+\\-]+\\+)?json$~D', $part['contentType'] ?? '') !== 1))))
             || !self::quotedName($name) || ($part['contentType'] === null && !isset($part['filename']))

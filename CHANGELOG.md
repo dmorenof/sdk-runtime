@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.13.0] — unreleased
+
+- **Nested `deepObject` data.** A new wire format, `nested`, writes objects, lists and unions at any depth as `a[b][0][c]=v` (a list item by its index, null as nothing, depth 16 at most, no brackets in a name): in the query (`QuerySerializer`), in `application/x-www-form-urlencoded` bodies (`FormSerializer`, via `bodySerialization`) and, with the part metadata `nested: true`, in `multipart/form-data` as text parts (`MultipartSerializer`). It is what Stripe's contract asks for (`collection_options[fields]`, `custom_fields[0][key]`, `expand[0]`). The existing `deepObject` format is unchanged: one level of scalars, anything deeper is still refused.
+- Requires `typedarray/typedarray` `^1.3.1` (before `^1.1`): 1.3 checks whole lists in one loop and validates once per `append()`, and 1.3.1 fixes unserializing collections whose type is set in the constructor.
+- A collection with no item rules (almost all of them) no longer calls the rules once per item when it is built, appended to or assigned to: the library's own check is the only pass.
+- **Path catch-alls.** An operation can list path parameters in `pathAllowReserved`: their `/` is kept (each segment is still percent-encoded), for a placeholder that takes the rest of the path such as `{url_path}`. Additive.
+- Type only: the `$path` argument of `executeArguments()` and `executeBody()` accepts an enum case (the runtime already sent its backing value), so a generated method with an enum path parameter passes static analysis.
+- Additive: the new values `'nested'` of the operation metadata (`querySerialization`, `bodySerialization`) and the `nested` key of `bodyParts`. The generator's 1.15.0 emits them; an SDK generated with it needs this version.
+
 ## [1.12.1] — 2026-11-24
 
 Documentation only. Sizes are now measured in bytes of PHP (code + dependencies), not with `du`, which counts file-system blocks and punishes many small files. The runtime is paid once: with several APIs on it the total is about half of OpenAPI Generator's (three public APIs: 4.4 MB against 9.1 MB); a single very small API is still larger.

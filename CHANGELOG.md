@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## [1.14.1] — 2026-11-25
 
 - **Type only: `TypedArray` and `Map` are generic.** `Dmorenof\SdkRuntime\TypedArray` was declared `@extends \TypedArray\TypedArray<mixed>` and `Map` returned `mixed`, so every item of a collection was `mixed` for static analysis (`$holiday->name` was an error at PHPStan max). Both now have `@template TValue = mixed` (the default keeps `TypedArray` and `Map` valid without arguments): a class that extends them with `@extends TypedArray<Item>` gives typed items. Nothing changes at run time. The generator 1.15.4 writes that line in every collection and map it generates.
 

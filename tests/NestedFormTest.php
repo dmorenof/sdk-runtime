@@ -62,10 +62,7 @@ final class NestedFormTest extends TestCase
         };
         $mime = (string) \Dmorenof\SdkRuntime\MultipartSerializer::encode($body, ['file_link_data' => ['contentType' => 'text/plain', 'nested' => true]]);
         self::assertStringContainsString('name="file_link_data[create]"', $mime);
-        self::assertStringContainsString("
-
-true
-", $mime);
+        self::assertStringContainsString("\r\n\r\ntrue\r\n", $mime);
         self::assertStringContainsString('name="file_link_data[metadata][k]"', $mime);
     }
 }

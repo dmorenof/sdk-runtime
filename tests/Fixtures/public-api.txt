@@ -115,6 +115,7 @@ final readonly class Dmorenof\SdkRuntime\Operation
     property public readonly array $errors
     property public readonly array $headerSerialization
     property public readonly array $parameterContent
+    property public readonly array $pathAllowReserved
     property public readonly array $pathSerialization
     property public readonly array $queryAllowReserved
     property public readonly array $querySerialization

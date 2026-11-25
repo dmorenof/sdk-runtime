@@ -39,7 +39,8 @@ Una versión se publica cuando el trabajo está **terminado y probado**, y solo 
 
 **Pruebas con servidor real (local)**
 - [x] `RealTransportTest` y `RealSecurityTest` (servidor guionizado en `127.0.0.1`, cliente Guzzle por defecto): reintentos y `Retry-After`, redirecciones y credenciales entre orígenes, tiempo de espera, conexión rechazada, gzip, middleware, Bearer, Basic, claves de API y OAuth2 (credenciales de cliente, renovación, password, código con PKCE).
-- [ ] Sin cubrir con servidor real: mTLS (necesita certificados), SSE (reconexión), OIDC (descubrimiento y validación de ID token con JWK), subida y descarga grandes en modo real dentro de `ci/run-tests.sh`.
+- [x] También con servidor real: subida y descarga de 32 MiB con 16 MiB de memoria (`tests/real-streaming-smoke.php`, en `ci/run-tests.sh`), OIDC (descubrimiento, claves y rotación; `RealOpenIdTest`), flujos de eventos y JSON Lines que llegan con el tiempo (`RealStreamingResponseTest`) y mTLS con una CA creada en el test (`RealMutualTlsTest`).
+- [ ] Sin cubrir con servidor real: reconexión automática de SSE (no existe: ver arriba), HTTP/2 y proxies.
 
 **Limitaciones conocidas de PHP 8.4 (no se pueden arreglar aquí)**
 - Una propiedad con *hook* no se puede `unset` ni editar en sitio, así que las listas nativas no tienen *hook* y sus reglas no se comprueban al asignar (use colecciones tipadas).

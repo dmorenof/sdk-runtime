@@ -220,14 +220,31 @@ final class StreamDecoder
         return JsonHydrator::decode($json, $entry['type'], $entry['schemaNullable']);
     }
 
-    /** Next chunk; '' means the end. A stalled read is an error rather than a silent truncation. */
+    /**
+     * Next chunk; '' means the end. A stalled read is an error rather than a silent truncation.
+     *
+     * A PHP stream with a filter on it (the chunked transfer coding of a response from the default Guzzle client) waits for all of a
+     * large read before it returns, so events sent seconds apart would reach the caller together, at the end. For such a stream one
+     * byte is asked for, which returns as soon as there is one, and with it whatever is already buffered.
+     */
     private static function read(StreamInterface $stream): string
     {
-        $chunk = $stream->eof() ? '' : $stream->read(self::CHUNK);
+        $chunk = $stream->eof() ? '' : self::available($stream);
         if ($chunk === '' && !$stream->eof()) {
             throw new \UnexpectedValueException('The response stream returned no data before ending (read timeout?).');
         }
         return $chunk;
+    }
+
+    /** What the stream has, waiting only for the first byte of it. */
+    private static function available(StreamInterface $stream): string
+    {
+        if (!is_int($stream->getMetadata('unread_bytes'))) {
+            return $stream->read(self::CHUNK); // not a PHP stream: it reads what it has
+        }
+        $chunk = $stream->read(1);
+        $waiting = (int) $stream->getMetadata('unread_bytes');
+        return $chunk !== '' && $waiting > 0 ? $chunk . $stream->read(min($waiting, self::CHUNK - 1)) : $chunk;
     }
 
     private static function assertBounded(string $pending): void

@@ -8,9 +8,10 @@ declare(strict_types=1);
  *
  * It listens on 127.0.0.1 on a free port, prints the port on its first line and then answers each connection with the next entry of
  * the script, which it reads from the file at every request, so a test can write it once the ports of all its servers are known.
- * Entries: {"status": 200, "headers": {"Name": "value"}, "body": "text", "bodyBase64": "...", "delayMs": 0}. After the last entry every
- * request gets a 599. Every request received is appended to the log as one JSON line: method, target, headers (lower-case names,
- * each a list) and body. The connection is closed after each answer. The server stops after 30 seconds without a connection.
+ * Entries: {"status": 200, "headers": {"Name": "value"}, "body": "text", "bodyBase64": "...", "delayMs": 0}; or, to answer in pieces that
+ * arrive over time (an event stream), "chunks": [{"data": "text", "delayMs": 0}, ...] sent with chunked transfer coding. After the last
+ * entry every request gets a 599. Every request received is appended to the log as one JSON line: method, target, headers (lower-case
+ * names, each a list) and body. The connection is closed after each answer. The server stops after 30 seconds without a connection.
  */
 $script = $argv[1] ?? throw new RuntimeException('Missing script file.');
 $log = $argv[2] ?? throw new RuntimeException('Missing log file.');
@@ -57,11 +58,25 @@ while (($connection = @stream_socket_accept($socket, 30)) !== false) {
     if (($entry['delayMs'] ?? 0) > 0) {
         usleep((int) $entry['delayMs'] * 1000);
     }
-    $payload = isset($entry['bodyBase64']) ? (string) base64_decode($entry['bodyBase64'], true) : (string) ($entry['body'] ?? '');
     $out = 'HTTP/1.1 ' . (int) $entry['status'] . ' ' . ($entry['reason'] ?? 'Scripted') . "\r\n";
     foreach ($entry['headers'] ?? [] as $name => $value) {
         $out .= $name . ': ' . $value . "\r\n";
     }
+    if (isset($entry['chunks'])) {
+        @fwrite($connection, $out . "Transfer-Encoding: chunked\r\nConnection: close\r\n\r\n");
+        foreach ($entry['chunks'] as $piece) {
+            if (($piece['delayMs'] ?? 0) > 0) {
+                usleep((int) $piece['delayMs'] * 1000);
+            }
+            if (@fwrite($connection, dechex(strlen($piece['data'])) . "\r\n" . $piece['data'] . "\r\n") === false) {
+                break;
+            }
+        }
+        @fwrite($connection, "0\r\n\r\n");
+        @fclose($connection);
+        continue;
+    }
+    $payload = isset($entry['bodyBase64']) ? (string) base64_decode($entry['bodyBase64'], true) : (string) ($entry['body'] ?? '');
     $out .= 'Content-Length: ' . strlen($payload) . "\r\nConnection: close\r\n\r\n";
     @fwrite($connection, $out . $payload);
     @fclose($connection);

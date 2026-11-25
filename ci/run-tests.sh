@@ -31,6 +31,9 @@ php -d memory_limit=16M tests/streaming-smoke.php "$PWD/vendor/autoload.php" '' 
 
 php -d memory_limit=16M tests/download-smoke.php "$PWD/vendor/autoload.php"
 
+# The same large bodies on a real socket, against a local server that never holds more than a chunk.
+php tests/real-streaming-smoke.php "$PWD/vendor/autoload.php"
+
 php tests/status-response-smoke.php "$PWD/vendor/autoload.php"
 
 php tests/simple-parameters-smoke.php "$PWD/vendor/autoload.php"

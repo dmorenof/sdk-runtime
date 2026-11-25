@@ -22,6 +22,13 @@ Any other PSR-18 client works (Symfony HttpClient, a mock for tests…). The run
 
 > Keep `http_errors` off if you build your own Guzzle client. The runtime reads status codes itself.
 
+### Compression
+
+By default the client asks the server for compressed answers (`Accept-Encoding: gzip, deflate`) and decompresses them before the runtime reads them, so a large list travels in a fraction of the bytes. Turn it off with `$config->compression = false` (the client then asks for nothing, and an answer that arrives compressed anyway is still decoded).
+
+- It applies to the client the runtime creates. A client you pass decides for itself: ask it for compression there (with Guzzle, `'decode_content' => 'gzip, deflate'`).
+- An answer read as a stream (server-sent events, a download) is always asked for with `Accept-Encoding: identity`: a server may hold back the bytes of a compressed stream. A header you set yourself is never replaced.
+
 ## Testing without a network
 
 Pass a fake PSR-18 client:

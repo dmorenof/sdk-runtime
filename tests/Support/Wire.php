@@ -27,8 +27,9 @@ final class Wire
         ?\Closure $sleeper = null,
         ?RedirectPolicy $redirectPolicy = null,
         array $middleware = [],
+        bool $compression = false,
     ): Psr18Transport {
-        return new Psr18Transport($client, new Psr18Options($defaultHeaders, $middleware, $retryPolicy, $redirectPolicy, $sleeper));
+        return new Psr18Transport($client, new Psr18Options($defaultHeaders, $middleware, $retryPolicy, $redirectPolicy, $sleeper, $compression));
     }
 
     /** @param array<string, string> $headers */

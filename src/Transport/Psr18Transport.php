@@ -165,10 +165,17 @@ final class Psr18Transport implements TransportInterface
 
     private function dispatch(RequestInterface $request, bool $stream, ?ClientCertificate $certificate): ResponseInterface
     {
+        if ($stream && $this->options->compression && !$request->hasHeader('Accept-Encoding')) {
+            // A stream (server-sent events, a download) is read as it arrives: a server that compresses it may hold bytes back.
+            $request = $request->withHeader('Accept-Encoding', 'identity');
+        }
         $tls = $certificate?->guzzleOptions() ?? [];
-        if (($stream || $tls !== []) && $this->client instanceof \GuzzleHttp\ClientInterface) {
+        // A client set to ask for compression would overwrite an Accept-Encoding of the request (the one just set for a stream, or one the
+        // caller chose); `decode_content: true` leaves it as it is and still decodes what comes back.
+        $ownEncoding = $this->options->compression && $request->hasHeader('Accept-Encoding');
+        if (($stream || $tls !== [] || $ownEncoding) && $this->client instanceof \GuzzleHttp\ClientInterface) {
             // PSR-18 sendRequest() cannot carry options, and without "stream" Guzzle waits for the whole body.
-            return $this->client->send($request, $tls + ['stream' => $stream, 'http_errors' => false, 'allow_redirects' => false]);
+            return $this->client->send($request, $tls + ['stream' => $stream, 'http_errors' => false, 'allow_redirects' => false] + ($ownEncoding ? ['decode_content' => true] : []));
         }
         if ($tls !== []) {
             throw new \LogicException('A client certificate can be sent per call only with a Guzzle client. Set the certificate up on your PSR-18 client and use ClientCertificate::configuredOnTheClient().');

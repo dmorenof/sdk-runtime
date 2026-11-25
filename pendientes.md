@@ -1,6 +1,6 @@
 # Pendientes — sdk-runtime
 
-> **Estado (2026-11-25):** publicada la **1.12.1** (1.12.0: la llamada solo serializa y la respuesta se da por buena, D25; 1.12.1: solo documentación). Publicados también: TypedArray 1.3.1, sdk-generator 1.14.0, casafari-sdk 0.7.0 y redsys-sdk 0.1.0. Publicada la **1.13.0**.
+> **Estado (2026-11-25):** publicada la **1.14.0** (compresión de respuestas por defecto; los eventos de un flujo llegan cuando se envían; pruebas con servidor real). Antes: **1.13.0** (formato `nested` y `pathAllowReserved`) y **1.12.1** (1.12.0: la llamada solo serializa y la respuesta se da por buena, D25; 1.12.1: solo documentación). Publicados también: TypedArray 1.3.1, sdk-generator 1.14.0, casafari-sdk 0.7.0 y redsys-sdk 0.1.0. Publicada la **1.13.0**.
 >
 > **Qué es este fichero:** lo que **falta**. Lo que ya está hecho y publicado no se repite aquí: está en [CHANGELOG.md](CHANGELOG.md) y en [docs/DECISIONS.md](docs/DECISIONS.md). Cada punto de abajo se comprobó en el código en la fecha de arriba; si deja de ser cierto, se borra.
 >

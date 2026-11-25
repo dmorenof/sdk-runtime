@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## [1.14.0] — 2026-11-25
 
 - **Fix: events and lines of a streamed answer reach the caller when they arrive.** With the default Guzzle client, a chunked answer (the usual form of server-sent events) was delivered late: PHP waits for a whole read on a stream with a filter, so events sent seconds apart reached the caller together, when the answer ended or a buffer filled. The stream decoder now asks such a stream for one byte, which returns as soon as there is one, and takes what is already buffered with it. Found by `RealStreamingResponseTest`.
 - Tests on a real socket for large uploads and downloads (`tests/real-streaming-smoke.php`, in `ci/run-tests.sh`), OpenID Connect discovery and signing keys over HTTP (`RealOpenIdTest`), event and JSON-lines streams that arrive over time (`RealStreamingResponseTest`), and mutual TLS with a certificate authority made in the test (`RealMutualTlsTest`).

@@ -1,6 +1,6 @@
 # Pendientes — sdk-runtime
 
-> **Estado (2026-11-23):** publicada la **1.11.1**. En la rama de trabajo, sin publicar, está la **1.12.0** (el cambio D25: la llamada solo serializa y la respuesta se da por buena).
+> **Estado (2026-11-25):** publicada la **1.12.1** (1.12.0: la llamada solo serializa y la respuesta se da por buena, D25; 1.12.1: solo documentación). Publicados también: TypedArray 1.3.1, sdk-generator 1.14.0, casafari-sdk 0.7.0 y redsys-sdk 0.1.0. Lista para publicar, a la espera de la confirmación del titular: la **1.13.0**.
 >
 > **Qué es este fichero:** lo que **falta**. Lo que ya está hecho y publicado no se repite aquí: está en [CHANGELOG.md](CHANGELOG.md) y en [docs/DECISIONS.md](docs/DECISIONS.md). Cada punto de abajo se comprobó en el código en la fecha de arriba; si deja de ser cierto, se borra.
 >
@@ -39,14 +39,31 @@ Una versión se publica cuando el trabajo está **terminado y probado**, y solo 
 **Limitaciones conocidas de PHP 8.4 (no se pueden arreglar aquí)**
 - Una propiedad con *hook* no se puede `unset` ni editar en sitio, así que las listas nativas no tienen *hook* y sus reglas no se comprueban al asignar (use colecciones tipadas).
 
-## En rama, sin publicar (1.12.0)
+## Lista para publicar (1.13.0)
 
-- La llamada solo serializa y la respuesta se da por buena (D25); `DTO::isReadingResponse()` interno.
-- Una colección construida desde una respuesta no se comprueba dos veces.
-- `.gitattributes` con `export-ignore`: el paquete instalado pierde tests, docs de desarrollo, `audit/` y `ci/` (de 2,1 MB a 0,6 MB). Se conservan los servidores de prueba que usan los *smoke* del generador.
-- Timeouts por defecto (`Configuration::$timeout` 30 s, `$connectTimeout` 10 s) en el cliente HTTP por defecto.
-- Guía para escribir un cliente a mano (`docs/writing-an-sdk-by-hand.md`).
-- Workflows `audit-casafari` y `audit-apis` (PokeAPI, Wikimedia, met.no) (memoria, CPU y disco frente a OpenAPI Generator sobre el contrato real de Casafari).
+- Serialización anidada `nested` (consulta, formularios urlencoded y multipart), `pathAllowReserved` (resto de ruta con barras) y el tipo del argumento `$path` (acepta un caso de enum).
+- `typedarray/typedarray` pasa de `^1.1` a `^1.3.1` y las colecciones sin reglas por elemento ya no recorren los elementos con `Constraints::validate` (antes en el PR #39, ya integrado). Nota: `docs/PUBLIC_API.md` dice que estrechar un rango de dependencia es un cambio mayor; el precedente (`^1.0` → `^1.1`) lo trató como menor.
+
+## Pendiente en el resto del proyecto
+
+**Runtime / diseño (propuestas, sin empezar)**
+- [ ] Unificar las clases raíz de los clientes generados (`Client`, `Configuration`, la fachada `<Nombre>SDK`) en el runtime. Mueve `configure()`/`current()` al runtime; es un cambio incompatible para los SDKs generados.
+- [ ] Valores de enum desconocidos en respuestas: hoy el runtime lanza `ValueError` aunque «la respuesta se da por buena» (Redsys lo sufrió y usa cadenas para conjuntos abiertos). Decidir si se tolera.
+- [ ] Hacer protegido `checkAll()` en TypedArray para que `validateForMode()` use su bucle rápido (otro release de TypedArray; beneficio pequeño).
+- [ ] Documentación: revisar `docs/AUDIT.md` y los README del generador y de casafari-sdk con la nueva medida (bytes de PHP, no `du`).
+
+**sdk-generator**
+- [ ] Deduplicar enums de parámetros idénticos entre operaciones (Wikimedia).
+- [ ] Ergonomía de la navegación por parámetros de ruta profundos (`ByProject\ByAccess\…`).
+- [ ] weather.gov no se genera: refinamiento anidado de elementos de lista con objeto en línea.
+- [ ] Menos archivos por SDK (hoy una clase por archivo: ~1.200 frente a ~420 de OpenAPI Generator en los tres contratos medidos).
+- [ ] Quitar los restos inertes de `SDK_RUNTIME_REF` en `live-apis.yml` y en los scripts *smoke*.
+- [ ] `ci/verify-published.php` (arreglado en #88) solo se ejecuta al publicar: comprobar en el próximo release.
+
+**redsys-sdk**
+- [ ] Poner `main` como rama por defecto del repositorio (Settings).
+- [ ] No cubiertos: API de consultas, Bizum e InSite.
+
 
 ## Historial de seguimiento
 
@@ -55,4 +72,5 @@ Una versión se publica cuando el trabajo está **terminado y probado**, y solo 
 | 2026-11-10 | Se crea esta hoja de ruta con la leyenda común y el orden global runtime → generador → Casafari. | Conversación de planificación |
 | 2026-11-11 | Revisión de limpieza de lo acumulado (reutilización, responsabilidad única, eficiencia) con comparación lado a lado del código anterior y el nuevo; corrige `MediaType::normalize()`, un `TypeError` con SSE sin tipo, la fuga de credenciales con middleware entre orígenes y la renovación OAuth ante errores transitorios. | Ver CHANGELOG |
 | 2026-11-23 | Se reescribe la hoja de ruta: lo hecho remite al CHANGELOG y solo quedan como pendientes los puntos comprobados en el código. Se fija la regla de publicación. | Revisión de limpieza |
-
+| 2026-11-24 | Publicadas TypedArray 1.3.1, runtime 1.12.0/1.12.1, generador 1.14.0, casafari-sdk 0.7.0 y redsys-sdk 0.1.0. Se anotan todos los pendientes del proyecto. | PR #35, #37, #39 |
+| 2026-11-25 | Limpieza de ramas y PR de los tres repos principales; el PR #39 (1.12.2) se integra en la 1.13.0. | Limpieza |

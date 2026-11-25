@@ -7,7 +7,7 @@ The promise is checked mechanically: `tests/Fixtures/public-api.txt` is a reflec
 ## Supported platform
 
 - PHP 8.4 and newer. Dropping a PHP version is a major change.
-- Runtime dependencies keep their current major ranges (`guzzlehttp/guzzle ^7.9`, `guzzlehttp/psr7 ^1.9.1 || ^2.0`, `opis/json-schema ^2.6.1`, `psr/http-client ^1.0`, `psr/http-message ^1.1 || ^2.0`, `typedarray/typedarray ^1.0`). Widening a range is a minor change; narrowing or raising a major is a major change.
+- Runtime dependencies keep their current major ranges (`guzzlehttp/guzzle ^7.9`, `guzzlehttp/psr7 ^1.9.1 || ^2.0`, `opis/json-schema ^2.6.1`, `psr/http-client ^1.0`, `psr/http-message ^1.1 || ^2.0`, `typedarray/typedarray ^1.3.1`). Widening a range is a minor change; narrowing or raising a major is a major change.
 
 ## Tier 1: stable public API
 

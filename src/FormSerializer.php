@@ -23,6 +23,7 @@ final class FormSerializer
                 : ($value instanceof \stdClass && in_array($formats[$name] ?? null, ['form-object', 'form-object-explode', 'deepObject'], true)
                     ? $value : self::field($value));
         }
+        /** @var array<string, scalar|list<scalar>|DTO|Map|TypedArray|\stdClass|null> $fields A `nested` field is any JSON value, which the query serializer reads as such. */
         return QuerySerializer::encode($fields, $formats, PHP_QUERY_RFC1738);
     }
 

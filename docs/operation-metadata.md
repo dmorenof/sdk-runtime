@@ -45,10 +45,11 @@ The runtime reads query, header and cookie values from the parameter object's `O
 | `validation` | `[]` | Parameter name → rules (see [Validation](validation.md)). |
 | `requestBody` | `null` | `['type' => Class, 'nullable' => bool, 'required' => bool, 'rules' => [...], 'encoding' => 'json'\|'text'\|'binary']` |
 | `requestMediaType` | `application/json` | Also `application/x-www-form-urlencoded`, `multipart/form-data`. |
-| `bodySerialization` | `[]` | Form array fields → `multi`, `csv`, `ssv`, `tsv`, `pipes`, `deepObject`, `form-object`, `form-object-explode`. |
-| `bodyParts` | `[]` | Multipart parts → `contentType`, `filename`, `json`. |
-| `querySerialization` | `[]` | Query list/object names → wire format (`multi`, `csv`, `ssv`, `tsv`, `pipes`, `deepObject`, `form-object`, `form-object-explode`). |
+| `bodySerialization` | `[]` | Form array fields → `multi`, `csv`, `ssv`, `tsv`, `pipes`, `deepObject`, `nested`, `form-object`, `form-object-explode`. |
+| `bodyParts` | `[]` | Multipart parts → `contentType`, `filename`, `json`, `nested` (a field written as text parts `name[key][0]`). |
+| `querySerialization` | `[]` | Query list/object names → wire format (`multi`, `csv`, `ssv`, `tsv`, `pipes`, `deepObject`, `nested`, `form-object`, `form-object-explode`). `deepObject` is one level of scalars; `nested` writes objects, lists and unions at any depth as `a[b][0][c]=v` (a list item by its index, null as nothing, 16 levels at most). |
 | `queryAllowReserved` | `[]` | Query names that use reserved expansion. |
+| `pathAllowReserved` | `[]` | Path parameters that take the rest of the path (`{url_path}`): their `/` is kept, each segment is still percent-encoded. |
 | `pathSerialization` | `[]` | Path names → `csv`, `ssv`, `tsv`, `pipes`, `object`, `object-explode`, and `label*`/`matrix*` styles. |
 | `headerSerialization` | `[]` | Header names → `csv`, `ssv`, `tsv`, `pipes`, `object`, `object-explode`. |
 | `parameterContent` | `[]` | Parameters carried as JSON or text media (by location). |

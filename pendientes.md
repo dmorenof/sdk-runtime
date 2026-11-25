@@ -1,6 +1,6 @@
 # Pendientes — sdk-runtime
 
-> **Estado (2026-11-25):** publicada la **1.12.1** (1.12.0: la llamada solo serializa y la respuesta se da por buena, D25; 1.12.1: solo documentación). Publicados también: TypedArray 1.3.1, sdk-generator 1.14.0, casafari-sdk 0.7.0 y redsys-sdk 0.1.0. Lista para publicar, a la espera de la confirmación del titular: la **1.13.0**.
+> **Estado (2026-11-25):** publicada la **1.12.1** (1.12.0: la llamada solo serializa y la respuesta se da por buena, D25; 1.12.1: solo documentación). Publicados también: TypedArray 1.3.1, sdk-generator 1.14.0, casafari-sdk 0.7.0 y redsys-sdk 0.1.0. Publicada la **1.13.0**.
 >
 > **Qué es este fichero:** lo que **falta**. Lo que ya está hecho y publicado no se repite aquí: está en [CHANGELOG.md](CHANGELOG.md) y en [docs/DECISIONS.md](docs/DECISIONS.md). Cada punto de abajo se comprobó en el código en la fecha de arriba; si deja de ser cierto, se borra.
 >
@@ -39,7 +39,7 @@ Una versión se publica cuando el trabajo está **terminado y probado**, y solo 
 **Limitaciones conocidas de PHP 8.4 (no se pueden arreglar aquí)**
 - Una propiedad con *hook* no se puede `unset` ni editar en sitio, así que las listas nativas no tienen *hook* y sus reglas no se comprueban al asignar (use colecciones tipadas).
 
-## Lista para publicar (1.13.0)
+## Publicado en la 1.13.0
 
 - Serialización anidada `nested` (consulta, formularios urlencoded y multipart), `pathAllowReserved` (resto de ruta con barras) y el tipo del argumento `$path` (acepta un caso de enum).
 - `typedarray/typedarray` pasa de `^1.1` a `^1.3.1` y las colecciones sin reglas por elemento ya no recorren los elementos con `Constraints::validate` (antes en el PR #39, ya integrado). Nota: `docs/PUBLIC_API.md` dice que estrechar un rango de dependencia es un cambio mayor; el precedente (`^1.0` → `^1.1`) lo trató como menor.

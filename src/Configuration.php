@@ -24,6 +24,14 @@ class Configuration
     public float $timeout = 30.0;
     public float $connectTimeout = 10.0;
 
+    /**
+     * Ask the server to compress its answers (`Accept-Encoding: gzip, deflate`) and decompress them before you see them. It saves
+     * bandwidth and time on large answers. It applies to the default HTTP client: a `$httpClient` you pass decides for itself. An
+     * answer read as a stream (events, downloads) is always asked for uncompressed. Off, nothing is asked for, and a compressed
+     * answer that arrives anyway is still decoded.
+     */
+    public bool $compression = true;
+
     /** @var array<string, string> Sent on every request. */
     public array $headers = [];
 

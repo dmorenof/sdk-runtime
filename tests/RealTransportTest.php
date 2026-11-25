@@ -3,6 +3,9 @@ declare(strict_types=1);
 
 namespace Dmorenof\SdkRuntime\Tests;
 
+use Dmorenof\SdkRuntime\Security\SecurityCredentials;
+use Dmorenof\SdkRuntime\Tests\Fixtures\TestClient;
+use Dmorenof\SdkRuntime\Tests\Support\Cfg;
 use Dmorenof\SdkRuntime\Tests\Support\ScriptedServer;
 use Dmorenof\SdkRuntime\Tests\Support\Wire;
 use Dmorenof\SdkRuntime\Transport\HttpMiddlewareInterface;
@@ -220,17 +223,44 @@ final class RealTransportTest extends TestCase
         }
     }
 
-    public function testADeflatedAnswerArrivesDecoded(): void
+    private static function gzipped(string $json): array
     {
-        $server = $this->server([['status' => 200, 'headers' => ['Content-Type' => 'application/json', 'Content-Encoding' => 'gzip'], 'bodyBase64' => base64_encode((string) gzencode('{"a":1}'))]]);
-        $transport = $this->transport();
+        return ['status' => 200, 'headers' => ['Content-Type' => 'application/json', 'Content-Encoding' => 'gzip'], 'bodyBase64' => base64_encode((string) gzencode($json))];
+    }
 
-        $response = Wire::send($transport, 'GET', $server->url());
+    public function testTheDefaultClientAsksForCompressedAnswersAndReadsThem(): void
+    {
+        $server = $this->server([self::gzipped('{"id":1,"name":"Grace"}')]);
+        $client = TestClient::connect(Cfg::make($server->url(), securityCredentials: new SecurityCredentials(['Bearer' => 'tok'])));
 
-        self::assertSame('{"a":1}', (string) $response->getBody());
-        // Guzzle does not advertise compression unless `decode_content` is set explicitly, so a server that waits for an
-        // Accept-Encoding never compresses for an SDK. Pinned here so that changing it is a decision, not an accident.
+        self::assertSame('Grace', $client->getUser(1)->name);
+
+        self::assertSame(['gzip, deflate'], $server->requests()[0]['headers']['accept-encoding']);
+    }
+
+    public function testCompressionCanBeTurnedOffAndACompressedAnswerIsStillRead(): void
+    {
+        $server = $this->server([self::gzipped('{"id":1,"name":"Grace"}')]);
+        $client = TestClient::connect(Cfg::make($server->url(), securityCredentials: new SecurityCredentials(['Bearer' => 'tok']), compression: false));
+
+        self::assertSame('Grace', $client->getUser(1)->name);
+
         self::assertArrayNotHasKey('accept-encoding', $server->requests()[0]['headers']);
+    }
+
+    public function testAnAnswerReadAsAStreamAsksForNoCompression(): void
+    {
+        $server = $this->server([['status' => 200, 'body' => 'a'], ['status' => 200, 'body' => 'b'], ['status' => 200, 'body' => 'c']]);
+        $transport = Wire::transport(new Client(['http_errors' => false, 'decode_content' => 'gzip, deflate']), compression: true);
+
+        Wire::send($transport, 'GET', $server->url('/events'), ['Accept' => 'text/event-stream'], null, true);
+        Wire::send($transport, 'GET', $server->url('/events'), ['Accept-Encoding' => 'br'], null, true);
+        Wire::send($transport, 'GET', $server->url('/plain'));
+
+        [$stream, $explicit, $buffered] = $server->requests();
+        self::assertSame(['identity'], $stream['headers']['accept-encoding']);
+        self::assertSame(['br'], $explicit['headers']['accept-encoding']);
+        self::assertSame(['gzip, deflate'], $buffered['headers']['accept-encoding']);
     }
 
     public function testMiddlewareSeesTheRealRequestAndAnswer(): void

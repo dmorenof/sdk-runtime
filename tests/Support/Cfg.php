@@ -32,6 +32,7 @@ final class Cfg
         ?RedirectPolicy $redirectPolicy = null,
         int|string|null $server = null,
         array $serverVariables = [],
+        bool $compression = true,
     ): Configuration {
         $configuration = new Configuration();
         $configuration->baseUrl = $baseUrl;
@@ -45,6 +46,7 @@ final class Cfg
         $configuration->redirectPolicy = $redirectPolicy;
         $configuration->server = $server;
         $configuration->serverVariables = $serverVariables;
+        $configuration->compression = $compression;
         return $configuration;
     }
 }

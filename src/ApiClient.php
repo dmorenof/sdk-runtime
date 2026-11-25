@@ -160,8 +160,10 @@ abstract class ApiClient
         return new Psr18Transport(
             $configuration->httpClient ?? new \GuzzleHttp\Client(['http_errors' => false,
                 'timeout' => $configuration->timeout, 'connect_timeout' => $configuration->connectTimeout,
+                // `true` would decode but never send the header; the list sends it (and decodes what comes back).
+                'decode_content' => $configuration->compression ? 'gzip, deflate' : true,
                 'curl' => defined('CURLOPT_PATH_AS_IS') ? [CURLOPT_PATH_AS_IS => true] : []]),
-            new Psr18Options($configuration->headers, $configuration->middleware, $configuration->retryPolicy, $configuration->redirectPolicy),
+            new Psr18Options($configuration->headers, $configuration->middleware, $configuration->retryPolicy, $configuration->redirectPolicy, compression: $configuration->compression),
         );
     }
 

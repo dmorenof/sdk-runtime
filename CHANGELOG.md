@@ -1,5 +1,11 @@
 # Changelog
 
+## [Unreleased]
+
+- **Compressed answers, on by default.** The default HTTP client now sends `Accept-Encoding: gzip, deflate` and decodes what comes back (before, it sent nothing, so a server that compresses on request never did). New option `Configuration::$compression` (default `true`; `false` asks for nothing, and an answer that arrives compressed anyway is still decoded). An answer read as a stream (events, downloads) is asked for with `Accept-Encoding: identity`; a header you set yourself is kept. A `$httpClient` you pass decides for itself. Behavior change: every request now carries the header, which a middleware or a test that compares exact headers will see.
+- Additive: `Psr18Options::$compression` (the transport adds the `identity` header for streams when set; off by default for a transport you build yourself).
+- Tests on a real socket (`RealTransportTest`, `RealSecurityTest`) with a scripted local server.
+
 ## [1.13.0] — 2026-11-25
 
 - **Nested `deepObject` data.** A new wire format, `nested`, writes objects, lists and unions at any depth as `a[b][0][c]=v` (a list item by its index, null as nothing, depth 16 at most, no brackets in a name): in the query (`QuerySerializer`), in `application/x-www-form-urlencoded` bodies (`FormSerializer`, via `bodySerialization`) and, with the part metadata `nested: true`, in `multipart/form-data` as text parts (`MultipartSerializer`). It is what Stripe's contract asks for (`collection_options[fields]`, `custom_fields[0][key]`, `expand[0]`). The existing `deepObject` format is unchanged: one level of scalars, anything deeper is still refused.

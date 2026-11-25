@@ -1,5 +1,9 @@
 # Changelog
 
+## [Unreleased]
+
+- **Type only: `TypedArray` and `Map` are generic.** `Dmorenof\SdkRuntime\TypedArray` was declared `@extends \TypedArray\TypedArray<mixed>` and `Map` returned `mixed`, so every item of a collection was `mixed` for static analysis (`$holiday->name` was an error at PHPStan max). Both now have `@template TValue = mixed` (the default keeps `TypedArray` and `Map` valid without arguments): a class that extends them with `@extends TypedArray<Item>` gives typed items. Nothing changes at run time. The generator 1.15.4 writes that line in every collection and map it generates.
+
 ## [1.14.0] — 2026-11-25
 
 - **Fix: events and lines of a streamed answer reach the caller when they arrive.** With the default Guzzle client, a chunked answer (the usual form of server-sent events) was delivered late: PHP waits for a whole read on a stream with a filter, so events sent seconds apart reached the caller together, when the answer ended or a buffer filled. The stream decoder now asks such a stream for one byte, which returns as soon as there is one, and takes what is already buffered with it. Found by `RealStreamingResponseTest`.

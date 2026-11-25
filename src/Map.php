@@ -6,8 +6,12 @@ namespace Dmorenof\SdkRuntime;
 /**
  * Shared keyed JSON-object collection behavior for generated map wrappers.
  *
- * @implements \ArrayAccess<string|int, mixed>
- * @implements \IteratorAggregate<string, mixed>
+ * A generated map says what it holds, so that static analysis knows the type of every value it gives:
+ * `@extends \Dmorenof\SdkRuntime\Map<\Ns\DTOs\Item>`. Without it the value is `mixed`.
+ *
+ * @template TValue = mixed
+ * @implements \ArrayAccess<string|int, TValue>
+ * @implements \IteratorAggregate<string, TValue>
  */
 class Map implements \ArrayAccess, \Countable, \IteratorAggregate, \JsonSerializable
 {
@@ -18,7 +22,7 @@ class Map implements \ArrayAccess, \Countable, \IteratorAggregate, \JsonSerializ
     /** @var array<string,mixed> */
     protected const array MAP_VALIDATION = [];
 
-    /** @var array<string, mixed> */
+    /** @var array<string, TValue> */
     private array $values = [];
 
     /** @param array<mixed>|object $values */
@@ -40,6 +44,7 @@ class Map implements \ArrayAccess, \Countable, \IteratorAggregate, \JsonSerializ
         return array_key_exists($this->normalizeKey($offset), $this->values);
     }
 
+    /** @return TValue|null */
     public function offsetGet(mixed $offset): mixed
     {
         return $this->values[$this->normalizeKey($offset)] ?? null;
@@ -49,6 +54,7 @@ class Map implements \ArrayAccess, \Countable, \IteratorAggregate, \JsonSerializ
     {
         $key = $this->normalizeKey($offset);
         $where = static::class . '[' . $key . ']';
+        /** @var TValue $converted */
         $converted = Hydrator::hydrate($value, static::VALUE_TYPE, static::VALUE_NULLABLE, $where);
         if (!DTO::isReadingResponse()) {
             Constraints::validate($converted, static::VALUE_VALIDATION, $where);
@@ -66,12 +72,13 @@ class Map implements \ArrayAccess, \Countable, \IteratorAggregate, \JsonSerializ
         return count($this->values);
     }
 
+    /** @return \Traversable<string, TValue> */
     public function getIterator(): \Traversable
     {
         return new \ArrayIterator($this->values);
     }
 
-    /** @return array<string, mixed> */
+    /** @return array<string, TValue> */
     public function getArrayCopy(): array
     {
         return $this->values;

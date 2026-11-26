@@ -12,7 +12,7 @@ What an operation returns depends on what the API declares for each status. You 
 | A status range (`2XX`) or `default` as success | The declared type, or `null` when empty | |
 | A non-success status (`404`, `5xx`…) | Never returned: always an `ApiException` | |
 
-A body that does not fit what the API promised (empty, not JSON, a wrong type, a missing field, an enum value the schema does not list) throws `InvalidResponseException`, which keeps the raw response and the original failure; it is never silently `null`. A `204` is `null` only when the API declares it.
+A body that does not fit what the API promised (empty, not JSON, a value of the wrong PHP type, an enum value the schema does not list) throws `InvalidResponseException`, which keeps the raw response and the original failure; it is never silently `null`. A rule such as a length or a pattern, or a missing required field, is not checked on an answer: it is read as the API sent it ([Validation](validation.md)). A `204` is `null` only when the API declares it.
 
 ### Errors with a body
 

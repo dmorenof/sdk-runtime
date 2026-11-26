@@ -79,9 +79,9 @@ Every failure is a standard PHP exception, so you can catch as broadly or narrow
 | Exception | When | Useful members |
 | --- | --- | --- |
 | `Dmorenof\SdkRuntime\ApiException` | The API answered with a status the operation does not declare as success (4xx, 5xx…). | `$e->getCode()` (status), `$e->response->status/headers/body`, `$e->payload` (decoded error when documented), `$e->error` |
-| `Dmorenof\SdkRuntime\InvalidResponseException` | The API answered with a success status but a body that does not fit what the operation declares: empty, not JSON, a wrong type, a missing required field, a broken rule, an enum value the schema does not list. Extends `UnexpectedValueException`. | `$e->response` (raw), `$e->getPrevious()` (the original failure) |
+| `Dmorenof\SdkRuntime\InvalidResponseException` | The API answered with a success status but a body that does not fit what the operation declares: empty, not JSON, a value of the wrong PHP type, an enum value the schema does not list. A rule such as a length, a pattern or a required field is not checked on an answer ([Validation](validation.md)). Extends `UnexpectedValueException`. | `$e->response` (raw), `$e->getPrevious()` (the original failure) |
 | `UnexpectedValueException` | A request model does not match its schema (missing required field, wrong scalar type, broken rule), or the response media type is not declared. | message names the model and field |
-| `InvalidArgumentException` | You passed something the SDK cannot send (unknown property, bad parameter, bad server variable), or the response has a field the schema does not declare. | |
+| `InvalidArgumentException` | You passed something the SDK cannot send (unknown property, bad parameter, bad server variable). A field an answer has and the schema does not declare is ignored, not an error. | |
 | `ValueError` | You assigned a value that is not one of an enum's cases. | |
 | `TypeError` | A typed collection received the wrong item type. | |
 | `Dmorenof\SdkRuntime\Transport\RedirectException` | A redirect policy refused a redirect (downgrade, too many, cross-origin). | `$e->response` |

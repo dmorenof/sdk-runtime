@@ -32,7 +32,7 @@ Messages you may meet, what they mean and what to do. Each message is quoted as 
 | Exception | Cause | Fix |
 | --- | --- | --- |
 | `ApiException: Unexpected HTTP status from GET /…: 404` | The API answered a status the operation does not declare as success. | Read `$e->response` and `$e->payload`. See [Responses](responses.md). |
-| `InvalidResponseException: Invalid response from GET /…: …` | A success body does not fit what the operation declares: empty, not JSON (`getPrevious()` is a `JsonException`), a wrong type, a missing required field, an enum value the schema does not list. | Read `$e->response->body` and `$e->getPrevious()`. The API and its specification disagree: report it or regenerate. |
+| `InvalidResponseException: Invalid response from GET /…: …` | A success body does not fit what the operation declares: empty, not JSON (`getPrevious()` is a `JsonException`), a value of the wrong PHP type, an enum value the schema does not list. Rules and required fields are not checked on an answer. | Read `$e->response->body` and `$e->getPrevious()`. The API and its specification disagree: report it or regenerate. |
 | `UnexpectedValueException: Response media type '…' is not declared for … (status 200).` | The server answered with a media type the operation does not declare. | Check the `Content-Type`; see [Responses](responses.md#one-status-several-media-types). |
 | `RedirectException` | A redirect was refused (downgrade, too many, cross-origin). | See [Transport](transport.md#redirects-opt-in). |
 | `ReauthorizationRequiredException` | OAuth2: no token, or the refresh token was rejected. | Send the user through the authorization flow again. |
